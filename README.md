@@ -1,7 +1,7 @@
 # Ecto Ledger Agent Ledger
 
 <p align="center">
-  <img src="assets/logo.png" alt="Ecto Ledger Logo" width="120" />
+  <img src="assets/ectoLedger-Logo.webp" alt="Ecto Ledger Logo" width="450" />
 </p>
 
 **A cryptographically verified, state-driven agent framework for Automated Security Auditing.**
@@ -458,7 +458,8 @@ The project is a Cargo workspace with three crates:
 - `crates/guest/src/main.rs` — Reads `GuestInput`, verifies genesis hash, full hash chain, Merkle root, and policy patterns; panics on any failure; commits `GuestOutput` to SP1 public values.
 
 **`crates/host/`** — Full application (`ectoledger-agent-ledger` binary, `guard-worker`, `verify-cert`).
-- `assets/logo.png` — Project logo (README and Windows binary icon)
+- `assets/ectoLedger-Logo.webp` — Project logo (README header)
+- `assets/el-icon.png` — Windows binary icon source
 - `crates/host/src/main.rs` — CLI entry: serve, audit, orchestrate, anchor-session, report, replay, verify-session, verify-certificate, diff-audit, red-team, prove-audit
 - `crates/host/src/orchestrator.rs` — Multi-agent orchestrator: Recon → Analysis → Verify with cross-ledger seal
 - `crates/host/src/ots.rs` — OpenTimestamps integration: submit SHA-256 digest to OTS aggregator pool

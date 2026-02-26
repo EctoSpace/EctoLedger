@@ -1,3 +1,5 @@
+name: ectoledger
+
 services:
   postgres:
     image: postgres:18-alpine

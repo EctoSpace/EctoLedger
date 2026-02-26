@@ -23,15 +23,15 @@ fn embed_windows_icon() {
     use std::path::Path;
 
     let manifest_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
-    // The crate lives in `crates/host` whereas the logo lives at the workspace
-    // root (`assets/logo.png`).  On Windows CI we were failing because we tried
-    // to open `crates/host/assets/logo.png` which doesn't exist.  Climb two
-    // levels to reach the workspace root.
+    // The crate lives in `crates/host` whereas the icon lives at the workspace
+    // root (`assets/el-icon.png`).  On Windows CI we were failing because we
+    // tried to open `crates/host/assets/el-icon.png` which doesn't exist.
+    // Climb two levels to reach the workspace root.
     let logo_path = Path::new(&manifest_dir)
         .join("..")
         .join("..")
         .join("assets")
-        .join("logo.png");
+        .join("el-icon.png");
 
     if !logo_path.exists() {
         eprintln!("warning: windows icon not generated because {} does not exist", logo_path.display());
@@ -41,7 +41,7 @@ fn embed_windows_icon() {
     let out_dir = env::var("OUT_DIR").unwrap();
     let ico_path = Path::new(&out_dir).join("icon.ico");
 
-    let img = image::open(&logo_path).expect("failed to open assets/logo.png");
+    let img = image::open(&logo_path).expect("failed to open assets/el-icon.png");
     let rgba = img.to_rgba8();
     let (w, h) = (rgba.width(), rgba.height());
     let sizes = [256u32, 48, 32, 16];
