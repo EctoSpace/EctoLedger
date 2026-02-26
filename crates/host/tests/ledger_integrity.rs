@@ -4,8 +4,9 @@ use common::{assert_chain_valid, reset_ledger, spawn_test_pool};
 use ectoledger_agent_ledger::ledger;
 use ectoledger_agent_ledger::schema::EventPayload;
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 #[cfg_attr(not(feature = "integration"), ignore)] // run with: cargo test --features integration
+#[serial_test::serial]
 async fn genesis_valid() {
     let (pool, _db) = spawn_test_pool().await;
     reset_ledger(&pool).await;
@@ -14,8 +15,9 @@ async fn genesis_valid() {
     assert_chain_valid(&pool, 0, 0).await;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 #[cfg_attr(not(feature = "integration"), ignore)] // run with: cargo test --features integration
+#[serial_test::serial]
 async fn chain_of_10_valid() {
     let (pool, _db) = spawn_test_pool().await;
     reset_ledger(&pool).await;
@@ -36,8 +38,9 @@ async fn chain_of_10_valid() {
     assert_chain_valid(&pool, 0, 10).await;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 #[cfg_attr(not(feature = "integration"), ignore)] // run with: cargo test --features integration
+#[serial_test::serial]
 async fn tampered_hash_detected() {
     let (pool, _db) = spawn_test_pool().await;
     reset_ledger(&pool).await;
@@ -53,11 +56,21 @@ async fn tampered_hash_detected() {
     )
     .await
     .expect("append");
+    // Temporarily disable the immutability trigger so we can simulate tampering
+    sqlx::query("ALTER TABLE agent_events DISABLE TRIGGER agent_events_immutable")
+        .execute(&pool)
+        .await
+        .expect("disable trigger");
     // Tamper: change content_hash of the last event
     sqlx::query("UPDATE agent_events SET content_hash = 'tampered' WHERE sequence = 1")
         .execute(&pool)
         .await
         .expect("update");
+    // Re-enable the immutability trigger
+    sqlx::query("ALTER TABLE agent_events ENABLE TRIGGER agent_events_immutable")
+        .execute(&pool)
+        .await
+        .expect("enable trigger");
     let valid = ledger::verify_chain(&pool, 0, 1).await.expect("verify");
     assert!(!valid);
 }

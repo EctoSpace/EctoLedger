@@ -8,8 +8,9 @@ use ectoledger_agent_ledger::tripwire::{self, Tripwire};
 use ectoledger_agent_ledger::intent::ProposedIntent;
 use std::path::PathBuf;
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 #[cfg_attr(not(feature = "integration"), ignore)] // run with: cargo test --features integration
+#[serial_test::serial]
 async fn mock_llm_read_file_then_complete() {
     let (pool, _db) = spawn_test_pool().await;
     reset_ledger(&pool).await;

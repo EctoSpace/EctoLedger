@@ -90,6 +90,7 @@ sp1-build = { version = "6.0.1", optional = true }
 [dev-dependencies]
 tokio-test = "0.4"
 tempfile = "3"
+serial_test = "3"
 
 [features]
 default     = ["sandbox"]
