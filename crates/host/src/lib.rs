@@ -26,9 +26,9 @@ pub mod snapshot;
 pub mod wakeup;
 pub mod webhook;
 
-// Re-export ectoledger_core's pure-logic modules into this crate's namespace.
+// Re-export ecto_ledger_core's pure-logic modules into this crate's namespace.
 // - `hash` / `merkle`: all `use crate::hash::*` and `use crate::merkle::*` calls resolve transparently.
 // - `intent`: eliminates the wrapper file; `use crate::intent::ProposedIntent` etc. still work.
-pub use ectoledger_core::hash;
-pub use ectoledger_core::intent;
-pub use ectoledger_core::merkle;
+pub use ecto_ledger_core::hash;
+pub use ecto_ledger_core::intent;
+pub use ecto_ledger_core::merkle;

@@ -1,20 +1,20 @@
 [package]
-name = "ectoledger-agent-ledger"
+name = "ecto-ledger"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true
 description = "State-first, cryptographically verified agent framework for automated security auditing"
 license-file = "../../LICENSE"
 build = "build.rs"
-# default binary so `cargo run -p ectoledger-agent-ledger` doesn't need `--bin`
-default-run = "ectoledger-agent-ledger"
+# default binary so `cargo run -p ecto-ledger` doesn't need `--bin`
+default-run = "ecto-ledger"
 
 [lib]
-name = "ectoledger_agent_ledger"
+name = "ecto_ledger"
 path = "src/lib.rs"
 
 [[bin]]
-name = "ectoledger-agent-ledger"
+name = "ecto-ledger"
 path = "src/main.rs"
 
 [[bin]]
@@ -26,7 +26,7 @@ name = "verify-cert"
 path = "src/bin/verify_cert.rs"
 
 [dependencies]
-ectoledger-core = { path = "../core" }
+ecto-ledger-core = { path = "../core" }
 
 pg-embed           = { version = "0.7", default-features = false, features = ["rt_tokio"] }
 tokio              = { version = "1", features = ["rt-multi-thread", "macros", "time", "sync", "fs", "process"] }

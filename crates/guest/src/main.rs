@@ -17,9 +17,9 @@
 #![no_main]
 sp1_zkvm::entrypoint!(main);
 
-use ectoledger_core::hash::{compute_content_hash, GENESIS_PREVIOUS_HASH};
-use ectoledger_core::merkle;
-use ectoledger_core::schema::{GuestInput, GuestOutput};
+use ecto_ledger_core::hash::{compute_content_hash, GENESIS_PREVIOUS_HASH};
+use ecto_ledger_core::merkle;
+use ecto_ledger_core::schema::{GuestInput, GuestOutput};
 use regex_lite::Regex;
 
 pub fn main() {

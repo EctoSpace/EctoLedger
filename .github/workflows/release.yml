@@ -48,10 +48,10 @@ jobs:
         if: runner.os != 'Windows'
         run: |
           mkdir -p staging
-          cp target/${{ matrix.target }}/release/ectoledger-agent-ledger staging/
+          cp target/${{ matrix.target }}/release/ecto-ledger staging/
           cp target/${{ matrix.target }}/release/guard-worker            staging/
           cp target/${{ matrix.target }}/release/verify-cert             staging/
-          tar -czf ectoledger-${{ matrix.target }}.tar.gz -C staging .
+          tar -czf ecto-ledger-${{ matrix.target }}.tar.gz -C staging .
 
       # ── Archive (Windows) ────────────────────────────────────────────────
       - name: Package binaries (Windows)
@@ -59,16 +59,16 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Path staging | Out-Null
-          Copy-Item "target\${{ matrix.target }}\release\ectoledger-agent-ledger.exe" staging\
+          Copy-Item "target\${{ matrix.target }}\release\ecto-ledger.exe" staging\
           Copy-Item "target\${{ matrix.target }}\release\guard-worker.exe"            staging\
           Copy-Item "target\${{ matrix.target }}\release\verify-cert.exe"             staging\
-          Compress-Archive -Path staging\* -DestinationPath "ectoledger-${{ matrix.target }}.zip"
+          Compress-Archive -Path staging\* -DestinationPath "ecto-ledger-${{ matrix.target }}.zip"
 
       - name: Upload archive artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ectoledger-${{ matrix.target }}
-          path: ectoledger-${{ matrix.target }}.${{ matrix.archive_ext }}
+          name: ecto-ledger-${{ matrix.target }}
+          path: ecto-ledger-${{ matrix.target }}.${{ matrix.archive_ext }}
           if-no-files-found: error
           retention-days: 1
 

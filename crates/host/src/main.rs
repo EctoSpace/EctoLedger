@@ -1,16 +1,16 @@
 use clap::{Parser, Subcommand};
 use colored::Colorize;
-use ectoledger_agent_ledger::agent::{self, AgentLoopConfig};
-use ectoledger_agent_ledger::config;
-use ectoledger_agent_ledger::db_setup;
-use ectoledger_agent_ledger::guard::GuardExecutor;
-use ectoledger_agent_ledger::guard_process::GuardProcess;
-use ectoledger_agent_ledger::agent::AgentError;
-use ectoledger_agent_ledger::ledger::{self, AppendError};
-use ectoledger_agent_ledger::llm;
-use ectoledger_agent_ledger::server;
-use ectoledger_agent_ledger::schema::EventPayload;
-use ectoledger_agent_ledger::tripwire::{self, Tripwire};
+use ecto_ledger::agent::{self, AgentLoopConfig};
+use ecto_ledger::config;
+use ecto_ledger::db_setup;
+use ecto_ledger::guard::GuardExecutor;
+use ecto_ledger::guard_process::GuardProcess;
+use ecto_ledger::agent::AgentError;
+use ecto_ledger::ledger::{self, AppendError};
+use ecto_ledger::llm;
+use ecto_ledger::server;
+use ecto_ledger::schema::EventPayload;
+use ecto_ledger::tripwire::{self, Tripwire};
 use sqlx::postgres::PgPoolOptions;
 use std::path::PathBuf;
 use std::net::SocketAddr;
@@ -18,7 +18,7 @@ use tokio::net::TcpListener;
 use uuid::Uuid;
 
 #[derive(Parser)]
-#[command(name = "ectoledger-agent-ledger")]
+#[command(name = "ecto-ledger")]
 #[command(about = "Cryptographically verified, state-driven agent framework for automated security auditing")]
 struct Cli {
     #[command(subcommand)]
@@ -202,7 +202,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         println!("Genesis already present; latest sequence = {}.", appended.sequence);
     }
 
-    let metrics = std::sync::Arc::new(ectoledger_agent_ledger::metrics::Metrics::default());
+    let metrics = std::sync::Arc::new(ecto_ledger::metrics::Metrics::default());
     match cli.command {
         Commands::Serve { .. } => {
             let listener = TcpListener::bind("0.0.0.0:3000").await?;
@@ -244,8 +244,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                     eprintln!("Failed to read policy file: {}", e);
                     e
                 })?;
-                let hash = ectoledger_agent_ledger::policy::policy_hash_bytes(&content);
-                let engine = ectoledger_agent_ledger::policy::load_policy_engine(policy_path)
+                let hash = ecto_ledger::policy::policy_hash_bytes(&content);
+                let engine = ecto_ledger::policy::load_policy_engine(policy_path)
                     .map_err(|e| {
                         eprintln!("Failed to load policy: {}", e);
                         std::io::Error::new(std::io::ErrorKind::InvalidData, e.to_string())
@@ -268,11 +268,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
             // Persist the signing key so a crash doesn't invalidate the audit trail.
             let key_dir = config::session_key_dir();
-            let signing_password = ectoledger_agent_ledger::signing::prompt_or_env_password(
+            let signing_password = ecto_ledger::signing::prompt_or_env_password(
                 "Set a password to protect this session's signing key (leave blank to skip): ",
             );
             if let Some(ref pw) = signing_password {
-                if let Err(e) = ectoledger_agent_ledger::signing::save_session_key(
+                if let Err(e) = ecto_ledger::signing::save_session_key(
                     &key_dir,
                     session_id,
                     &session_signing_key,
@@ -308,7 +308,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             );
 
             // Load ephemeral cloud credentials if AGENT_CLOUD_CREDS_FILE is set.
-            let cloud_creds = ectoledger_agent_ledger::cloud_creds::load_cloud_creds()
+            let cloud_creds = ecto_ledger::cloud_creds::load_cloud_creds()
                 .map(std::sync::Arc::new);
             if let Some(ref c) = cloud_creds {
                 println!("Cloud credentials loaded: {} (provider: {})", c.name, c.provider);
@@ -316,7 +316,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
             // Create a shared ApprovalState so the Observer REST API and the agent loop
             // can exchange approval gate decisions without polling a broken stub.
-            let approval_state = std::sync::Arc::new(ectoledger_agent_ledger::approvals::ApprovalState::new());
+            let approval_state = std::sync::Arc::new(ecto_ledger::approvals::ApprovalState::new());
 
             let pool_observer = pool.clone();
             let metrics_observer = metrics.clone();
@@ -364,7 +364,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
             // Spawn the webhook egress worker if WEBHOOK_URL is configured.
             let egress_tx = config::webhook_config()
-                .map(ectoledger_agent_ledger::webhook::spawn_egress_worker);
+                .map(ecto_ledger::webhook::spawn_egress_worker);
 
             let agent_config = AgentLoopConfig {
                 llm: llm_backend,
@@ -429,7 +429,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             };
             if aborted {
                 if let Some((seq, _)) = ledger::get_latest(&pool).await? {
-                    let _ = ectoledger_agent_ledger::snapshot::snapshot_at_sequence(&pool, seq).await;
+                    let _ = ecto_ledger::snapshot::snapshot_at_sequence(&pool, seq).await;
                 }
                 let _ = ledger::finish_session(&pool, session_id, "aborted").await;
                 println!("Shutdown signal received; session aborted.");
@@ -491,7 +491,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             println!("Verified {} event signatures for session {}.", verified, session);
         }
         Commands::Orchestrate { goal, policy, max_steps } => {
-            use ectoledger_agent_ledger::orchestrator::{OrchestratorConfig, run_orchestration};
+            use ecto_ledger::orchestrator::{OrchestratorConfig, run_orchestration};
             let client = reqwest::Client::builder()
                 .timeout(std::time::Duration::from_secs(60))
                 .build()?;
@@ -520,8 +520,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             }
         }
         Commands::DiffAudit { baseline, current, output } => {
-            let rep_a = ectoledger_agent_ledger::report::build_report(&pool, baseline).await?;
-            let rep_b = ectoledger_agent_ledger::report::build_report(&pool, current).await?;
+            let rep_a = ecto_ledger::report::build_report(&pool, baseline).await?;
+            let rep_b = ecto_ledger::report::build_report(&pool, current).await?;
             let out = format!(
                 "Baseline session {} (ledger hash: {}, findings: {})\nCurrent session {} (ledger hash: {}, findings: {})\n",
                 baseline, rep_a.ledger_hash, rep_a.findings.len(),
@@ -535,11 +535,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             }
         }
         Commands::RedTeam { target_session, attack_budget, output } => {
-            let config = ectoledger_agent_ledger::red_team::RedTeamConfig {
+            let config = ecto_ledger::red_team::RedTeamConfig {
                 target_session,
                 attack_budget,
             };
-            let report = ectoledger_agent_ledger::red_team::run_red_team(&pool, config)
+            let report = ecto_ledger::red_team::run_red_team(&pool, config)
                 .await
                 .map_err(|e| {
                     eprintln!("Red-team error: {}", e);
@@ -571,13 +571,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             prove_audit_command(&pool, session, policy, output, no_ots).await?;
         }
         Commands::AnchorSession { session } => {
-            use ectoledger_agent_ledger::ots;
-            use ectoledger_agent_ledger::schema::EventPayload;
+            use ecto_ledger::ots;
+            use ecto_ledger::schema::EventPayload;
 
             println!("Anchoring session {} to OpenTimestamps…", session);
 
             // Get the ledger tip hash for this session.
-            let events = ectoledger_agent_ledger::ledger::get_events_by_session(&pool, session).await
+            let events = ecto_ledger::ledger::get_events_by_session(&pool, session).await
                 .map_err(|e| format!("Failed to load session events: {}", e))?;
             if events.is_empty() {
                 eprintln!("Session {} has no events.", session);
@@ -597,7 +597,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                         ots_proof_hex: proof_hex.clone(),
                         bitcoin_block_height: None,
                     };
-                    match ectoledger_agent_ledger::ledger::append_event(&pool, anchor_payload, Some(session), None, None).await {
+                    match ecto_ledger::ledger::append_event(&pool, anchor_payload, Some(session), None, None).await {
                         Ok(e) => println!("Anchor event appended at sequence {}.", e.sequence),
                         Err(e) => eprintln!("Warning: failed to append Anchor event: {}", e),
                     }
@@ -622,7 +622,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                     std::path::PathBuf::from(format!("audit-{}.elc", session))
                 });
                 println!("Building Ecto Ledger Audit Certificate for session {}…", session);
-                let cert = ectoledger_agent_ledger::certificate::build_certificate(
+                let cert = ecto_ledger::certificate::build_certificate(
                     &pool,
                     session,
                     None, // signing_key: requires session key loaded from disk (use VerifySession first)
@@ -630,23 +630,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 )
                 .await
                 .map_err(|e| format!("certificate build failed: {}", e))?;
-                ectoledger_agent_ledger::certificate::write_certificate_file(&cert, &out_path)
+                ecto_ledger::certificate::write_certificate_file(&cert, &out_path)
                     .map_err(|e| format!("write certificate failed: {}", e))?;
                 println!("Certificate written to {}", out_path.display());
                 println!("Verify with: verify-cert {}", out_path.display());
             } else {
-                let report = ectoledger_agent_ledger::report::build_report(&pool, session).await?;
+                let report = ecto_ledger::report::build_report(&pool, session).await?;
                 let out = match format.to_lowercase().as_str() {
                     "sarif" => serde_json::to_string_pretty(
-                        &ectoledger_agent_ledger::report::report_to_sarif(&report, session),
+                        &ecto_ledger::report::report_to_sarif(&report, session),
                     )
                     .unwrap_or_default(),
-                    "html" => ectoledger_agent_ledger::report::report_to_html(&report, session),
+                    "html" => ecto_ledger::report::report_to_html(&report, session),
                     "github_actions" => {
-                        ectoledger_agent_ledger::report::report_to_github_actions(&report)
+                        ecto_ledger::report::report_to_github_actions(&report)
                     }
                     "gitlab_codequality" => serde_json::to_string_pretty(
-                        &ectoledger_agent_ledger::report::report_to_gitlab_codequality(&report, session),
+                        &ecto_ledger::report::report_to_gitlab_codequality(&report, session),
                     )
                     .unwrap_or_default(),
                     _ => serde_json::to_string_pretty(&report).unwrap_or_default(),
@@ -674,8 +674,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         }
 
         Commands::VerifyCertificate { file } => {
-            use ectoledger_agent_ledger::certificate::{canonical_json_for_signing, read_certificate_file};
-            use ectoledger_agent_ledger::merkle;
+            use ecto_ledger::certificate::{canonical_json_for_signing, read_certificate_file};
+            use ecto_ledger::merkle;
             use sha2::{Digest, Sha256 as Sha256Hasher};
             use ed25519_dalek::{Signature as Ed25519Sig, Verifier, VerifyingKey};
 
@@ -820,20 +820,20 @@ async fn prove_audit_zk(
     output: Option<std::path::PathBuf>,
     no_ots: bool,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    use ectoledger_agent_ledger::certificate::{build_certificate, embed_zk_proof, write_certificate_file};
-    use ectoledger_core::hash::GENESIS_PREVIOUS_HASH;
-    use ectoledger_core::merkle;
-    use ectoledger_core::schema::{ChainEvent, GuestInput};
+    use ecto_ledger::certificate::{build_certificate, embed_zk_proof, write_certificate_file};
+    use ecto_ledger_core::hash::GENESIS_PREVIOUS_HASH;
+    use ecto_ledger_core::merkle;
+    use ecto_ledger_core::schema::{ChainEvent, GuestInput};
     use sp1_sdk::{include_elf, CpuProver, Prover, SP1ProofWithPublicValues, SP1Stdin};
 
     // The guest ELF is compiled and embedded by crates/host/build.rs when --features zk.
     // sp1-build v6 exports SP1_ELF_{binary_name}; include_elf! wraps it as Elf::Static.
-    let elf = include_elf!("ectoledger-guest");
+    let elf = include_elf!("ecto-ledger-guest");
 
     println!("prove-audit: loading session {} from database…", session);
 
     // 1. Fetch all events.
-    let events = ectoledger_agent_ledger::ledger::get_events_by_session(pool, session)
+    let events = ecto_ledger::ledger::get_events_by_session(pool, session)
         .await
         .map_err(|e| format!("Failed to load session events: {}", e))?;
 
@@ -871,7 +871,7 @@ async fn prove_audit_zk(
 
     // 4. Collect policy patterns from the policy file (if provided).
     let policy_patterns: Vec<String> = if let Some(ref path) = policy_path {
-        match ectoledger_agent_ledger::policy::load_policy_engine(path) {
+        match ecto_ledger::policy::load_policy_engine(path) {
             Ok(engine) => engine
                 .policy()
                 .observation_rules

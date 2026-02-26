@@ -1535,8 +1535,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "ectoledger-agent-ledger"
-version = "0.5.2"
+name = "ecto-ledger"
+version = "0.5.3"
 dependencies = [
  "aes-gcm",
  "argon2",
@@ -1549,7 +1549,7 @@ dependencies = [
  "clap",
  "colored",
  "dotenvy",
- "ectoledger-core",
+ "ecto-ledger-core",
  "ed25519-dalek",
  "futures-util",
  "hex",
@@ -1590,8 +1590,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "ectoledger-core"
-version = "0.5.2"
+name = "ecto-ledger-core"
+version = "0.5.3"
 dependencies = [
  "bincode",
  "hex",

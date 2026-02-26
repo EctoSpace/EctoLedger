@@ -1,8 +1,8 @@
 mod common;
 
 use common::{assert_chain_valid, reset_ledger, spawn_test_pool};
-use ectoledger_agent_ledger::ledger;
-use ectoledger_agent_ledger::schema::EventPayload;
+use ecto_ledger::ledger;
+use ecto_ledger::schema::EventPayload;
 
 #[tokio::test(flavor = "multi_thread")]
 #[cfg_attr(not(feature = "integration"), ignore)] // run with: cargo test --features integration

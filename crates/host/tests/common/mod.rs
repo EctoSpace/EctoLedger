@@ -1,18 +1,18 @@
 // Helpers for integration tests (used when tests are run with --ignored).
 #![allow(dead_code)]
 
-use ectoledger_agent_ledger::ledger;
-use ectoledger_agent_ledger::llm::{LlmBackend, LlmError};
-use ectoledger_agent_ledger::intent::ProposedIntent;
-use ectoledger_agent_ledger::db_setup;
-use ectoledger_agent_ledger::config;
+use ecto_ledger::ledger;
+use ecto_ledger::llm::{LlmBackend, LlmError};
+use ecto_ledger::intent::ProposedIntent;
+use ecto_ledger::db_setup;
+use ecto_ledger::config;
 use async_trait::async_trait;
 use sqlx::postgres::PgPoolOptions;
 use sqlx::PgPool;
 use std::collections::VecDeque;
 use std::sync::Mutex;
 
-pub async fn spawn_test_pool() -> (PgPool, ectoledger_agent_ledger::db_setup::EmbeddedDb) {
+pub async fn spawn_test_pool() -> (PgPool, ecto_ledger::db_setup::EmbeddedDb) {
     let url = config::database_url().expect("DATABASE_URL");
     let (database_url, embedded) = db_setup::ensure_postgres_ready(&url).await.expect("postgres ready");
     let pool = PgPoolOptions::new()

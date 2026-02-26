@@ -1,11 +1,11 @@
 mod common;
 
 use common::{assert_chain_valid, reset_ledger, spawn_test_pool, MockLlmBackend};
-use ectoledger_agent_ledger::agent::{self, AgentLoopConfig};
-use ectoledger_agent_ledger::ledger;
-use ectoledger_agent_ledger::schema::EventPayload;
-use ectoledger_agent_ledger::tripwire::{self, Tripwire};
-use ectoledger_agent_ledger::intent::ProposedIntent;
+use ecto_ledger::agent::{self, AgentLoopConfig};
+use ecto_ledger::ledger;
+use ecto_ledger::schema::EventPayload;
+use ecto_ledger::tripwire::{self, Tripwire};
+use ecto_ledger::intent::ProposedIntent;
 use std::path::PathBuf;
 
 #[tokio::test(flavor = "multi_thread")]

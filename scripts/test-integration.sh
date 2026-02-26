@@ -15,7 +15,7 @@
 set -euo pipefail
 
 COMPOSE_FILE="$(cd "$(dirname "$0")/.." && pwd)/docker-compose.test.yml"
-DB_URL="postgres://ectoledger:ectoledger@localhost:5433/ectoledger_test"
+DB_URL="postgres://ecto_ledger:ecto_ledger@localhost:5433/ecto_ledger_test"
 
 cleanup() {
     echo ""
@@ -30,7 +30,7 @@ docker compose -f "$COMPOSE_FILE" up -d --wait
 echo "Waiting for Postgres to be ready..."
 RETRIES=30
 until docker compose -f "$COMPOSE_FILE" exec -T postgres \
-    pg_isready -U ectoledger -d ectoledger_test -q 2>/dev/null; do
+    pg_isready -U ecto_ledger -d ecto_ledger_test -q 2>/dev/null; do
     RETRIES=$((RETRIES - 1))
     if [ "$RETRIES" -le 0 ]; then
         echo "ERROR: Postgres did not become ready in time." >&2

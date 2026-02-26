@@ -12,8 +12,8 @@
 // Exit code: 0 = VALID, 1 = INVALID or error.
 
 use ed25519_dalek::{Signature, Verifier, VerifyingKey};
-use ectoledger_agent_ledger::certificate::{canonical_json_for_signing, EctoLedgerCertificate};
-use ectoledger_agent_ledger::merkle;
+use ecto_ledger::certificate::{canonical_json_for_signing, EctoLedgerCertificate};
+use ecto_ledger::merkle;
 use sha2::{Digest, Sha256};
 use std::process;
 
@@ -33,7 +33,7 @@ fn main() {
         process::exit(1);
     }
     let path = std::path::Path::new(&args[1]);
-    let cert = match ectoledger_agent_ledger::certificate::read_certificate_file(path) {
+    let cert = match ecto_ledger::certificate::read_certificate_file(path) {
         Ok(c) => c,
         Err(e) => {
             eprintln!("{RED}ERROR:{RESET} Could not read certificate: {}", e);
@@ -331,7 +331,7 @@ fn check_ots(cert: &EctoLedgerCertificate) -> bool {
             println!("{GREEN}✓  OTS timestamp — Bitcoin attestation present in stamp{RESET}");
         } else {
             println!("{YELLOW}⚠  OTS timestamp{RESET} — stamp is present but not yet confirmed on Bitcoin");
-            println!("   Run `ectoledger upgrade-certificate {}` later to embed the completed proof.", "[file]");
+            println!("   Run `ecto-ledger upgrade-certificate {}` later to embed the completed proof.", "[file]");
         }
     } else {
         // The aggregators sometimes return a non-standard envelope for the pending receipt.

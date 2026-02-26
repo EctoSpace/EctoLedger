@@ -84,8 +84,8 @@ Ecto Ledger is **self-deploying**. You do not need to:
 
 **What happens when you run the binary:**
 
-- If `DATABASE_URL` is unset, the app defaults to `postgres://ectoledger:ectoledger@localhost:5432/ectoledger`.
-- It checks for a Docker container named `ectoledger-postgres`. If missing or stopped, it starts one with the correct user, password, and database.
+- If `DATABASE_URL` is unset, the app defaults to `postgres://ecto_ledger:ecto_ledger@localhost:5432/ecto_ledger`.
+- It checks for a Docker container named `ecto-ledger-postgres`. If missing or stopped, it starts one with the correct user, password, and database.
 - It polls until PostgreSQL accepts connections, then runs migrations and creates the genesis block.
 - If `OBSERVER_TOKEN` is unset, a random token is generated and printed with the dashboard URL; use it to access the Observer.
 - For **audit**, the primary LLM (Ollama/OpenAI/Anthropic) must be reachable. If the Guard is enabled, the `guard-worker` binary (built with the project) is spawned and must have `GUARD_LLM_BACKEND` / `GUARD_LLM_MODEL` set when `GUARD_REQUIRED=true`.
@@ -121,7 +121,7 @@ cargo run -- audit "Audit Cargo.toml dependencies" --policy audit_policy.toml
 cargo run -- audit "Quick read" --no-guard --no-guard-confirmed   # development only
 
 # Cloud architecture audit with ephemeral AWS credentials:
-AGENT_CLOUD_CREDS_FILE=~/.ectoledger/aws-audit.json \
+AGENT_CLOUD_CREDS_FILE=~/.ecto-ledger/aws-audit.json \
   cargo run -- audit "Audit the S3 bucket policy for public exposure" --policy cloud_policy.toml
 
 # Terminal-native approval gates (no dashboard required):
@@ -371,7 +371,7 @@ These predicates can be joined with `&&` alongside the existing `action == 'x'` 
 
 Safely audit AWS, GCP, Azure, or Kubernetes environments by supplying short-lived credentials in a JSON file. The file path is read from `AGENT_CLOUD_CREDS_FILE`; credentials are injected only into matching cloud CLI child processes and never appear in the parent environment or audit logs.
 
-**Credential file format (`~/.ectoledger/aws-audit.json`):**
+**Credential file format (`~/.ecto-ledger/aws-audit.json`):**
 
 ```json
 {
@@ -404,7 +404,7 @@ Unanswered prompts apply the `on_timeout` policy (`deny` by default). The approv
 
 ### Environment variables (see `.env.example`)
 
-- `DATABASE_URL` — PostgreSQL connection URL (defaults to local Docker `ectoledger` DB if unset).
+- `DATABASE_URL` — PostgreSQL connection URL (defaults to local Docker `ecto_ledger` DB if unset).
 - `OBSERVER_TOKEN` — Optional. If unset, a random token is generated and printed at startup for the Observer.
 - `OLLAMA_BASE_URL`, `OLLAMA_MODEL` — For Ollama backend.
 - `LLM_BACKEND` — `ollama`, `openai`, or `anthropic`; default `ollama`.
@@ -413,7 +413,7 @@ Unanswered prompts apply the `on_timeout` policy (`deny` by default). The approv
 - `AGENT_ALLOWED_DOMAINS` — Comma-separated domains for Tripwire `http_get`.
 - `AGENT_MAX_STEPS` — Max loop iterations; default 20.
 - `AGENT_LLM_ERROR_LIMIT`, `AGENT_GUARD_DENIAL_LIMIT` — Circuit breaker thresholds.
-- `ECTO_DATA_DIR` — Directory for encrypted session key files (default `.ectoledger/keys/`). Set `ECTO_KEY_PASSWORD` to skip the interactive password prompt.
+- `ECTO_DATA_DIR` — Directory for encrypted session key files (default `.ecto-ledger/keys/`). Set `ECTO_KEY_PASSWORD` to skip the interactive password prompt.
 - `AGENT_CLOUD_CREDS_FILE` — Path to a JSON file with cloud credentials (`name`, `provider`, `env_vars`). When set, cloud CLI binaries (`aws`, `gcloud`, `az`, `kubectl`, `terraform`, `eksctl`, `helm`) are added to the executor allowlist and credentials injected into matching child processes only.
 - `WEBHOOK_URL` — Optional. HTTP endpoint for async SIEM/webhook egress on flagged/abort policy outcomes.
 - `WEBHOOK_BEARER_TOKEN` — Optional bearer token for webhook egress.
@@ -457,7 +457,7 @@ The project is a Cargo workspace with three crates:
 **`crates/guest/`** — SP1 RISC-V zkVM guest program (compiled separately with `--features zk`).
 - `crates/guest/src/main.rs` — Reads `GuestInput`, verifies genesis hash, full hash chain, Merkle root, and policy patterns; panics on any failure; commits `GuestOutput` to SP1 public values.
 
-**`crates/host/`** — Full application (`ectoledger-agent-ledger` binary, `guard-worker`, `verify-cert`).
+**`crates/host/`** — Full application (`ecto-ledger` binary, `guard-worker`, `verify-cert`).
 - `assets/ectoLedger-Logo.webp` — Project logo (README header)
 - `assets/el-icon.png` — Windows binary icon source
 - `crates/host/src/main.rs` — CLI entry: serve, audit, orchestrate, anchor-session, report, replay, verify-session, verify-certificate, diff-audit, red-team, prove-audit
@@ -471,7 +471,7 @@ The project is a Cargo workspace with three crates:
 - `crates/host/src/guard_process.rs` — Spawns `guard-worker` and communicates via stdin/stdout JSON
 - `crates/host/src/bin/guard_worker.rs` — Standalone Guard binary (one JSON line in → ALLOW/DENY out)
 - `crates/host/src/cloud_creds.rs` — Ephemeral cloud credential injection: `CloudCredentialSet` loaded from `AGENT_CLOUD_CREDS_FILE`; injected into matching child processes only
-- `crates/host/src/policy.rs` — Thin wrapper over `ectoledger_core::policy`; adds `load_policy_engine()` for host I/O
+- `crates/host/src/policy.rs` — Thin wrapper over `ecto_ledger_core::policy`; adds `load_policy_engine()` for host I/O
 - `crates/host/src/certificate.rs` — Ecto Ledger Audit Certificate (.elc): Merkle tree, OTS, Ed25519 signing, optional SP1 ZK proof embedding
 - `crates/host/src/bin/verify_cert.rs` — Standalone 5-check certificate verifier binary
 - `crates/host/src/report.rs` — AuditReport; SARIF 2.1, HTML, GitHub Actions annotations, GitLab Code Quality JSON, and certificate export

@@ -1,10 +1,10 @@
 [package]
-name = "ectoledger-guest"
-version = "0.5.2"
+name = "ecto-ledger-guest"
+version = "0.5.3"
 edition = "2024"
 
 [dependencies]
-ectoledger-core = { path = "../core" }
+ecto-ledger-core = { path = "../core" }
 sp1-zkvm      = "6.0.1"
 serde         = { version = "1", features = ["derive"] }
 bincode       = "1"

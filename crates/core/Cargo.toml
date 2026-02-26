@@ -1,6 +1,6 @@
 [package]
-name = "ectoledger-core"
-version = "0.5.2"
+name = "ecto-ledger-core"
+version = "0.5.3"
 edition = "2024"
 description = "Shared pure logic for the Ecto Ledger: hashing, Merkle trees, schemas, and policy evaluation"
 

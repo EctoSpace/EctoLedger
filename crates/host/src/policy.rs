@@ -1,12 +1,12 @@
 // Host-side policy module.
 //
-// All pure evaluation types and the PolicyEngine are defined in `ectoledger_core::policy`
+// All pure evaluation types and the PolicyEngine are defined in `ecto_ledger_core::policy`
 // and re-exported here so that existing `use crate::policy::*` imports resolve unchanged.
 //
 // This module adds the TOML file-loading layer (`PolicyLoadError`, `load_policy_engine`)
 // which requires std file I/O and is therefore kept out of the no-I/O-dependency core crate.
 
-pub use ectoledger_core::policy::*;
+pub use ecto_ledger_core::policy::*;
 
 use std::path::Path;
 
@@ -33,7 +33,7 @@ impl std::error::Error for PolicyLoadError {}
 
 /// Parse an `AuditPolicy` from a TOML file and wrap it in a `PolicyEngine`.
 ///
-/// The `PolicyEngine` itself lives in `ectoledger_core` (no file I/O).
+/// The `PolicyEngine` itself lives in `ecto_ledger_core` (no file I/O).
 /// This free function is the host-side entry point for loading policies from disk.
 pub fn load_policy_engine(path: &Path) -> Result<PolicyEngine, PolicyLoadError> {
     let s = std::fs::read_to_string(path).map_err(PolicyLoadError::Io)?;
