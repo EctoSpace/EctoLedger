@@ -1,6 +1,6 @@
-// Standalone IronClad Audit Certificate verifier.
+// Standalone Ecto Ledger Audit Certificate verifier.
 //
-// Usage: verify-cert <path-to-audit.iac>
+// Usage: verify-cert <path-to-audit.elc>
 //
 // Performs five independent checks in order:
 //   1. Ed25519 signature validity
@@ -12,8 +12,8 @@
 // Exit code: 0 = VALID, 1 = INVALID or error.
 
 use ed25519_dalek::{Signature, Verifier, VerifyingKey};
-use ironclad_agent_ledger::certificate::{canonical_json_for_signing, IronCladCertificate};
-use ironclad_agent_ledger::merkle;
+use ectoledger_agent_ledger::certificate::{canonical_json_for_signing, EctoLedgerCertificate};
+use ectoledger_agent_ledger::merkle;
 use sha2::{Digest, Sha256};
 use std::process;
 
@@ -29,11 +29,11 @@ const RESET: &str = "\x1b[0m";
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     if args.len() != 2 || args[1] == "--help" || args[1] == "-h" {
-        eprintln!("Usage: {} <path-to-audit.iac>", args[0]);
+        eprintln!("Usage: {} <path-to-audit.elc>", args[0]);
         process::exit(1);
     }
     let path = std::path::Path::new(&args[1]);
-    let cert = match ironclad_agent_ledger::certificate::read_certificate_file(path) {
+    let cert = match ectoledger_agent_ledger::certificate::read_certificate_file(path) {
         Ok(c) => c,
         Err(e) => {
             eprintln!("{RED}ERROR:{RESET} Could not read certificate: {}", e);
@@ -41,7 +41,7 @@ fn main() {
         }
     };
 
-    println!("\nVerifying IronClad Audit Certificate");
+    println!("\nVerifying Ecto Ledger Audit Certificate");
     println!("  Session : {}", cert.session_id);
     println!("  Events  : {}", cert.event_count);
     println!("  Started : {}", cert.started_at);
@@ -67,7 +67,7 @@ fn main() {
 
 // ── Check 1: Ed25519 signature ────────────────────────────────────────────────
 
-fn check_signature(cert: &IronCladCertificate) -> bool {
+fn check_signature(cert: &EctoLedgerCertificate) -> bool {
     let Some(sig_hex) = &cert.signature else {
         println!("{YELLOW}⚠  Signature{RESET} — certificate has no signature (unsigned)");
         return true; // Allow unsigned certs; missing sig is a warning not a failure.
@@ -138,7 +138,7 @@ fn sha256_hex(data: &[u8]) -> String {
     hex::encode(Sha256::digest(data))
 }
 
-fn check_hash_chain(cert: &IronCladCertificate) -> bool {
+fn check_hash_chain(cert: &EctoLedgerCertificate) -> bool {
     if cert.events.is_empty() {
         println!("{YELLOW}⚠  Hash chain{RESET} — no events to verify");
         return true;
@@ -196,7 +196,7 @@ fn check_hash_chain(cert: &IronCladCertificate) -> bool {
 
 // ── Check 3: Merkle proof verification ───────────────────────────────────────
 
-fn check_merkle_proofs(cert: &IronCladCertificate) -> bool {
+fn check_merkle_proofs(cert: &EctoLedgerCertificate) -> bool {
     if cert.findings.is_empty() {
         println!("{GREEN}✓  Merkle proofs{RESET} — no findings to verify");
         return true;
@@ -269,7 +269,7 @@ fn check_merkle_proofs(cert: &IronCladCertificate) -> bool {
 
 // ── Check 4: Goal hash integrity ──────────────────────────────────────────────
 
-fn check_goal_hash(cert: &IronCladCertificate) -> bool {
+fn check_goal_hash(cert: &EctoLedgerCertificate) -> bool {
     let computed = sha256_hex(cert.goal.as_bytes());
     if computed != cert.goal_hash {
         println!(
@@ -284,7 +284,7 @@ fn check_goal_hash(cert: &IronCladCertificate) -> bool {
 
 // ── Check 5: OTS timestamp ────────────────────────────────────────────────────
 
-fn check_ots(cert: &IronCladCertificate) -> bool {
+fn check_ots(cert: &EctoLedgerCertificate) -> bool {
     let Some(ots_hex) = &cert.ots_proof_hex else {
         println!("{YELLOW}⚠  OTS timestamp{RESET} — no OTS proof in certificate (skipped)");
         return true;
@@ -331,7 +331,7 @@ fn check_ots(cert: &IronCladCertificate) -> bool {
             println!("{GREEN}✓  OTS timestamp — Bitcoin attestation present in stamp{RESET}");
         } else {
             println!("{YELLOW}⚠  OTS timestamp{RESET} — stamp is present but not yet confirmed on Bitcoin");
-            println!("   Run `ironclad upgrade-certificate {}` later to embed the completed proof.", "[file]");
+            println!("   Run `ectoledger upgrade-certificate {}` later to embed the completed proof.", "[file]");
         }
     } else {
         // The aggregators sometimes return a non-standard envelope for the pending receipt.

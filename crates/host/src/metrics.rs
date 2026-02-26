@@ -20,33 +20,33 @@ pub struct Metrics {
 impl Metrics {
     pub fn prometheus_text(&self) -> String {
         format!(
-            "# HELP ironclad_events_appended_total Total events appended to the ledger.\n\
-             # TYPE ironclad_events_appended_total counter\n\
-             ironclad_events_appended_total {}\n\
-             # HELP ironclad_tripwire_rejections_total Total tripwire rejections.\n\
-             # TYPE ironclad_tripwire_rejections_total counter\n\
-             ironclad_tripwire_rejections_total {}\n\
-             # HELP ironclad_guard_denials_total Total guard denials.\n\
-             # TYPE ironclad_guard_denials_total counter\n\
-             ironclad_guard_denials_total {}\n\
-             # HELP ironclad_sessions_created_total Total sessions created.\n\
-             # TYPE ironclad_sessions_created_total counter\n\
-             ironclad_sessions_created_total {}\n\
-             # HELP ironclad_snapshots_created_total Total snapshots created.\n\
-             # TYPE ironclad_snapshots_created_total counter\n\
-             ironclad_snapshots_created_total {}\n\
-             # HELP ironclad_token_count_total Approximate token count consumed (chars/4).\n\
-             # TYPE ironclad_token_count_total counter\n\
-             ironclad_token_count_total {}\n\
-             # HELP ironclad_scanner_detections_total Output scanner detections.\n\
-             # TYPE ironclad_scanner_detections_total counter\n\
-             ironclad_scanner_detections_total {}\n\
-             # HELP ironclad_guard_detections_total Guard DENY decisions.\n\
-             # TYPE ironclad_guard_detections_total counter\n\
-             ironclad_guard_detections_total {}\n\
-             # HELP ironclad_tripwire_detections_total Tripwire rule violations.\n\
-             # TYPE ironclad_tripwire_detections_total counter\n\
-             ironclad_tripwire_detections_total {}\n",
+            "# HELP ectoledger_events_appended_total Total events appended to the ledger.\n\
+             # TYPE ectoledger_events_appended_total counter\n\
+             ectoledger_events_appended_total {}\n\
+             # HELP ectoledger_tripwire_rejections_total Total tripwire rejections.\n\
+             # TYPE ectoledger_tripwire_rejections_total counter\n\
+             ectoledger_tripwire_rejections_total {}\n\
+             # HELP ectoledger_guard_denials_total Total guard denials.\n\
+             # TYPE ectoledger_guard_denials_total counter\n\
+             ectoledger_guard_denials_total {}\n\
+             # HELP ectoledger_sessions_created_total Total sessions created.\n\
+             # TYPE ectoledger_sessions_created_total counter\n\
+             ectoledger_sessions_created_total {}\n\
+             # HELP ectoledger_snapshots_created_total Total snapshots created.\n\
+             # TYPE ectoledger_snapshots_created_total counter\n\
+             ectoledger_snapshots_created_total {}\n\
+             # HELP ectoledger_token_count_total Approximate token count consumed (chars/4).\n\
+             # TYPE ectoledger_token_count_total counter\n\
+             ectoledger_token_count_total {}\n\
+             # HELP ectoledger_scanner_detections_total Output scanner detections.\n\
+             # TYPE ectoledger_scanner_detections_total counter\n\
+             ectoledger_scanner_detections_total {}\n\
+             # HELP ectoledger_guard_detections_total Guard DENY decisions.\n\
+             # TYPE ectoledger_guard_detections_total counter\n\
+             ectoledger_guard_detections_total {}\n\
+             # HELP ectoledger_tripwire_detections_total Tripwire rule violations.\n\
+             # TYPE ectoledger_tripwire_detections_total counter\n\
+             ectoledger_tripwire_detections_total {}\n",
             self.events_appended.load(Ordering::Relaxed),
             self.tripwire_rejections.load(Ordering::Relaxed),
             self.guard_denials.load(Ordering::Relaxed),

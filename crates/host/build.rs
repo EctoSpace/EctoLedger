@@ -3,7 +3,7 @@ fn main() {
     //
     // When `cargo build --features zk` is invoked, sp1_build compiles the guest RISC-V
     // program at `crates/guest/` and makes its ELF available to the host via an env var
-    // (`IRONCLAD_GUEST_ELF_PATH`) that is set in the cargo build script output.
+    // (`ECTO_GUEST_ELF_PATH`) that is set in the cargo build script output.
     // The host `prove-audit` command includes this ELF at compile time.
     #[cfg(feature = "zk")]
     {

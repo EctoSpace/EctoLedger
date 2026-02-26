@@ -48,12 +48,12 @@ async fn start_embedded(database_url: &str) -> Result<(PgEmbed, String), DbSetup
     let port = parsed.port().unwrap_or(5432);
     let user = {
         let u = parsed.username();
-        if u.is_empty() { "ironclad" } else { u }.to_string()
+        if u.is_empty() { "ectoledger" } else { u }.to_string()
     };
-    let password = parsed.password().unwrap_or("ironclad").to_string();
+    let password = parsed.password().unwrap_or("ectoledger").to_string();
     let db_name = {
         let p = parsed.path().trim_start_matches('/');
-        if p.is_empty() { "ironclad" } else { p }.to_string()
+        if p.is_empty() { "ectoledger" } else { p }.to_string()
     };
 
     let data_dir = app_data_dir().join("postgres");
@@ -150,12 +150,12 @@ fn app_data_dir() -> PathBuf {
         PathBuf::from(home)
             .join("Library")
             .join("Application Support")
-            .join("ironclad-agent-ledger")
+            .join("ectoledger-agent-ledger")
     }
     #[cfg(target_os = "windows")]
     {
         let appdata = std::env::var("LOCALAPPDATA").unwrap_or_else(|_| ".".to_string());
-        PathBuf::from(appdata).join("ironclad-agent-ledger")
+        PathBuf::from(appdata).join("ectoledger-agent-ledger")
     }
     #[cfg(not(any(target_os = "macos", target_os = "windows")))]
     {
@@ -163,7 +163,7 @@ fn app_data_dir() -> PathBuf {
         PathBuf::from(home)
             .join(".local")
             .join("share")
-            .join("ironclad-agent-ledger")
+            .join("ectoledger-agent-ledger")
     }
 }
 

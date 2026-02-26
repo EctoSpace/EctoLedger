@@ -1,8 +1,8 @@
 mod common;
 
 use common::{assert_chain_valid, reset_ledger, spawn_test_pool};
-use ironclad_agent_ledger::ledger;
-use ironclad_agent_ledger::schema::EventPayload;
+use ectoledger_agent_ledger::ledger;
+use ectoledger_agent_ledger::schema::EventPayload;
 
 #[tokio::test]
 #[cfg_attr(not(feature = "integration"), ignore)] // run with: cargo test --features integration

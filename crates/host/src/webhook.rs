@@ -73,7 +73,7 @@ fn format_event(event: &EgressEvent, format: &str) -> String {
 
 fn format_json(event: &EgressEvent) -> String {
     serde_json::json!({
-        "source": "ironclad-agent-ledger",
+        "source": "ectoledger-agent-ledger",
         "session_id": event.session_id.to_string(),
         "severity": event.severity,
         "rule_label": event.rule_label,
@@ -87,7 +87,7 @@ fn format_json(event: &EgressEvent) -> String {
 fn format_cef(event: &EgressEvent) -> String {
     let cef_severity = if event.severity == "abort" { "9" } else { "5" };
     format!(
-        "CEF:0|Ironclad|AgentLedger|1.0|observation_policy|{rule}|{sev}|session={sid} label={label} preview={prev}",
+        "CEF:0|Ecto Ledger|AgentLedger|1.0|observation_policy|{rule}|{sev}|session={sid} label={label} preview={prev}",
         rule = event.rule_label,
         sev = cef_severity,
         sid = event.session_id,
@@ -99,7 +99,7 @@ fn format_cef(event: &EgressEvent) -> String {
 /// IBM LEEF 2.0: tab-separated key-value attributes after a header.
 fn format_leef(event: &EgressEvent) -> String {
     format!(
-        "LEEF:2.0|Ironclad|AgentLedger|1.0|observation_policy|\tsrc=ironclad\tsessionId={sid}\tseverity={sev}\truleLabel={label}\tobservation={prev}",
+        "LEEF:2.0|Ecto Ledger|AgentLedger|1.0|observation_policy|\tsrc=ectoledger\tsessionId={sid}\tseverity={sev}\truleLabel={label}\tobservation={prev}",
         sid = event.session_id,
         sev = event.severity,
         label = event.rule_label,

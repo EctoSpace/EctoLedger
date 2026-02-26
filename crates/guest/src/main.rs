@@ -1,4 +1,4 @@
-// IronClad Agent Ledger — SP1 zkVM Guest Program
+// Ecto Ledger Agent Ledger — SP1 zkVM Guest Program
 //
 // This program runs inside the Succinct SP1 RISC-V virtual machine and produces a
 // zero-knowledge proof that:
@@ -17,9 +17,9 @@
 #![no_main]
 sp1_zkvm::entrypoint!(main);
 
-use ironclad_core::hash::{compute_content_hash, GENESIS_PREVIOUS_HASH};
-use ironclad_core::merkle;
-use ironclad_core::schema::{GuestInput, GuestOutput};
+use ectoledger_core::hash::{compute_content_hash, GENESIS_PREVIOUS_HASH};
+use ectoledger_core::merkle;
+use ectoledger_core::schema::{GuestInput, GuestOutput};
 use regex_lite::Regex;
 
 pub fn main() {

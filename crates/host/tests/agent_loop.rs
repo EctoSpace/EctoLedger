@@ -1,11 +1,11 @@
 mod common;
 
 use common::{assert_chain_valid, reset_ledger, spawn_test_pool, MockLlmBackend};
-use ironclad_agent_ledger::agent::{self, AgentLoopConfig};
-use ironclad_agent_ledger::ledger;
-use ironclad_agent_ledger::schema::EventPayload;
-use ironclad_agent_ledger::tripwire::{self, Tripwire};
-use ironclad_agent_ledger::intent::ProposedIntent;
+use ectoledger_agent_ledger::agent::{self, AgentLoopConfig};
+use ectoledger_agent_ledger::ledger;
+use ectoledger_agent_ledger::schema::EventPayload;
+use ectoledger_agent_ledger::tripwire::{self, Tripwire};
+use ectoledger_agent_ledger::intent::ProposedIntent;
 use std::path::PathBuf;
 
 #[tokio::test]

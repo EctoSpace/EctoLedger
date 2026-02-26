@@ -2,16 +2,16 @@ services:
   postgres:
     image: postgres:18-alpine
     environment:
-      POSTGRES_USER: ironclad
-      POSTGRES_PASSWORD: ironclad
-      POSTGRES_DB: ironclad_test
+      POSTGRES_USER: ectoledger
+      POSTGRES_PASSWORD: ectoledger
+      POSTGRES_DB: ectoledger_test
       PGDATA: /var/lib/postgresql/data/pgdata
     ports:
       - "5433:5432"
     tmpfs:
       - /var/lib/postgresql/data:uid=70,gid=70   # ephemeral; uid/gid 70 = postgres user in Alpine
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ironclad -d ironclad_test"]
+      test: ["CMD-SHELL", "pg_isready -U ectoledger -d ectoledger_test"]
       interval: 1s
       timeout: 5s
       retries: 20
