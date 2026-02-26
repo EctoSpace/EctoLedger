@@ -1,9 +1,48 @@
-/target
-.env
-*.swp
-*.swo
-.DS_Store
-.idea
-.vscode
-*.rs.bk
-.ironclad
+# ========================================
+# OS / System files (recursive)
+# ========================================
+**/.DS_Store
+**/.AppleDouble
+**/.LSOverride
+**/Thumbs.db
+
+# ========================================
+# Editor / IDE files (recursive)
+# ========================================
+**/.idea/
+**/*.iml
+**/.vscode/
+**/*.swp
+**/*.swo
+
+# ========================================
+# Environment / Secrets (recursive)
+# ========================================
+**/.env*
+!.env.example
+!**/.env.example
+
+# ========================================
+# Ecto Ledger runtime artifacts
+# ========================================
+.ectoledger/
+.ironclad/
+*.elc
+*.key
+
+# ========================================
+# Logs & debug artifacts (recursive)
+# ========================================
+**/*.log
+**/*.dSYM/
+
+# ========================================
+# Build / Target directories (recursive)
+# ========================================
+**/target/
+
+# ========================================
+# Rust-specific
+# ========================================
+**/*.rs.bk
+**/*$py.class

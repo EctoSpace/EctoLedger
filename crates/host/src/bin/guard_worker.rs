@@ -4,8 +4,8 @@
 // Running in a separate process provides real guard isolation.
 
 use hmac::{Hmac, Mac};
-use ironclad_agent_ledger::guard::Guard;
-use ironclad_agent_ledger::intent::ProposedIntent;
+use ectoledger_agent_ledger::guard::Guard;
+use ectoledger_agent_ledger::intent::ProposedIntent;
 use sha2::Sha256;
 use std::io::{BufRead, BufReader, Write};
 
@@ -66,7 +66,7 @@ fn verify_hmac(key: &[u8], nonce: u64, body: &str, expected_hex: &str) -> bool {
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // Apply seccomp filter before any user-controlled input is processed.
     // On non-Linux or without the sandbox feature this is a no-op.
-    if let Err(e) = ironclad_agent_ledger::sandbox::apply_guard_worker_seccomp() {
+    if let Err(e) = ectoledger_agent_ledger::sandbox::apply_guard_worker_seccomp() {
         eprintln!("guard-worker: seccomp setup failed: {}; continuing without filter", e);
     }
 
@@ -178,8 +178,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         };
 
         let verdict = match decision {
-            ironclad_agent_ledger::guard::GuardDecision::Allow => "ALLOW".to_string(),
-            ironclad_agent_ledger::guard::GuardDecision::Deny { reason } => {
+            ectoledger_agent_ledger::guard::GuardDecision::Allow => "ALLOW".to_string(),
+            ectoledger_agent_ledger::guard::GuardDecision::Deny { reason } => {
                 format!("DENY: {}", reason)
             }
         };

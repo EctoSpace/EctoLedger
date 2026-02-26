@@ -1,4 +1,4 @@
-# Ironclad Agent Ledger — Schema
+# Ecto Ledger Agent Ledger — Schema
 
 ## Design
 

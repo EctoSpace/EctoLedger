@@ -1,4 +1,4 @@
-// IronClad Audit Certificate (.iac)
+// Ecto Ledger Audit Certificate (.elc)
 //
 // Produces a self-contained, cryptographically verifiable audit record from a completed session.
 // The certificate bundles:
@@ -48,10 +48,10 @@ pub struct CertFinding {
     pub merkle_proofs: Vec<MerkleProof>,
 }
 
-/// The complete IronClad Audit Certificate.
+/// The complete Ecto Ledger Audit Certificate.
 /// Serialized with keys sorted alphabetically for deterministic signatures.
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct IronCladCertificate {
+pub struct EctoLedgerCertificate {
     pub version: u32,
     pub session_id: Uuid,
     pub goal: String,
@@ -127,7 +127,7 @@ impl std::error::Error for CertificateError {}
 ///   2. Attaching or modifying a ZK proof never invalidates or changes the Ed25519 signature.
 ///
 /// Verifiers must reproduce this stripping before checking the signature.
-pub fn canonical_json_for_signing(cert: &IronCladCertificate) -> Result<String, serde_json::Error> {
+pub fn canonical_json_for_signing(cert: &EctoLedgerCertificate) -> Result<String, serde_json::Error> {
     // Convert to serde_json::Value, remove both the signature and zk_proof fields, then
     // re-serialize via a BTreeMap to guarantee alphabetically sorted keys.
     let mut val = serde_json::to_value(cert)?;
@@ -155,7 +155,7 @@ pub fn canonical_json_for_signing(cert: &IronCladCertificate) -> Result<String, 
 ///
 /// This field is stripped from the signing payload by `canonical_json_for_signing`,
 /// so embedding a proof never invalidates an existing `cert.signature`.
-pub fn embed_zk_proof(cert: &mut IronCladCertificate, proof_bytes: &[u8]) {
+pub fn embed_zk_proof(cert: &mut EctoLedgerCertificate, proof_bytes: &[u8]) {
     use base64::Engine as _;
     let encoded = base64::engine::general_purpose::STANDARD.encode(proof_bytes);
     cert.zk_proof = Some(serde_json::Value::String(encoded));
@@ -163,7 +163,7 @@ pub fn embed_zk_proof(cert: &mut IronCladCertificate, proof_bytes: &[u8]) {
 
 // ── Main builder ───────────────────────────────────────────────────────────────
 
-/// Build a complete `IronCladCertificate` for the given session.
+/// Build a complete `EctoLedgerCertificate` for the given session.
 ///
 /// Steps:
 /// 1. Load the session and all its events from the DB.
@@ -176,7 +176,7 @@ pub async fn build_certificate(
     session_id: Uuid,
     signing_key: Option<&SigningKey>,
     submit_ots: bool,
-) -> Result<IronCladCertificate, CertificateError> {
+) -> Result<EctoLedgerCertificate, CertificateError> {
     // 1. Load session metadata.
     let sessions = ledger::list_sessions(pool)
         .await
@@ -239,7 +239,7 @@ pub async fn build_certificate(
         })
         .collect();
 
-    let mut cert = IronCladCertificate {
+    let mut cert = EctoLedgerCertificate {
         version: 1,
         session_id,
         goal: session.goal.clone(),
@@ -321,17 +321,17 @@ fn extract_findings_with_proofs(
 
 /// Serialize a certificate to pretty-printed JSON and write it to a file.
 pub fn write_certificate_file(
-    cert: &IronCladCertificate,
+    cert: &EctoLedgerCertificate,
     path: &std::path::Path,
 ) -> Result<(), CertificateError> {
     let json = serde_json::to_string_pretty(cert).map_err(CertificateError::Serialize)?;
     std::fs::write(path, json.as_bytes()).map_err(CertificateError::Io)
 }
 
-/// Read a certificate from a `.iac` file.
+/// Read a certificate from a `.elc` file.
 pub fn read_certificate_file(
     path: &std::path::Path,
-) -> Result<IronCladCertificate, CertificateError> {
+) -> Result<EctoLedgerCertificate, CertificateError> {
     let bytes = std::fs::read(path).map_err(CertificateError::Io)?;
     serde_json::from_slice(&bytes).map_err(CertificateError::Serialize)
 }

@@ -1,12 +1,12 @@
-# Ironclad Agent Ledger
+# Ecto Ledger Agent Ledger
 
 <p align="center">
-  <img src="assets/logo.png" alt="Ironclad Logo" width="120" />
+  <img src="assets/ectoLedger-Logo.webp" alt="Ecto Ledger Logo" width="450" />
 </p>
 
 **A cryptographically verified, state-driven agent framework for Automated Security Auditing.**
 
-Ironclad gives you an immutable ledger and a verify-then-commit loop so every agent action is hashed, validated, and recorded. The agent's state lives in PostgreSQL, and a **3-layer semantic guard** significantly reduces the attack surface for prompt injection and off-goal actions.
+Ecto Ledger gives you an immutable ledger and a verify-then-commit loop so every agent action is hashed, validated, and recorded. The agent's state lives in PostgreSQL, and a **3-layer semantic guard** significantly reduces the attack surface for prompt injection and off-goal actions.
 
 ---
 
@@ -76,7 +76,7 @@ flowchart LR
 
 ## Zero Friction Setup
 
-Ironclad is **self-deploying**. You do not need to:
+Ecto Ledger is **self-deploying**. You do not need to:
 
 - Manually create a PostgreSQL database or run migrations.
 - Configure a `.env` file (optional; defaults work out of the box).
@@ -84,8 +84,8 @@ Ironclad is **self-deploying**. You do not need to:
 
 **What happens when you run the binary:**
 
-- If `DATABASE_URL` is unset, the app defaults to `postgres://ironclad:ironclad@localhost:5432/ironclad`.
-- It checks for a Docker container named `ironclad-postgres`. If missing or stopped, it starts one with the correct user, password, and database.
+- If `DATABASE_URL` is unset, the app defaults to `postgres://ectoledger:ectoledger@localhost:5432/ectoledger`.
+- It checks for a Docker container named `ectoledger-postgres`. If missing or stopped, it starts one with the correct user, password, and database.
 - It polls until PostgreSQL accepts connections, then runs migrations and creates the genesis block.
 - If `OBSERVER_TOKEN` is unset, a random token is generated and printed with the dashboard URL; use it to access the Observer.
 - For **audit**, the primary LLM (Ollama/OpenAI/Anthropic) must be reachable. If the Guard is enabled, the `guard-worker` binary (built with the project) is spawned and must have `GUARD_LLM_BACKEND` / `GUARD_LLM_MODEL` set when `GUARD_REQUIRED=true`.
@@ -121,7 +121,7 @@ cargo run -- audit "Audit Cargo.toml dependencies" --policy audit_policy.toml
 cargo run -- audit "Quick read" --no-guard --no-guard-confirmed   # development only
 
 # Cloud architecture audit with ephemeral AWS credentials:
-AGENT_CLOUD_CREDS_FILE=~/.ironclad/aws-audit.json \
+AGENT_CLOUD_CREDS_FILE=~/.ectoledger/aws-audit.json \
   cargo run -- audit "Audit the S3 bucket policy for public exposure" --policy cloud_policy.toml
 
 # Terminal-native approval gates (no dashboard required):
@@ -144,7 +144,7 @@ cargo run -- report <session_id> --format github_actions          # GitHub Actio
 cargo run -- report <session_id> --format gitlab_codequality --output codequality.json
 ```
 
-Supported formats: `json` (default), `sarif` (SARIF 2.1), `html`, `certificate` (.iac), `github_actions` (GitHub Actions workflow annotations), `gitlab_codequality` (GitLab Code Quality JSON). The command exits with code 1 when any finding is `high` or `critical` severity, making it suitable as a CI gate.
+Supported formats: `json` (default), `sarif` (SARIF 2.1), `html`, `certificate` (.elc), `github_actions` (GitHub Actions workflow annotations), `gitlab_codequality` (GitLab Code Quality JSON). The command exits with code 1 when any finding is `high` or `critical` severity, making it suitable as a CI gate.
 
 ### Verify-session: verify Ed25519 event signatures
 
@@ -189,9 +189,9 @@ Sub-agent roles:
 After a run, generate per-session certificates:
 
 ```bash
-cargo run -- report --format certificate --output audit-recon.iac <recon_session_id>
-cargo run -- report --format certificate --output audit-analysis.iac <analysis_session_id>
-cargo run -- report --format certificate --output audit-verify.iac <verify_session_id>
+cargo run -- report --format certificate --output audit-recon.elc <recon_session_id>
+cargo run -- report --format certificate --output audit-analysis.elc <analysis_session_id>
+cargo run -- report --format certificate --output audit-verify.elc <verify_session_id>
 ```
 
 ### Anchor-session: Bitcoin timestamp via OpenTimestamps
@@ -204,27 +204,27 @@ cargo run -- anchor-session <session_id>
 
 The `Anchor` event is appended to the ledger (cryptographic proof of submission). Once the aggregator commits to a Bitcoin block you can verify the timestamp with `ots upgrade <stamp>`.
 
-### IronClad Audit Certificate (.iac)
+### Ecto Ledger Audit Certificate (.elc)
 
 Generate a self-contained, cryptographically verifiable audit record from a completed session:
 
 ```bash
-cargo run -- report <session_id> --format certificate [--output audit.iac] [--no-ots]
+cargo run -- report <session_id> --format certificate [--output audit.elc] [--no-ots]
 ```
 
 Verify an existing certificate offline:
 
 ```bash
-cargo run -- verify-certificate audit.iac
+cargo run -- verify-certificate audit.elc
 # or use the standalone binary:
-./target/release/verify-cert audit.iac
+./target/release/verify-cert audit.elc
 ```
 
 The `verify-cert` binary is a static, dependency-free binary (&lt;5 MB) intended to be shipped to customers, auditors, or regulators — they run it without needing Rust, Postgres, or Ollama.
 
 **Five Verification Pillars**
 
-Every `.iac` file is verifiable offline against these five guarantees:
+Every `.elc` file is verifiable offline against these five guarantees:
 
 1. **Ed25519 signature** — tamper-resistance. The entire certificate payload is signed with the session Ed25519 keypair generated at audit start. The public key is embedded in the certificate itself; no trusted third party is needed to verify.
 2. **SHA-256 hash chain** — gap and mutation detection. Every event is chained to the previous one using `sha256(previous_hash || sequence || payload_json)`. Any insertion, deletion, or modification anywhere in the chain is detected offline without replaying execution.
@@ -247,19 +247,19 @@ The JSON report contains per-candidate results (`caught_by_scanner`, `caught_by_
 
 ### Prove-audit: SP1 zero-knowledge proof
 
-Generate a cryptographic SP1 ZK validity proof over the full event hash chain and policy commitment, then embed it in a `.iac` certificate. A verifier can confirm the agent followed its policy *without ever seeing the raw event payloads* — the right tool for regulated industries (healthcare, finance) where audited data cannot leave the client's perimeter.
+Generate a cryptographic SP1 ZK validity proof over the full event hash chain and policy commitment, then embed it in a `.elc` certificate. A verifier can confirm the agent followed its policy *without ever seeing the raw event payloads* — the right tool for regulated industries (healthcare, finance) where audited data cannot leave the client's perimeter.
 
 Build with the `zk` feature to enable the SP1 prover, then run:
 
 ```bash
 cargo build --features zk
 cargo run --features zk -- prove-audit <session_id>
-cargo run --features zk -- prove-audit <session_id> --policy crates/host/policies/soc2-audit.toml --output audit.iac
+cargo run --features zk -- prove-audit <session_id> --policy crates/host/policies/soc2-audit.toml --output audit.elc
 ```
 
 Proof time scales with event count and available hardware. The embedded proof can be independently verified with `sp1_sdk::ProverClient::verify`. Without the `zk` feature, the command prints a helpful error with recompile instructions rather than silently skipping.
 
-For all other use cases the standard `.iac` certificate (five-pillar verification) already provides cryptographically verifiable audit provenance without the proof generation overhead.
+For all other use cases the standard `.elc` certificate (five-pillar verification) already provides cryptographically verifiable audit provenance without the proof generation overhead.
 
 ### Enhanced Policy DSL
 
@@ -371,7 +371,7 @@ These predicates can be joined with `&&` alongside the existing `action == 'x'` 
 
 Safely audit AWS, GCP, Azure, or Kubernetes environments by supplying short-lived credentials in a JSON file. The file path is read from `AGENT_CLOUD_CREDS_FILE`; credentials are injected only into matching cloud CLI child processes and never appear in the parent environment or audit logs.
 
-**Credential file format (`~/.ironclad/aws-audit.json`):**
+**Credential file format (`~/.ectoledger/aws-audit.json`):**
 
 ```json
 {
@@ -404,7 +404,7 @@ Unanswered prompts apply the `on_timeout` policy (`deny` by default). The approv
 
 ### Environment variables (see `.env.example`)
 
-- `DATABASE_URL` — PostgreSQL connection URL (defaults to local Docker `ironclad` DB if unset).
+- `DATABASE_URL` — PostgreSQL connection URL (defaults to local Docker `ectoledger` DB if unset).
 - `OBSERVER_TOKEN` — Optional. If unset, a random token is generated and printed at startup for the Observer.
 - `OLLAMA_BASE_URL`, `OLLAMA_MODEL` — For Ollama backend.
 - `LLM_BACKEND` — `ollama`, `openai`, or `anthropic`; default `ollama`.
@@ -413,7 +413,7 @@ Unanswered prompts apply the `on_timeout` policy (`deny` by default). The approv
 - `AGENT_ALLOWED_DOMAINS` — Comma-separated domains for Tripwire `http_get`.
 - `AGENT_MAX_STEPS` — Max loop iterations; default 20.
 - `AGENT_LLM_ERROR_LIMIT`, `AGENT_GUARD_DENIAL_LIMIT` — Circuit breaker thresholds.
-- `IRONCLAD_DATA_DIR` — Directory for encrypted session key files (default `.ironclad/keys/`). Set `IRONCLAD_KEY_PASSWORD` to skip the interactive password prompt.
+- `ECTO_DATA_DIR` — Directory for encrypted session key files (default `.ectoledger/keys/`). Set `ECTO_KEY_PASSWORD` to skip the interactive password prompt.
 - `AGENT_CLOUD_CREDS_FILE` — Path to a JSON file with cloud credentials (`name`, `provider`, `env_vars`). When set, cloud CLI binaries (`aws`, `gcloud`, `az`, `kubectl`, `terraform`, `eksctl`, `helm`) are added to the executor allowlist and credentials injected into matching child processes only.
 - `WEBHOOK_URL` — Optional. HTTP endpoint for async SIEM/webhook egress on flagged/abort policy outcomes.
 - `WEBHOOK_BEARER_TOKEN` — Optional bearer token for webhook egress.
@@ -457,8 +457,9 @@ The project is a Cargo workspace with three crates:
 **`crates/guest/`** — SP1 RISC-V zkVM guest program (compiled separately with `--features zk`).
 - `crates/guest/src/main.rs` — Reads `GuestInput`, verifies genesis hash, full hash chain, Merkle root, and policy patterns; panics on any failure; commits `GuestOutput` to SP1 public values.
 
-**`crates/host/`** — Full application (`ironclad-agent-ledger` binary, `guard-worker`, `verify-cert`).
-- `assets/logo.png` — Project logo (README and Windows binary icon)
+**`crates/host/`** — Full application (`ectoledger-agent-ledger` binary, `guard-worker`, `verify-cert`).
+- `assets/ectoLedger-Logo.webp` — Project logo (README header)
+- `assets/el-icon.png` — Windows binary icon source
 - `crates/host/src/main.rs` — CLI entry: serve, audit, orchestrate, anchor-session, report, replay, verify-session, verify-certificate, diff-audit, red-team, prove-audit
 - `crates/host/src/orchestrator.rs` — Multi-agent orchestrator: Recon → Analysis → Verify with cross-ledger seal
 - `crates/host/src/ots.rs` — OpenTimestamps integration: submit SHA-256 digest to OTS aggregator pool
@@ -470,8 +471,8 @@ The project is a Cargo workspace with three crates:
 - `crates/host/src/guard_process.rs` — Spawns `guard-worker` and communicates via stdin/stdout JSON
 - `crates/host/src/bin/guard_worker.rs` — Standalone Guard binary (one JSON line in → ALLOW/DENY out)
 - `crates/host/src/cloud_creds.rs` — Ephemeral cloud credential injection: `CloudCredentialSet` loaded from `AGENT_CLOUD_CREDS_FILE`; injected into matching child processes only
-- `crates/host/src/policy.rs` — Thin wrapper over `ironclad_core::policy`; adds `load_policy_engine()` for host I/O
-- `crates/host/src/certificate.rs` — IronClad Audit Certificate (.iac): Merkle tree, OTS, Ed25519 signing, optional SP1 ZK proof embedding
+- `crates/host/src/policy.rs` — Thin wrapper over `ectoledger_core::policy`; adds `load_policy_engine()` for host I/O
+- `crates/host/src/certificate.rs` — Ecto Ledger Audit Certificate (.elc): Merkle tree, OTS, Ed25519 signing, optional SP1 ZK proof embedding
 - `crates/host/src/bin/verify_cert.rs` — Standalone 5-check certificate verifier binary
 - `crates/host/src/report.rs` — AuditReport; SARIF 2.1, HTML, GitHub Actions annotations, GitLab Code Quality JSON, and certificate export
 - `crates/host/src/red_team.rs` — Adversarial agent: generates injection payloads via LLM and tests them against output scanner and tripwire
@@ -492,4 +493,4 @@ The project is a Cargo workspace with three crates:
 ## Commercial Licensing
 
 Apache 2.0 for personal/internal/research/open-source use.  
-Commercial redistribution or enterprise support requires a paid license — see [COMMERCIAL.md](COMMERCIAL.md) and contact bironclad@pm.me.
+Commercial redistribution or enterprise support requires a paid license — see [COMMERCIAL.md](COMMERCIAL.md) and contact ectoledger@pm.me.

@@ -1,6 +1,6 @@
 use std::sync::OnceLock;
 
-const DEFAULT_DATABASE_URL: &str = "postgres://ironclad:ironclad@localhost:5432/ironclad";
+const DEFAULT_DATABASE_URL: &str = "postgres://ectoledger:ectoledger@localhost:5432/ectoledger";
 
 static OBSERVER_TOKEN_CACHE: OnceLock<String> = OnceLock::new();
 
@@ -116,7 +116,7 @@ mod tests {
     #[test]
     fn database_url_default_and_override() {
         unsafe { env::remove_var("DATABASE_URL") };
-        assert_eq!(database_url().unwrap(), "postgres://ironclad:ironclad@localhost:5432/ironclad");
+        assert_eq!(database_url().unwrap(), "postgres://ectoledger:ectoledger@localhost:5432/ectoledger");
         unsafe { env::set_var("DATABASE_URL", "postgres://example") };
         assert_eq!(database_url().unwrap(), "postgres://example");
     }
@@ -154,10 +154,10 @@ pub fn guard_denial_limit() -> u32 {
         .unwrap_or(3)
 }
 
-/// Directory for encrypted session key files. Env: IRONCLAD_DATA_DIR, default `.ironclad/keys`.
+/// Directory for encrypted session key files. Env: ECTO_DATA_DIR, default `.ectoledger/keys`.
 pub fn session_key_dir() -> std::path::PathBuf {
-    let base = std::env::var("IRONCLAD_DATA_DIR")
-        .unwrap_or_else(|_| ".ironclad".to_string());
+    let base = std::env::var("ECTO_DATA_DIR")
+        .unwrap_or_else(|_| ".ectoledger".to_string());
     std::path::PathBuf::from(base).join("keys")
 }
 

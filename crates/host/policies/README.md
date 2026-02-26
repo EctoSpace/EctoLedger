@@ -1,4 +1,4 @@
-# Ironclad Policy Packs (v0.5)
+# Ecto Ledger Policy Packs (v0.5)
 
 Pre-configured policy files for common security and compliance standards.
 Each pack is a valid `--policy` input for the host CLI.
@@ -14,15 +14,15 @@ Each pack is a valid `--policy` input for the host CLI.
 ## Usage (workspace root)
 
 ```bash
-cargo run -p ironclad-agent-ledger -- \
+cargo run -p ectoledger-agent-ledger -- \
   audit "Verify SOC2 controls on this server" \
   --policy crates/host/policies/soc2-audit.toml
 
-cargo run -p ironclad-agent-ledger -- \
+cargo run -p ectoledger-agent-ledger -- \
   audit "Audit cardholder data environment" \
   --policy crates/host/policies/pci-dss-audit.toml
 
-cargo run -p ironclad-agent-ledger -- \
+cargo run -p ectoledger-agent-ledger -- \
   audit "Check OWASP Top 10 vulnerabilities" \
   --policy crates/host/policies/owasp-top10.toml
 ```
@@ -38,7 +38,7 @@ cargo run -- audit "Verify SOC2 controls" --policy policies/soc2-audit.toml
 Or with a pre-built binary:
 
 ```bash
-ironclad-agent-ledger audit "Verify SOC2 controls" --policy crates/host/policies/soc2-audit.toml
+ectoledger-agent-ledger audit "Verify SOC2 controls" --policy crates/host/policies/soc2-audit.toml
 ```
 
 ## Customising a pack

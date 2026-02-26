@@ -179,16 +179,16 @@ pub fn load_session_key(
 }
 
 /// Prompt the user for a key-protection password, or read it from
-/// `IRONCLAD_KEY_PASSWORD`. Returns `None` if the user enters an empty string
+/// `ECTO_KEY_PASSWORD`. Returns `None` if the user enters an empty string
 /// (key persistence is skipped) or if stdin is not a terminal.
 pub fn prompt_or_env_password(prompt_msg: &str) -> Option<String> {
-    if let Ok(pw) = std::env::var("IRONCLAD_KEY_PASSWORD") {
+    if let Ok(pw) = std::env::var("ECTO_KEY_PASSWORD") {
         if !pw.is_empty() {
             // Emit a loud, unmissable warning. Environment variables are visible in
             // /proc/self/environ, `ps auxe`, container inspection, and CI logs.
             // This path is provided for non-interactive CI only — never for production.
             eprintln!("╔══════════════════════════════════════════════════════════════╗");
-            eprintln!("║  SECURITY WARNING: IRONCLAD_KEY_PASSWORD is set via env var  ║");
+            eprintln!("║  SECURITY WARNING: ECTO_KEY_PASSWORD is set via env var  ║");
             eprintln!("║  This is INSECURE: the password is visible in process        ║");
             eprintln!("║  listings (/proc/self/environ, `ps auxe`, docker inspect).   ║");
             eprintln!("║  Use the interactive password prompt in production.           ║");
@@ -206,10 +206,10 @@ pub fn prompt_or_env_password(prompt_msg: &str) -> Option<String> {
 /// Prompt the user to re-enter the password to unlock an existing session key.
 pub fn prompt_or_env_password_for_resume(session_id: Uuid) -> Option<String> {
     let prompt = format!("Enter password to unlock signing key for session {} (leave blank to skip): ", session_id);
-    if let Ok(pw) = std::env::var("IRONCLAD_KEY_PASSWORD") {
+    if let Ok(pw) = std::env::var("ECTO_KEY_PASSWORD") {
         if !pw.is_empty() {
             eprintln!("╔══════════════════════════════════════════════════════════════╗");
-            eprintln!("║  SECURITY WARNING: IRONCLAD_KEY_PASSWORD is set via env var  ║");
+            eprintln!("║  SECURITY WARNING: ECTO_KEY_PASSWORD is set via env var  ║");
             eprintln!("║  This is INSECURE: the password is visible in process        ║");
             eprintln!("║  listings (/proc/self/environ, `ps auxe`, docker inspect).   ║");
             eprintln!("║  Use the interactive password prompt in production.           ║");

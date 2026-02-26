@@ -1,12 +1,13 @@
 mod common;
 
 use common::{reset_ledger, spawn_test_pool};
-use ironclad_agent_ledger::ledger;
-use ironclad_agent_ledger::schema::EventPayload;
-use ironclad_agent_ledger::wakeup;
+use ectoledger_agent_ledger::ledger;
+use ectoledger_agent_ledger::schema::EventPayload;
+use ectoledger_agent_ledger::wakeup;
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 #[cfg_attr(not(feature = "integration"), ignore)] // run with: cargo test --features integration
+#[serial_test::serial]
 async fn recover_incomplete_actions_appends_failure_observation() {
     let (pool, _db) = spawn_test_pool().await;
     reset_ledger(&pool).await;

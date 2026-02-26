@@ -274,7 +274,7 @@ pub async fn ensure_genesis(pool: &PgPool) -> Result<AppendedEvent, AppendError>
     }
 
     let payload = EventPayload::Genesis {
-        message: "Ironclad Agent Ledger initialized".to_string(),
+        message: "Ecto Ledger Agent Ledger initialized".to_string(),
     };
     append_event(pool, payload, None, None, None).await
 }
