@@ -1,4 +1,4 @@
-# Ecto Ledger Agent Ledger — Schema
+# Ecto Ledger — Schema
 
 ## Design
 

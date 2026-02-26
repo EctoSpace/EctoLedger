@@ -1,4 +1,4 @@
-# Ecto Ledger Agent Ledger
+# Ecto Ledger
 
 <p align="center">
   <img src="assets/ectoLedger-Logo.webp" alt="Ecto Ledger Logo" width="450" />

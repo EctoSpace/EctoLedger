@@ -1,6 +1,6 @@
 # Commercial Licensing & Enterprise Support
 
-**Ecto Ledger Agent Ledger** is free for:
+**Ecto Ledger** is free for:
 - Personal use
 - Research & education
 - Internal company use

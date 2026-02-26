@@ -302,7 +302,7 @@ async fn metrics_handler(
   a{{color:#58a6ff;font-size:12px;}}
 </style>
 </head><body>
-<h2>Ecto Ledger Agent Ledger — Prometheus Metrics</h2>
+<h2>Ecto Ledger — Prometheus Metrics</h2>
 <pre>{}</pre>
 <a href="/">&larr; Observer dashboard</a>
 </body></html>"#,

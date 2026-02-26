@@ -2,7 +2,7 @@
 name = "ectoledger-core"
 version = "0.5.2"
 edition = "2024"
-description = "Shared pure logic for the Ecto Ledger Agent Ledger: hashing, Merkle trees, schemas, and policy evaluation"
+description = "Shared pure logic for the Ecto Ledger: hashing, Merkle trees, schemas, and policy evaluation"
 
 [dependencies]
 sha2       = "0.10"

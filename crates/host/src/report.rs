@@ -227,7 +227,7 @@ pub fn report_to_sarif(report: &AuditReport, session_id: Uuid) -> serde_json::Va
         "runs": [{
             "tool": {
                 "driver": {
-                    "name": "Ecto Ledger Agent Ledger",
+                    "name": "Ecto Ledger",
                     "version": env!("CARGO_PKG_VERSION"),
                     "informationUri": "https://github.com/EctoSpace/EctoLedger",
                     "rules": report.findings.iter().enumerate().map(|(i, f)| {
