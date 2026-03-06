@@ -1,16 +1,15 @@
 mod common;
 
-use common::{assert_chain_valid, reset_ledger, spawn_test_pool, MockLlmBackend};
-use ecto_ledger::agent::{self, AgentLoopConfig};
-use ecto_ledger::ledger;
-use ecto_ledger::schema::EventPayload;
-use ecto_ledger::tripwire::{self, Tripwire};
-use ecto_ledger::intent::ProposedIntent;
+use common::{MockLlmBackend, assert_chain_valid, reset_ledger, spawn_test_pool};
+use ectoledger::agent::{self, AgentLoopConfig};
+use ectoledger::intent::ProposedIntent;
+use ectoledger::ledger;
+use ectoledger::schema::EventPayload;
+use ectoledger::tripwire::{self, Tripwire};
 use std::path::PathBuf;
 
-#[tokio::test(flavor = "multi_thread")]
+#[tokio::test]
 #[cfg_attr(not(feature = "integration"), ignore)] // run with: cargo test --features integration
-#[serial_test::serial]
 async fn mock_llm_read_file_then_complete() {
     let (pool, _db) = spawn_test_pool().await;
     reset_ledger(&pool).await;
@@ -41,11 +40,15 @@ async fn mock_llm_read_file_then_complete() {
             reasoning: "No findings from dependency review.".to_string(),
         },
     ]);
-    let workspace = PathBuf::from(".").canonicalize().unwrap_or_else(|_| PathBuf::from("."));
+    let workspace = PathBuf::from(".")
+        .canonicalize()
+        .unwrap_or_else(|_| PathBuf::from("."));
     let tripwire = Tripwire::new(
         vec![workspace],
         vec![],
         tripwire::default_banned_command_patterns(),
+        5,
+        true,
     );
     let config = AgentLoopConfig {
         llm: Box::new(mock),
@@ -61,12 +64,25 @@ async fn mock_llm_read_file_then_complete() {
         cloud_creds: None,
         interactive: false,
         approval_state: None,
+        firecracker_config: None,
+        docker_config: None,
+        key_rotation_interval_steps: None,
+        compensation: None,
+        enclave: None,
+        enclave_attestation: None,
+        cancel: None,
     };
     let client = reqwest::Client::new();
-    agent::run_cognitive_loop(&pool, &client, config).await.expect("loop");
+    let db = ectoledger::pool::DatabasePool::Postgres(pool.clone());
+    agent::run_cognitive_loop(&db, &client, config)
+        .await
+        .expect("loop");
 
     let latest = ledger::get_latest(&pool).await.expect("get_latest");
     let (seq, _) = latest.expect("has events");
-    assert!(seq >= 2, "expected at least 2 events (action + observation + complete)");
+    assert!(
+        seq >= 2,
+        "expected at least 2 events (action + observation + complete)"
+    );
     assert_chain_valid(&pool, 0, seq).await;
 }

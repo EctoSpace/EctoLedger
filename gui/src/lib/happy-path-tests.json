@@ -1,0 +1,34 @@
+[
+  {
+    "id": "hp-001",
+    "category": "Audit",
+    "name": "Server Config Audit",
+    "prompt": "Perform a security audit of server_config.txt",
+    "expectedOutcome": "completed",
+    "description": "Runs a full security audit against the server configuration file. The agent reads the file, performs diagnostic checks, and reports findings."
+  },
+  {
+    "id": "hp-002",
+    "category": "Audit",
+    "name": "System Health Check",
+    "prompt": "Check system health and report any open ports or running services",
+    "expectedOutcome": "completed",
+    "description": "Performs a system health assessment by inspecting running services and open ports. Validates the agent completes without tripwire violations."
+  },
+  {
+    "id": "hp-003",
+    "category": "Verification",
+    "name": "File Integrity Scan",
+    "prompt": "Verify integrity of configuration files in the current directory",
+    "expectedOutcome": "completed",
+    "description": "Scans configuration files for integrity. Tests that the agent can read files, produce findings, and generate a Verifiable Credential upon completion."
+  },
+  {
+    "id": "hp-004",
+    "category": "Verification",
+    "name": "Network Diagnostics",
+    "prompt": "Run basic network diagnostics and report DNS resolution status",
+    "expectedOutcome": "completed",
+    "description": "Executes safe network diagnostic commands. Validates the full session lifecycle: creation, event logging, VC issuance, and verification."
+  }
+]

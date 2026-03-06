@@ -14,8 +14,8 @@
 //   }
 // }
 
-use std::collections::HashMap;
 use serde::Deserialize;
+use std::collections::HashMap;
 
 /// Recognized cloud CLI binaries that are gated behind credential presence.
 pub const CLOUD_CLI_BINARIES: &[&str] = &[
@@ -53,9 +53,8 @@ pub fn load_cloud_creds() -> Option<CloudCredentialSet> {
 /// Returns true if `program` is a known cloud CLI binary.
 pub fn is_cloud_cli(program: &str) -> bool {
     let lower = program.to_lowercase();
-    CLOUD_CLI_BINARIES.iter().any(|b| *b == lower.as_str())
+    CLOUD_CLI_BINARIES.contains(&lower.as_str())
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -91,4 +90,3 @@ mod tests {
         assert_eq!(loaded.name, "foo");
     }
 }
-

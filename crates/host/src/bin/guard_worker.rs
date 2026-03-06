@@ -3,9 +3,9 @@
 // "ALLOW\t<hmac>" or "DENY: <reason>\t<hmac>" line to stdout.
 // Running in a separate process provides real guard isolation.
 
+use ectoledger::guard::Guard;
+use ectoledger::intent::ProposedIntent;
 use hmac::{Hmac, Mac};
-use ecto_ledger::guard::Guard;
-use ecto_ledger::intent::ProposedIntent;
 use sha2::Sha256;
 use std::io::{BufRead, BufReader, Write};
 
@@ -54,7 +54,9 @@ fn compute_hmac(key: &[u8], nonce: u64, body: &str) -> String {
 }
 
 fn verify_hmac(key: &[u8], nonce: u64, body: &str, expected_hex: &str) -> bool {
-    let Ok(expected_bytes) = hex::decode(expected_hex) else { return false; };
+    let Ok(expected_bytes) = hex::decode(expected_hex) else {
+        return false;
+    };
     let mut mac = HmacSha256::new_from_slice(key).expect("HMAC accepts any key size");
     mac.update(nonce.to_string().as_bytes());
     mac.update(b":");
@@ -66,8 +68,11 @@ fn verify_hmac(key: &[u8], nonce: u64, body: &str, expected_hex: &str) -> bool {
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // Apply seccomp filter before any user-controlled input is processed.
     // On non-Linux or without the sandbox feature this is a no-op.
-    if let Err(e) = ecto_ledger::sandbox::apply_guard_worker_seccomp() {
-        eprintln!("guard-worker: seccomp setup failed: {}; continuing without filter", e);
+    if let Err(e) = ectoledger::sandbox::apply_guard_worker_seccomp() {
+        eprintln!(
+            "guard-worker: seccomp setup failed: {}; continuing without filter",
+            e
+        );
     }
 
     // Load the session-scoped HMAC key injected by the parent process.
@@ -78,7 +83,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
     let hmac_enabled = hmac_key.len() == 32;
     if !hmac_enabled {
-        eprintln!("guard-worker: {} not set or invalid; running without HMAC authentication", HMAC_KEY_ENV);
+        eprintln!(
+            "guard-worker: FATAL — {} not set or not a valid 32-byte hex key. \
+             Refusing to run without HMAC authentication. \
+             Set {} to a 64-char hex string or pass --no-hmac to explicitly opt out.",
+            HMAC_KEY_ENV, HMAC_KEY_ENV
+        );
+        // Allow explicit opt-out via --no-hmac for local development only.
+        if !std::env::args().any(|a| a == "--no-hmac") {
+            std::process::exit(1);
+        }
+        eprintln!("guard-worker: --no-hmac passed — running WITHOUT HMAC (development only)");
     }
 
     let client = reqwest::Client::builder()
@@ -144,7 +159,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         if req.timestamp_ms > 0 {
             let age_ms = now_ms().saturating_sub(req.timestamp_ms);
             if age_ms > MAX_REQUEST_AGE_MS {
-                let verdict = format!("DENY: request timestamp too old ({}ms > {}ms)", age_ms, MAX_REQUEST_AGE_MS);
+                let verdict = format!(
+                    "DENY: request timestamp too old ({}ms > {}ms)",
+                    age_ms, MAX_REQUEST_AGE_MS
+                );
                 if hmac_enabled {
                     let resp_mac = compute_hmac(&hmac_key, nonce, &verdict);
                     writeln!(stdout, "{}\t{}", verdict, resp_mac)?;
@@ -178,8 +196,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         };
 
         let verdict = match decision {
-            ecto_ledger::guard::GuardDecision::Allow => "ALLOW".to_string(),
-            ecto_ledger::guard::GuardDecision::Deny { reason } => {
+            ectoledger::guard::GuardDecision::Allow => "ALLOW".to_string(),
+            ectoledger::guard::GuardDecision::Deny { reason } => {
                 format!("DENY: {}", reason)
             }
         };

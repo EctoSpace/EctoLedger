@@ -1,17 +1,26 @@
 [workspace.package]
-version = "0.5.3"
+version = "0.6.2"
 edition = "2024"
 authors = ["Björn Roman Kohlberger"]
+license = "Apache-2.0"
 
 [workspace]
 members = [
+    "crates/compliance",
     "crates/core",
     "crates/host",
+    "crates/ledger-api",
+    "crates/llm",
+    "crates/sandbox",
+    "gui/src-tauri",
 ]
 # crates/guest targets riscv32im-succinct-zkvm-elf and must not be compiled for
 # the host architecture.  It is built exclusively by the host's build.rs via
 # sp1_build when the `zk` feature is enabled.
-exclude = ["crates/guest"]
+# crates/guard_unikernel targets aarch64-unknown-none and must not be compiled for
+# the host architecture. It is built exclusively by the host's build.rs when the
+# `sandbox-apple-enclave` feature is enabled.
+exclude = ["crates/guest", "crates/guard_unikernel"]
 resolver = "2"
 
 [workspace.dependencies]
@@ -28,3 +37,21 @@ url           = "2"
 ipnetwork     = "0.20"
 regex-lite    = "0.1"
 ed25519-dalek = { version = "2", features = ["rand_core"] }
+thiserror     = "1"
+async-trait   = "0.1"
+ledger-api    = { path = "crates/ledger-api" }
+ectoledger-sandbox    = { path = "crates/sandbox" }
+ectoledger-llm        = { path = "crates/llm" }
+ectoledger-compliance = { path = "crates/compliance" }
+
+# tailored profiles originally specified in gui/src-tauri/Cargo.toml;
+# moved to the workspace root to avoid warnings when building individual
+# members.  (Profiles in non-root packages are ignored by Cargo.)
+[profile.dev]
+incremental = true
+
+[profile.release]
+codegen-units = 4
+lto           = "thin"
+opt-level     = "s"
+strip         = true

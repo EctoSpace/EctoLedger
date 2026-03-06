@@ -1,10 +1,21 @@
+# This crate is explicitly excluded from the host workspace (see root Cargo.toml) because it
+# targets riscv32im-succinct-zkvm-elf and cannot be compiled for the host architecture.
+# It is built exclusively by crates/host/build.rs via sp1_build when --features zk is passed.
+#
+# A standalone [workspace] declaration is provided here so that rust-analyzer and other
+# language-server tools can discover and analyse this crate independently without requiring
+# the zk feature flag or a RISC-V cross-compiler.
+[workspace]
+members = ["."]  # self-contained workspace; core is a path dep, not a workspace member
+
 [package]
-name = "ecto-ledger-guest"
-version = "0.5.3"
+name = "ectoledger-guest"
+version = "0.6.2"
 edition = "2024"
+license = "Apache-2.0"
 
 [dependencies]
-ecto-ledger-core = { path = "../core" }
+ectoledger_core = { path = "../core" }
 sp1-zkvm      = "6.0.1"
 serde         = { version = "1", features = ["derive"] }
 bincode       = "1"

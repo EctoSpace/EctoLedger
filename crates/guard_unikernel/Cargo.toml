@@ -1,0 +1,27 @@
+[package]
+name = "guard_unikernel"
+version = "0.6.2"
+edition = "2024"
+authors = ["Björn Roman Kohlberger"]
+license = "Apache-2.0"
+
+[[bin]]
+name = "guard_unikernel"
+path = "src/main.rs"
+
+[dependencies]
+# X25519 key exchange — no_std compatible (disable default features).
+x25519-dalek = { version = "2", default-features = false, features = ["static_secrets"] }
+# ChaCha20-Poly1305 AEAD — no_std compatible (alloc required for Vec-based API,
+# but we use the in-place API which only needs core).
+chacha20poly1305 = { version = "0.10", default-features = false }
+# SHA-256 for HKDF key derivation.
+sha2 = { version = "0.10", default-features = false }
+# Secure random number generation — no_std, uses hardware RNDR on aarch64.
+rand_core = { version = "0.6", default-features = false }
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"

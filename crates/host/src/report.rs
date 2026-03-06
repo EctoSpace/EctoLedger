@@ -57,51 +57,89 @@ pub async fn build_report(pool: &PgPool, session_id: Uuid) -> Result<AuditReport
         .await
         .map_err(ReportError::Db)?;
 
-    let ledger_hash = events
-        .last()
-        .map(|e| e.content_hash.clone())
-        .unwrap_or_else(|| "none".to_string());
-
-    let (from, to) = match (events.first(), events.last()) {
-        (Some(a), Some(b)) => (a.sequence, b.sequence),
-        _ => (0, 0),
-    };
     let verification_status = if events.is_empty() {
         ChainVerificationStatus::NotChecked
-    } else if ledger::verify_chain(pool, from, to)
-        .await
-        .map_err(ReportError::Db)?
+    } else if ledger::verify_chain(
+        pool,
+        events.first().unwrap().sequence,
+        events.last().unwrap().sequence,
+    )
+    .await
+    .map_err(ReportError::Db)?
     {
         ChainVerificationStatus::Verified
     } else {
         ChainVerificationStatus::Failed
     };
 
+    build_report_from_events(session, events, verification_status)
+}
+
+/// Build an audit report from a SQLite-backed ledger.
+pub async fn build_report_sqlite(
+    pool: &sqlx::SqlitePool,
+    session_id: Uuid,
+) -> Result<AuditReport, ReportError> {
+    let session = ledger::sqlite::list_sessions_sqlite(pool)
+        .await
+        .map_err(ReportError::Db)?
+        .into_iter()
+        .find(|s| s.id == session_id)
+        .ok_or(ReportError::SessionNotFound(session_id))?;
+
+    let events = ledger::sqlite::get_events_by_session_sqlite(pool, session_id)
+        .await
+        .map_err(ReportError::Db)?;
+
+    let verification_status = if events.is_empty() {
+        ChainVerificationStatus::NotChecked
+    } else if ledger::sqlite::verify_chain_sqlite(
+        pool,
+        events.first().unwrap().sequence,
+        events.last().unwrap().sequence,
+    )
+    .await
+    .map_err(ReportError::Db)?
+    {
+        ChainVerificationStatus::Verified
+    } else {
+        ChainVerificationStatus::Failed
+    };
+
+    build_report_from_events(session, events, verification_status)
+}
+
+/// Shared report assembly: extracts findings, builds timeline, computes metrics.
+fn build_report_from_events(
+    session: SessionRow,
+    events: Vec<LedgerEventRow>,
+    verification_status: ChainVerificationStatus,
+) -> Result<AuditReport, ReportError> {
+    let ledger_hash = events
+        .last()
+        .map(|e| e.content_hash.clone())
+        .unwrap_or_else(|| "none".to_string());
+
     let mut findings = Vec::new();
     for ev in &events {
-        if let EventPayload::Action { name, params } = &ev.payload {
-            if name == "complete" {
-                if let Some(fv) = params.get("findings") {
-                    if let Ok(fs) = serde_json::from_value::<Vec<AuditFinding>>(fv.clone()) {
-                        for f in fs {
-                            findings.push(VerifiedFinding {
-                                severity: format!("{:?}", f.severity).to_lowercase(),
-                                title: f.title,
-                                evidence: f.evidence,
-                                recommendation: f.recommendation,
-                                evidence_sequences: f.evidence_sequence,
-                            });
-                        }
-                    }
-                }
+        if let EventPayload::Action { name, params } = &ev.payload
+            && name == "complete"
+            && let Some(fv) = params.get("findings")
+            && let Ok(fs) = serde_json::from_value::<Vec<AuditFinding>>(fv.clone())
+        {
+            for f in fs {
+                findings.push(VerifiedFinding {
+                    severity: format!("{:?}", f.severity).to_lowercase(),
+                    title: f.title,
+                    evidence: f.evidence,
+                    recommendation: f.recommendation,
+                    evidence_sequences: f.evidence_sequence,
+                });
             }
         }
     }
 
-    let timeline: Vec<AuditEventSummary> = events
-        .iter()
-        .map(|e| event_summary(e))
-        .collect();
+    let timeline: Vec<AuditEventSummary> = events.iter().map(event_summary).collect();
 
     let metrics = AuditMetrics {
         event_count: events.len(),
@@ -120,7 +158,8 @@ pub async fn build_report(pool: &PgPool, session_id: Uuid) -> Result<AuditReport
 
 fn event_summary(e: &LedgerEventRow) -> AuditEventSummary {
     let (kind, summary) = match &e.payload {
-        EventPayload::Genesis { message } => ("genesis", message.clone()),
+        EventPayload::Genesis { message, .. } => ("genesis", message.clone()),
+        EventPayload::PromptInput { content } => ("prompt_input", format!("Goal: {}", content)),
         EventPayload::Thought { content } => (
             "thought",
             if content.len() > 80 {
@@ -129,13 +168,27 @@ fn event_summary(e: &LedgerEventRow) -> AuditEventSummary {
                 content.clone()
             },
         ),
-        EventPayload::Action { name, params } => {
-            ("action", format!("{} {:?}", name, params))
-        }
+        EventPayload::SchemaError {
+            message,
+            attempt,
+            max_attempts,
+        } => (
+            "schema_error",
+            format!("({}/{}) {}", attempt, max_attempts, message),
+        ),
+        EventPayload::CircuitBreaker {
+            reason,
+            consecutive_failures,
+        } => (
+            "circuit_breaker",
+            format!("({} consecutive failures) {}", consecutive_failures, reason),
+        ),
+        EventPayload::Action { name, params } => ("action", format!("{} {:?}", name, params)),
         EventPayload::Observation { content } => (
             "observation",
             if content.len() > 80 {
-                format!("{}...", &content[..80])
+                let truncated: String = content.chars().take(80).collect();
+                format!("{}...", truncated)
             } else {
                 content.clone()
             },
@@ -146,7 +199,10 @@ fn event_summary(e: &LedgerEventRow) -> AuditEventSummary {
             action_params_summary,
         } => (
             "approval_required",
-            format!("gate {}: {} {}", gate_id, action_name, action_params_summary),
+            format!(
+                "gate {}: {} {}",
+                gate_id, action_name, action_params_summary
+            ),
         ),
         EventPayload::ApprovalDecision {
             gate_id,
@@ -161,16 +217,66 @@ fn event_summary(e: &LedgerEventRow) -> AuditEventSummary {
                 reason.as_deref().unwrap_or("")
             ),
         ),
-        EventPayload::CrossLedgerSeal { seal_hash, session_ids, .. } => (
+        EventPayload::CrossLedgerSeal {
+            seal_hash,
+            session_ids,
+            ..
+        } => (
             "cross_ledger_seal",
-            format!("seal {} covering {} sessions", &seal_hash[..16], session_ids.len()),
+            format!(
+                "seal {} covering {} sessions",
+                &seal_hash[..16],
+                session_ids.len()
+            ),
         ),
-        EventPayload::Anchor { ledger_tip_hash, bitcoin_block_height, .. } => (
+        EventPayload::Anchor {
+            ledger_tip_hash,
+            bitcoin_block_height,
+            ..
+        } => (
             "anchor",
             format!(
                 "OTS anchor tip {} block {:?}",
                 &ledger_tip_hash[..16],
                 bitcoin_block_height
+            ),
+        ),
+        EventPayload::KeyRotation {
+            new_public_key,
+            rotation_index,
+        } => (
+            "key_rotation",
+            format!(
+                "rotation {} new_key {}",
+                rotation_index,
+                &new_public_key[..16.min(new_public_key.len())]
+            ),
+        ),
+        EventPayload::KeyRevocation {
+            revoked_public_key,
+            reason,
+        } => (
+            "key_revocation",
+            format!(
+                "revoked key {} reason: {}",
+                &revoked_public_key[..16.min(revoked_public_key.len())],
+                reason
+            ),
+        ),
+        EventPayload::VerifiableCredential { .. } => (
+            "verifiable_credential",
+            "W3C VC-JWT issued for this session".to_string(),
+        ),
+        EventPayload::ChatMessage { role, content, .. } => (
+            "chat_message",
+            format!(
+                "[{}] {}",
+                role,
+                if content.len() > 80 {
+                    format!("{}...", &content[..80])
+                } else {
+                    content.clone()
+                }
             ),
         ),
     };
@@ -263,10 +369,7 @@ pub fn report_to_html(report: &AuditReport, session_id: Uuid) -> String {
             let seq_links: String = f
                 .evidence_sequences
                 .iter()
-                .map(|seq| format!(
-                    "<a href=\"#seq-{}\">#{}</a> ",
-                    seq, seq
-                ))
+                .map(|seq| format!("<a href=\"#seq-{}\">#{}</a> ", seq, seq))
                 .collect();
             format!(
                 r#"<tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td></tr>"#,
@@ -419,19 +522,10 @@ fn html_escape(s: &str) -> String {
         .replace('"', "&quot;")
 }
 
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum ReportError {
-    Db(sqlx::Error),
+    #[error("db: {0}")]
+    Db(#[from] sqlx::Error),
+    #[error("session not found: {0}")]
     SessionNotFound(Uuid),
 }
-
-impl std::fmt::Display for ReportError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ReportError::Db(e) => write!(f, "db: {}", e),
-            ReportError::SessionNotFound(id) => write!(f, "session not found: {}", id),
-        }
-    }
-}
-
-impl std::error::Error for ReportError {}

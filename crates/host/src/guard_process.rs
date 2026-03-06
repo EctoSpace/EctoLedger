@@ -41,7 +41,9 @@ fn compute_hmac(key: &[u8], nonce: u64, body: &str) -> String {
 fn verify_hmac(key: &[u8], nonce: u64, body: &str, expected_hex: &str) -> bool {
     let got = compute_hmac(key, nonce, body);
     // Constant-time comparison using HMAC verify machinery.
-    let Ok(expected_bytes) = hex::decode(expected_hex) else { return false; };
+    let Ok(expected_bytes) = hex::decode(expected_hex) else {
+        return false;
+    };
     let mut mac = HmacSha256::new_from_slice(key).expect("HMAC accepts any key size");
     mac.update(nonce.to_string().as_bytes());
     mac.update(b":");
@@ -66,34 +68,25 @@ pub struct GuardProcess {
     nonce: AtomicU64,
 }
 
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum GuardProcessError {
+    #[error("guard-worker spawn: {0}")]
     Spawn(String),
+    #[error("current exe: {0}")]
     CurrentExe(std::io::Error),
+    #[error("no parent directory for executable")]
     NoParent,
+    #[error("io: {0}")]
     Io(std::io::Error),
-    Json(serde_json::Error),
+    #[error("json: {0}")]
+    Json(#[from] serde_json::Error),
+    #[error("guard-worker closed stdout unexpectedly")]
     UnexpectedEof,
+    #[error("worker: {0}")]
     WorkerError(String),
+    #[error("guard-worker response HMAC mismatch — possible spoofing attempt")]
     HmacMismatch,
 }
-
-impl std::fmt::Display for GuardProcessError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            GuardProcessError::Spawn(s) => write!(f, "guard-worker spawn: {}", s),
-            GuardProcessError::CurrentExe(e) => write!(f, "current exe: {}", e),
-            GuardProcessError::NoParent => write!(f, "no parent directory for executable"),
-            GuardProcessError::Io(e) => write!(f, "io: {}", e),
-            GuardProcessError::Json(e) => write!(f, "json: {}", e),
-            GuardProcessError::UnexpectedEof => write!(f, "guard-worker closed stdout unexpectedly"),
-            GuardProcessError::WorkerError(s) => write!(f, "worker: {}", s),
-            GuardProcessError::HmacMismatch => write!(f, "guard-worker response HMAC mismatch — possible spoofing attempt"),
-        }
-    }
-}
-
-impl std::error::Error for GuardProcessError {}
 
 impl GuardProcess {
     /// Spawn the guard-worker binary. Generates a random session-scoped HMAC key

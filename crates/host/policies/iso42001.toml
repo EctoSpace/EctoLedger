@@ -1,0 +1,125 @@
+# ISO/IEC 42001:2023 Compliance Policy Pack
+# Ecto Ledger — enterprise-2026
+#
+# This file maps each relevant ISO 42001 control to concrete Ecto Ledger features
+# and is loaded by the policy engine alongside the other compliance packs.
+#
+# Structure mirrors the existing SOC2 / PCI-DSS packs.
+# Severity: info | low | medium | high | critical
+
+[meta]
+standard        = "ISO/IEC 42001:2023"
+edition         = "2023"
+description     = "AI Management System standard — requirements for responsible AI development and use"
+ectoledger_version = "0.6.2"
+last_reviewed   = "2026-02-21"
+
+# ─── Clause 4 — Context of the organisation ────────────────────────────────────
+
+[[controls]]
+clause    = "4.1"
+title     = "Understanding the organisation and its context"
+rationale = "The ledger records every agent session goal and goal_hash, providing an auditable record of AI system purpose and scope."
+check     = "goal_hash_recorded"
+severity  = "medium"
+
+[[controls]]
+clause    = "4.2"
+title     = "Understanding the needs and expectations of interested parties"
+rationale = "Policy packs (SOC2, PCI-DSS, OWASP, ISO42001) express stakeholder requirements enforced at runtime."
+check     = "policy_hash_in_session"
+severity  = "medium"
+
+# ─── Clause 5 — Leadership ─────────────────────────────────────────────────────
+
+[[controls]]
+clause    = "5.1"
+title     = "Leadership and commitment"
+rationale = "Certificates (`.elc`) are signed by session Ed25519 keys, providing a cryptographic chain of custody for AI decisions."
+check     = "session_certificate_signed"
+severity  = "high"
+
+[[controls]]
+clause    = "5.2"
+title     = "AI policy"
+rationale = "Observation rules and guard logic enforce the AI policy at inference time; violations are logged immutably."
+check     = "observation_policy_applied"
+severity  = "high"
+
+# ─── Clause 6 — Planning ───────────────────────────────────────────────────────
+
+[[controls]]
+clause    = "6.1"
+title     = "Actions to address risks and opportunities"
+rationale = "Tripwire rejects high-risk intents before execution; guard provides a second LLM safety layer."
+check     = "tripwire_active"
+severity  = "high"
+
+[[controls]]
+clause    = "6.1.2"
+title     = "AI risk treatment"
+rationale = "Red-team module (red_team.rs) simulates adversarial inputs; findings are appended to the ledger."
+check     = "red_team_findings_logged"
+severity  = "medium"
+
+# ─── Clause 8 — Operation ──────────────────────────────────────────────────────
+
+[[controls]]
+clause    = "8.1"
+title     = "Operational planning and control"
+rationale = "Executor enforces two-phase commit: intent validated before execution, result recorded after."
+check     = "two_phase_commit_enforced"
+severity  = "critical"
+
+[[controls]]
+clause    = "8.2"
+title     = "AI system impact assessment"
+rationale = "Compliance reports generated via `/api/reports` summarise session risk posture."
+check     = "compliance_report_available"
+severity  = "medium"
+
+[[controls]]
+clause    = "8.3"
+title     = "AI system lifecycle"
+rationale = "Session lifecycle (running → completed/failed) is tracked with timestamps in agent_sessions."
+check     = "session_lifecycle_recorded"
+severity  = "medium"
+
+[[controls]]
+clause    = "8.4"
+title     = "Use of AI tools or externally developed AI systems"
+rationale = "LLM backend, model name, and policy hash are recorded per session for provenance."
+check     = "llm_provenance_recorded"
+severity  = "high"
+
+# ─── Clause 9 — Performance evaluation ────────────────────────────────────────
+
+[[controls]]
+clause    = "9.1"
+title     = "Monitoring, measurement, analysis and evaluation"
+rationale = "Prometheus metrics endpoint exposes guard denials, tripwire rejections, and event counts in real time."
+check     = "metrics_endpoint_active"
+severity  = "medium"
+
+[[controls]]
+clause    = "9.2"
+title     = "Internal audit"
+rationale = "Merkle-root snapshots allow any third party to verify ledger integrity without replaying all events."
+check     = "snapshot_merkle_root_valid"
+severity  = "high"
+
+[[controls]]
+clause    = "9.3"
+title     = "Management review"
+rationale = "ISO 42001 compliance report download available via GUI and `/api/reports`."
+check     = "report_export_available"
+severity  = "medium"
+
+# ─── Clause 10 — Improvement ──────────────────────────────────────────────────
+
+[[controls]]
+clause    = "10.1"
+title     = "Continual improvement"
+rationale = "Webhook egress (guard_denial, tripwire_rejection) enables real-time SIEM integration for rapid incident response."
+check     = "webhook_egress_configured"
+severity  = "low"

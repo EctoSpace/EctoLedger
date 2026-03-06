@@ -1,0 +1,864 @@
+#!/usr/bin/env bash
+# =============================================================================
+#  Ecto Ledger — One-Click Launcher (macOS)
+#  Usage:  ./ectoledger-mac [FLAGS]
+#
+#  FLAGS:
+#    --demo           Zero-config demo: SQLite DB, auto-detect/install LLM, seed demo session
+#    --start          Fast path: skip build/install, just start the app
+#    --setup          Force the first-launch setup wizard (deletes the skip marker)
+#    --rebuild        Force cargo build even if binary already exists
+#    --backend-only   Start backend server without the GUI
+#    --reset-db       Wipe embedded Postgres data and start fresh
+#    --clean          Run `cargo clean` to reclaim disk space, then exit
+#    --help           Show this message
+#
+#  TIP: The target/ directory can grow to 10–15 GB of Rust build artifacts.
+#       Run  ./ectoledger-mac --clean  to reclaim that space (next launch will
+#       need to rebuild, which takes ~2 minutes).
+# =============================================================================
+
+set -euo pipefail
+
+# ── Colours ──────────────────────────────────────────────────────────────────
+RESET="\033[0m"
+BOLD="\033[1m"
+RED="\033[0;31m"
+YELLOW="\033[0;33m"
+GREEN="\033[0;32m"
+CYAN="\033[0;36m"
+PURPLE="\033[0;35m"
+
+# ── Paths ──────────────────────────────────────────────────────────────────
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+BINARY="$SCRIPT_DIR/target/release/ectoledger"
+GUI_DIR="$SCRIPT_DIR/gui"
+PID_FILE="${TMPDIR:-$HOME/.local/run}/ectoledger_backend.pid"
+mkdir -p "$(dirname "$PID_FILE")"
+LOG_FILE="$SCRIPT_DIR/ectoledger.log"
+
+# ── Flags ───────────────────────────────────────────────────────────────────
+FLAG_START=false
+FLAG_SETUP=false
+FLAG_REBUILD=false
+FLAG_BACKEND_ONLY=false
+FLAG_RESET_DB=false
+FLAG_CLEAN=false
+FLAG_ENCLAVE=false
+FLAG_DEMO=false
+
+for arg in "$@"; do
+  case "$arg" in
+    --demo)          FLAG_DEMO=true ;;
+    --start)         FLAG_START=true ;;
+    --setup)         FLAG_SETUP=true ;;
+    --rebuild)       FLAG_REBUILD=true ;;
+    --enclave)       FLAG_ENCLAVE=true ;;
+    --backend-only)  FLAG_BACKEND_ONLY=true ;;
+    --reset-db)      FLAG_RESET_DB=true ;;
+    --clean)         FLAG_CLEAN=true ;;
+    --help|-h)
+      echo "Usage: ./ectoledger-mac [--demo] [--start] [--setup] [--rebuild] [--enclave] [--backend-only] [--reset-db] [--clean] [--help]"
+      echo ""
+      echo "  --demo           Zero-config demo: SQLite DB, auto-detect/install LLM, seed session"
+      echo "  --start          Fast path: skip build/install, just start backend + GUI"
+      echo "  --setup          Force the setup wizard on next launch (removes the skip marker)"
+      echo "  --rebuild        Force cargo build even if binary exists"
+      echo "  --enclave        Try Apple enclave build first (falls back to standard on failure)"
+      echo "  --backend-only   Start backend server without the GUI"
+      echo "  --reset-db       Wipe the embedded Postgres data dir and start fresh"
+      echo "  --clean          Run cargo clean to reclaim disk space (target/ can be 10-15 GB)"
+      exit 0
+      ;;
+    *)
+      echo -e "${RED}Unknown flag: $arg${RESET}"
+      echo "Usage: ./ectoledger-mac [--demo] [--start] [--setup] [--rebuild] [--enclave] [--backend-only] [--reset-db] [--clean] [--help]"
+      exit 1
+      ;;
+  esac
+done
+
+# ── Banner ───────────────────────────────────────────────────────────────────
+R1="\033[1;31m"
+R2="\033[1;33m"
+R3="\033[1;32m"
+R4="\033[1;36m"
+R5="\033[1;34m"
+R6="\033[1;35m"
+
+echo ""
+echo -e "${R1}  ██╗██████╗  ██████╗ ███╗   ██╗ ██████╗██╗      █████╗ ██████╗ ${RESET}"
+echo -e "${R2}  ██║██╔══██╗██╔═══██╗████╗  ██║██╔════╝██║     ██╔══██╗██╔══██╗${RESET}"
+echo -e "${R3}  ██║██████╔╝██║   ██║██╔██╗ ██║██║     ██║     ███████║██║  ██║${RESET}"
+echo -e "${R4}  ██║██╔══██╗██║   ██║██║╚██╗██║██║     ██║     ██╔══██║██║  ██║${RESET}"
+echo -e "${R5}  ██║██║  ██║╚██████╔╝██║ ╚████║╚██████╗███████╗██║  ██║██████╔╝${RESET}"
+echo -e "${R6}  ╚═╝╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═══╝ ╚═════╝╚══════╝╚═╝  ╚═╝╚═════╝ ${RESET}"
+echo -e "${CYAN}  Agent Ledger 2026${RESET}"
+echo ""
+
+# ── Helpers ──────────────────────────────────────────────────────────────────
+info()    { echo -e "  ${CYAN}▶${RESET} $*"; }
+success() { echo -e "  ${GREEN}✔${RESET} $*"; }
+warn()    { echo -e "  ${YELLOW}⚠${RESET}  $*"; }
+error()   { echo -e "  ${RED}✘${RESET}  $*" >&2; }
+step()    { echo -e "\n${BOLD}${CYAN}── $* ──${RESET}"; }
+
+# ── pg-embed binary pre-extraction ───────────────────────────────────────────
+# archiver_rs (used by pg-embed 0.7) has a compatibility issue with Maven JAR
+# files and fails with "Could not find central directory end".  Pre-extract the
+# PostgreSQL binaries using system tools so pg-embed skips its own extraction.
+# The calling code scopes DYLD_LIBRARY_PATH to the backend process only, so that
+# pg-embed's bundled libs do not leak into downstream processes (e.g. Tauri GUI).
+ensure_pg_embed_binaries() {
+  local cache_dir="$HOME/Library/Caches"
+  local arch
+  arch="$(uname -m)"
+  case "$arch" in
+    x86_64)  arch="amd64" ;;
+    arm64)   arch="arm64" ;;
+    *)       arch="amd64" ;;
+  esac
+  local pg_version="15.1.0"
+  local platform="darwin-${arch}"
+  local pg_cache="$cache_dir/pg-embed/darwin/${arch}/${pg_version}"
+  local initdb_exe="$pg_cache/bin/initdb"
+  local lib_dir="$pg_cache/lib"
+
+  # If binaries are already extracted, save the lib dir for the backend process.
+  if [[ -f "$initdb_exe" ]]; then
+    if [[ -d "$lib_dir" ]]; then
+      PG_EMBED_LIB_DIR="$lib_dir"
+    fi
+    return 0
+  fi
+
+  local zip_file="$pg_cache/${platform}-${pg_version}.zip"
+  [[ -f "$zip_file" ]] || return 0
+
+  info "Pre-extracting pg-embed PostgreSQL binaries (archiver_rs compat workaround)…"
+
+  local tmpdir
+  tmpdir="$(mktemp -d)"
+  local txz_name="postgres-${platform}.txz"
+
+  if ! unzip -q -o "$zip_file" "$txz_name" -d "$tmpdir" 2>/dev/null; then
+    warn "unzip: could not extract $txz_name — pg-embed will retry its own extraction."
+    rm -rf "$tmpdir"
+    return 0
+  fi
+
+  mkdir -p "$pg_cache"
+  if ! tar -xJf "$tmpdir/$txz_name" -C "$pg_cache/" 2>/dev/null; then
+    warn "tar: could not extract pg binaries — pg-embed will retry."
+    rm -rf "$tmpdir"
+    return 0
+  fi
+
+  rm -rf "$tmpdir"
+
+  if [[ -f "$initdb_exe" ]]; then
+    success "pg-embed binaries pre-extracted → $pg_cache/bin/"
+    if [[ -d "$lib_dir" ]]; then
+      PG_EMBED_LIB_DIR="$lib_dir"
+      success "pg-embed lib dir saved for backend process"
+    fi
+  fi
+}
+
+# ── Cleanup on exit ──────────────────────────────────────────────────────────
+cleanup() {
+  if [[ -f "$PID_FILE" ]]; then
+    local pid
+    pid="$(cat "$PID_FILE")"
+    if kill -0 "$pid" 2>/dev/null; then
+      info "Stopping backend (PID $pid) and child processes…"
+      # Kill the entire process group so embedded PG child processes also die.
+      kill -- -"$pid" 2>/dev/null || kill "$pid" 2>/dev/null || true
+      sleep 1
+      # Force-kill any stragglers.
+      kill -9 -- -"$pid" 2>/dev/null || kill -9 "$pid" 2>/dev/null || true
+    fi
+    rm -f "$PID_FILE"
+  fi
+  # Clean up any orphaned embedded PG on the demo port.
+  if [[ "${FLAG_DEMO:-false}" == "true" ]]; then
+    lsof -ti:5433 2>/dev/null | xargs kill -9 2>/dev/null || true
+  fi
+  echo -e "\n${PURPLE}  Ecto Ledger stopped.${RESET}\n"
+}
+trap cleanup EXIT INT TERM
+
+# ── 0. Fast-path: --clean ────────────────────────────────────────────────────
+if [[ "$FLAG_CLEAN" == "true" ]]; then
+  step "Cleaning build artifacts"
+  info "Running cargo clean — this will delete target/ (~10-15 GB)…"
+  cargo clean --manifest-path "$SCRIPT_DIR/Cargo.toml"
+  success "Build artifacts removed. Next launch will rebuild from scratch (~2 min)."
+  trap - EXIT
+  exit 0
+fi
+
+# ── 0b. Fast-path: --start ───────────────────────────────────────────────────
+# Skip all build/install steps.  Requires that the binary and node_modules
+# already exist (i.e. you have run ./ectoledger-mac at least once before).
+if [[ "$FLAG_START" == "true" ]]; then
+  if [[ ! -f "$BINARY" ]]; then
+    error "Binary not found at $BINARY — run ./ectoledger-mac once first to build it."
+    exit 1
+  fi
+  step "Fast-start (skipping build & install)"
+  success "Binary ready: $BINARY"
+fi
+
+# ── 1. Check prerequisites ───────────────────────────────────────────────────
+# In --start mode we still verify Rust/Node are present but skip the build.
+# If tools are missing the script offers to install them interactively.
+step "Checking prerequisites"
+
+# Helper: prompt the user yes/no.  Returns 0 for yes, 1 for no.
+# In non-interactive mode (piped stdin) always returns 1 (no).
+ask_install() {
+  local tool_name="$1"
+  if [[ ! -t 0 ]]; then
+    return 1
+  fi
+  local reply
+  read -r -p "  ${YELLOW}?${RESET}  $tool_name is not installed. Install it now? [y/N]: " reply
+  case "$reply" in
+    [Yy]|[Yy][Ee][Ss]) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+# Refresh PATH so newly installed tools are found in this session.
+rehash_path() {
+  [[ -f "$HOME/.cargo/env" ]] && source "$HOME/.cargo/env"
+  export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+  hash -r 2>/dev/null || true
+}
+
+UNRESOLVED=()
+
+# ── Cargo / Rust ─────────────────────────────────────────────────────────────
+if ! command -v cargo &>/dev/null; then
+  if ask_install "Rust/Cargo"; then
+    info "Installing Rust via rustup …"
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+    rehash_path
+    if command -v cargo &>/dev/null; then
+      success "Rust $(rustc --version | awk '{print $2}') installed"
+    else
+      error "Rust installation succeeded but cargo is still not in PATH."
+      UNRESOLVED+=("Rust/Cargo  →  https://rustup.rs")
+    fi
+  else
+    UNRESOLVED+=("Rust/Cargo  →  https://rustup.rs")
+  fi
+fi
+# Re-check: cargo may now be available (just installed or was already present).
+if command -v cargo &>/dev/null; then
+  RUST_VER="$(rustc --version | awk '{print $2}')"
+  RUST_MAJOR="$(echo "$RUST_VER" | cut -d. -f1)"
+  RUST_MINOR="$(echo "$RUST_VER" | cut -d. -f2)"
+  if [[ "$RUST_MAJOR" -lt 1 ]] || { [[ "$RUST_MAJOR" -eq 1 ]] && [[ "$RUST_MINOR" -lt 94 ]]; }; then
+    warn "Rust $RUST_VER is too old (need >= 1.94)"
+    if command -v rustup &>/dev/null; then
+      if ask_install "Rust update (current: $RUST_VER, need >= 1.94)"; then
+        info "Running rustup update …"
+        rustup update stable
+        rehash_path
+        RUST_VER="$(rustc --version | awk '{print $2}')"
+        success "Rust updated to $RUST_VER"
+      else
+        UNRESOLVED+=("Rust >= 1.94  →  run: rustup update stable")
+      fi
+    else
+      UNRESOLVED+=("Rust >= 1.94  →  https://rustup.rs  (then: rustup update stable)")
+    fi
+  else
+    success "Rust $RUST_VER"
+  fi
+fi
+
+# ── Node.js & npm ────────────────────────────────────────────────────────────
+if [[ "$FLAG_BACKEND_ONLY" == "false" ]]; then
+  if ! command -v node &>/dev/null; then
+    if command -v brew &>/dev/null; then
+      # Homebrew is available — offer Node install via brew.
+      if ask_install "Node.js (via Homebrew)"; then
+        info "Installing Node.js via Homebrew …"
+        brew install node@20
+        brew link --overwrite node@20 2>/dev/null || true
+        rehash_path
+      fi
+    else
+      # Homebrew not installed — offer to install Homebrew first, then Node.
+      if ask_install "Homebrew + Node.js (Homebrew is the recommended macOS package manager)"; then
+        info "Installing Homebrew …"
+        /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+        rehash_path
+        # Homebrew on Apple Silicon needs explicit PATH entry.
+        if [[ -x /opt/homebrew/bin/brew ]]; then
+          eval "$(/opt/homebrew/bin/brew shellenv)"
+        fi
+        if command -v brew &>/dev/null; then
+          info "Installing Node.js via Homebrew …"
+          brew install node@20
+          brew link --overwrite node@20 2>/dev/null || true
+          rehash_path
+        else
+          warn "Homebrew installation completed but brew is not in PATH."
+        fi
+      fi
+    fi
+    # Final check after attempted install.
+    if ! command -v node &>/dev/null; then
+      UNRESOLVED+=("Node.js >= 20  →  https://nodejs.org")
+    fi
+  fi
+  # Re-check: node may now be available.
+  if command -v node &>/dev/null; then
+    NODE_VER="$(node --version | tr -d 'v')"
+    NODE_MAJOR="$(echo "$NODE_VER" | cut -d. -f1)"
+    if [[ "$NODE_MAJOR" -lt 20 ]]; then
+      warn "Node.js $NODE_VER is too old (need >= 20)"
+      UNRESOLVED+=("Node.js >= 20 (current: $NODE_VER)  →  https://nodejs.org")
+    else
+      success "Node.js $NODE_VER"
+    fi
+  fi
+  if ! command -v npm &>/dev/null; then
+    UNRESOLVED+=("npm  →  https://nodejs.org  (included with Node.js)")
+  else
+    success "npm $(npm --version)"
+  fi
+fi
+
+# ── Xcode Command Line Tools (needed for C compiler / linker) ─────────────
+if ! xcode-select -p &>/dev/null; then
+  warn "Xcode Command Line Tools not installed (needed for C compiler)."
+  if ask_install "Xcode Command Line Tools"; then
+    info "Installing Xcode Command Line Tools (this may take a few minutes)…"
+    xcode-select --install 2>/dev/null || true
+    # xcode-select --install opens a GUI dialog; wait for it.
+    echo -e "  ${YELLOW}ℹ${RESET}  A system dialog should appear. Click \"Install\" and wait for it to finish."
+    echo -e "  ${YELLOW}ℹ${RESET}  Press Enter here once the installation is complete."
+    read -r
+    rehash_path
+    if xcode-select -p &>/dev/null; then
+      success "Xcode Command Line Tools installed"
+    else
+      UNRESOLVED+=("Xcode CLT  →  run: xcode-select --install")
+    fi
+  else
+    UNRESOLVED+=("Xcode CLT  →  run: xcode-select --install")
+  fi
+else
+  success "Xcode Command Line Tools"
+fi
+
+# ── Final gate ───────────────────────────────────────────────────────────────
+if [[ "${#UNRESOLVED[@]}" -gt 0 ]]; then
+  echo ""
+  error "The following dependencies are still missing:"
+  for dep in "${UNRESOLVED[@]}"; do
+    echo -e "  ${YELLOW}•${RESET} $dep"
+  done
+  echo ""
+  error "Install them and re-run the script."
+  exit 1
+fi
+
+if [[ "$FLAG_DEMO" == "false" ]]; then
+  OLLAMA_RUNNING=false
+  if ! command -v ollama &>/dev/null; then
+    warn "ollama not found in PATH — set LLM_BACKEND=openai in .env to use OpenAI instead"
+  elif ! curl -sf --max-time 1 http://localhost:11434 &>/dev/null; then
+    warn "Ollama is installed but not running — start it with: ollama serve"
+  else
+    success "Ollama reachable at http://localhost:11434"
+    OLLAMA_RUNNING=true
+  fi
+fi
+
+# ── Setup wizard marker ───────────────────────────────────────────────────────
+# Default: always write the skip marker so the GUI wizard never appears unless
+#          the user explicitly passed --setup.
+# --setup:  delete the marker so the wizard is shown on this launch, then
+#           continue to start the full app (do NOT exit early).
+SETUP_MARKER="$HOME/Library/Application Support/io.ectoledger.agent-ledger/setup_complete.json"
+mkdir -p "$(dirname "$SETUP_MARKER")"
+
+if [[ "$FLAG_SETUP" == "true" ]]; then
+  if [[ -f "$SETUP_MARKER" ]]; then
+    rm -f "$SETUP_MARKER"
+    info "Setup wizard re-enabled — will appear on launch"
+  else
+    info "Setup wizard already enabled"
+  fi
+  # Tell the Tauri process not to auto-detect and re-skip the wizard.
+  export ECTO_FORCE_SETUP=1
+else
+  # Normal / --start path: ensure wizard is always bypassed.
+  if [[ ! -f "$SETUP_MARKER" ]]; then
+    printf '{"completed_at":"%s","version":"0.6.2","auto_detected":true}\n' \
+      "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$SETUP_MARKER"
+    success "Setup wizard bypassed — starting app directly"
+  fi
+fi
+
+# ── 2. Create .env if missing ─────────────────────────────────────────────────
+step "Environment"
+
+ENV_FILE="$SCRIPT_DIR/.env"
+if [[ ! -f "$ENV_FILE" ]]; then
+  info "Creating .env with dev defaults…"
+  cat > "$ENV_FILE" <<'EOF'
+# ─────────────────────────────────────────────────────────────────
+# Ecto Ledger — Dev Environment
+# Edit this file to customise your setup.
+# See README.md for all available options.
+# ─────────────────────────────────────────────────────────────────
+
+DATABASE_URL=postgres://ectoledger:ectoledger@localhost:5432/ectoledger
+LLM_BACKEND=ollama
+OLLAMA_BASE_URL=http://localhost:11434
+OLLAMA_MODEL=qwen2.5:0.5b
+GUARD_REQUIRED=false  # Set to true AND set GUARD_LLM_BACKEND + GUARD_LLM_MODEL for production
+RUST_LOG=info
+EOF
+  success ".env created"
+else
+  success ".env already exists — validating…"
+
+  # ── Validate existing .env ─────────────────────────────────────────────────
+  ENV_ISSUES=0
+
+  # Helper: read a key's value from .env (strips quotes & inline comments)
+  env_val() {
+    local _key="$1"
+    local _val
+    _val="$(grep -E "^\s*${_key}\s*=" "$ENV_FILE" | head -1 | cut -d= -f2-)"
+    _val="$(echo "$_val" | sed "s/^[[:space:]]*//;s/[[:space:]]*$//")"
+    _val="$(echo "$_val" | sed "s/^[\"']//;s/[\"']$//")"
+    _val="$(echo "$_val" | sed 's/[[:space:]]*#.*$//')"
+    echo "$_val"
+  }
+
+  # 1. DATABASE_URL must be present and non-empty
+  DB_URL_VAL="$(env_val DATABASE_URL)"
+  if [[ -z "$DB_URL_VAL" ]]; then
+    warn ".env: DATABASE_URL is missing or empty — the backend will not start without a database connection"
+    ENV_ISSUES=$((ENV_ISSUES + 1))
+  elif [[ "$DB_URL_VAL" != postgres://* && "$DB_URL_VAL" != postgresql://* && "$DB_URL_VAL" != sqlite:* ]]; then
+    warn ".env: DATABASE_URL='${DB_URL_VAL}' — expected a postgres:// or sqlite: URL"
+    ENV_ISSUES=$((ENV_ISSUES + 1))
+  fi
+
+  # 2. LLM_BACKEND must be a known value
+  LLM_VAL="$(env_val LLM_BACKEND)"
+  if [[ -z "$LLM_VAL" ]]; then
+    warn ".env: LLM_BACKEND is missing — defaulting to 'ollama'. Add LLM_BACKEND=ollama (or openai) to silence this."
+    ENV_ISSUES=$((ENV_ISSUES + 1))
+  elif [[ "$LLM_VAL" != "ollama" && "$LLM_VAL" != "openai" && "$LLM_VAL" != "anthropic" && "$LLM_VAL" != "mock" ]]; then
+    warn ".env: LLM_BACKEND='${LLM_VAL}' — expected one of: ollama, openai, anthropic, mock"
+    ENV_ISSUES=$((ENV_ISSUES + 1))
+  fi
+
+  # 3. If ollama backend, OLLAMA_BASE_URL should be present
+  if [[ "$LLM_VAL" == "ollama" || -z "$LLM_VAL" ]]; then
+    OLLAMA_URL_VAL="$(env_val OLLAMA_BASE_URL)"
+    if [[ -z "$OLLAMA_URL_VAL" ]]; then
+      warn ".env: OLLAMA_BASE_URL is missing — will default to http://localhost:11434"
+      ENV_ISSUES=$((ENV_ISSUES + 1))
+    elif [[ "$OLLAMA_URL_VAL" != http://* && "$OLLAMA_URL_VAL" != https://* ]]; then
+      warn ".env: OLLAMA_BASE_URL='${OLLAMA_URL_VAL}' — expected an http:// or https:// URL"
+      ENV_ISSUES=$((ENV_ISSUES + 1))
+    fi
+
+    OLLAMA_MODEL_VAL="$(env_val OLLAMA_MODEL)"
+    if [[ -z "$OLLAMA_MODEL_VAL" ]]; then
+      warn ".env: OLLAMA_MODEL is missing — the agent loop will not know which model to use"
+      ENV_ISSUES=$((ENV_ISSUES + 1))
+    fi
+  fi
+
+  # 4. If openai backend, OPENAI_API_KEY should be set
+  if [[ "$LLM_VAL" == "openai" ]]; then
+    OPENAI_KEY_VAL="$(env_val OPENAI_API_KEY)"
+    if [[ -z "$OPENAI_KEY_VAL" ]]; then
+      warn ".env: OPENAI_API_KEY is missing — required when LLM_BACKEND=openai"
+      ENV_ISSUES=$((ENV_ISSUES + 1))
+    elif [[ "$OPENAI_KEY_VAL" != sk-* ]]; then
+      warn ".env: OPENAI_API_KEY does not start with 'sk-' — verify the key is correct"
+      ENV_ISSUES=$((ENV_ISSUES + 1))
+    fi
+  fi
+
+  # 5. GUARD_REQUIRED should be true/false
+  GUARD_VAL="$(env_val GUARD_REQUIRED)"
+  if [[ -n "$GUARD_VAL" && "$GUARD_VAL" != "true" && "$GUARD_VAL" != "false" ]]; then
+    warn ".env: GUARD_REQUIRED='${GUARD_VAL}' — expected 'true' or 'false'"
+    ENV_ISSUES=$((ENV_ISSUES + 1))
+  fi
+
+  # 6. RUST_LOG should be present
+  RUST_LOG_VAL="$(env_val RUST_LOG)"
+  if [[ -z "$RUST_LOG_VAL" ]]; then
+    warn ".env: RUST_LOG is missing — logging will use Rust defaults (no output). Recommended: RUST_LOG=info"
+    ENV_ISSUES=$((ENV_ISSUES + 1))
+  fi
+
+  if [[ "$ENV_ISSUES" -gt 0 ]]; then
+    warn "$ENV_ISSUES issue(s) found in .env — review the warnings above"
+  else
+    success ".env validated — all settings look correct"
+  fi
+fi
+
+# Safe env loading: parse key=value lines without executing arbitrary shell code.
+while IFS='=' read -r key value; do
+  # Skip comments and blank lines.
+  [[ -z "$key" || "$key" == \#* ]] && continue
+  # Strip leading/trailing whitespace from key and value.
+  key="$(echo "$key" | xargs)"
+  value="$(echo "$value" | sed "s/^[\"']//;s/[\"']$//")"
+  # Strip inline comments (e.g. "true   # comment").
+  value="$(echo "$value" | sed 's/[[:space:]]*#.*$//')"
+  # Validate that the key is a legal POSIX identifier before exporting.
+  # Keys with spaces, IFS characters, or shell metacharacters would otherwise
+  # cause silent environment corruption or unexpected word-splitting.
+  if [[ ! "$key" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+    warn ".env: skipping malformed key '${key}' (must match [A-Za-z_][A-Za-z0-9_]*)"
+    continue
+  fi
+  export "$key=$value"
+done < "$ENV_FILE"
+
+# ── Demo Mode ────────────────────────────────────────────────────────────────
+if [[ "$FLAG_DEMO" == "true" ]]; then
+  echo ""
+  echo -e "  ${GREEN}${BOLD}🚀 Demo Mode Activated${RESET}"
+  echo ""
+
+  # ── a. Environment isolation ──
+  info "🗄️  Setting up isolated demo database…"
+  unset DATABASE_URL   # clear any .env value so the backend uses embedded Postgres (pg-embed)
+  export ECTO_DEMO_MODE="true"
+  export ECTO_DEV_MODE="true"       # allow config::database_url() to succeed without DATABASE_URL
+  export GUARD_REQUIRED="false"     # disable guard — GUARD_LLM_BACKEND/MODEL not needed in demo
+  export RUST_LOG="${RUST_LOG:-info}"
+  success "Database: isolated demo PostgreSQL (pg-embed, separate from normal mode)"
+
+  # ── b. LLM auto-detection ──
+  echo ""
+  info "🔍 Detecting LLM capabilities…"
+
+  DEMO_LLM_RESOLVED=false
+
+  if [[ -n "${OPENAI_API_KEY:-}" ]]; then
+    export LLM_BACKEND="openai"
+    success "🔑 OpenAI API key detected — using cloud LLM"
+    DEMO_LLM_RESOLVED=true
+  elif [[ -n "${ANTHROPIC_API_KEY:-}" ]]; then
+    export LLM_BACKEND="anthropic"
+    success "🔑 Anthropic API key detected — using cloud LLM"
+    DEMO_LLM_RESOLVED=true
+  fi
+
+  if [[ "$DEMO_LLM_RESOLVED" == "false" ]]; then
+    # ── c. Ollama detection + install ──
+    if command -v ollama &>/dev/null; then
+      success "Ollama found at $(command -v ollama)"
+    else
+      echo ""
+      warn "📦 Ollama not found. It is required to run local AI agents."
+      echo -e "  ${YELLOW}⏳ Auto-installing Ollama via Homebrew in 5 seconds…${RESET}"
+      echo -e "  ${YELLOW}   Press Ctrl+C to cancel.${RESET}"
+      for countdown in 5 4 3 2 1; do
+        printf "  %s…\r" "$countdown"
+        sleep 1
+      done
+      echo ""
+
+      if ! command -v brew &>/dev/null; then
+        error "Homebrew not found — cannot auto-install Ollama."
+        error "Install Homebrew first: https://brew.sh"
+        error "Or install Ollama manually: https://ollama.com/download"
+        exit 1
+      fi
+
+      info "Running: brew install ollama"
+      brew install ollama
+      if ! command -v ollama &>/dev/null; then
+        error "Ollama installation failed. Install manually: https://ollama.com/download"
+        exit 1
+      fi
+      success "Ollama installed"
+    fi
+
+    # ── d. Ensure Ollama is running ──
+    if ! curl -sf --max-time 2 http://127.0.0.1:11434 &>/dev/null; then
+      info "Starting Ollama daemon…"
+      ollama serve &>/dev/null &
+      OLLAMA_SERVE_PID=$!
+      OLLAMA_WAIT=0
+      while ! curl -sf --max-time 1 http://127.0.0.1:11434 &>/dev/null; do
+        sleep 1
+        OLLAMA_WAIT=$((OLLAMA_WAIT + 1))
+        if [[ "$OLLAMA_WAIT" -ge 15 ]]; then
+          error "Ollama did not start within 15 seconds."
+          exit 1
+        fi
+      done
+      success "Ollama daemon started (PID $OLLAMA_SERVE_PID)"
+    else
+      success "Ollama already running at http://127.0.0.1:11434"
+    fi
+
+    # ── e. Pull model ──
+    if ollama list 2>/dev/null | grep -q "qwen2.5:0.5b"; then
+      success "Model qwen2.5:0.5b already available"
+    else
+      echo ""
+      info "📥 Pulling qwen2.5:0.5b model (this may take a few minutes on first run)…"
+      if ! ollama pull qwen2.5:0.5b; then
+        warn "Failed to pull qwen2.5:0.5b — the backend may not have a model available"
+      else
+        success "Model qwen2.5:0.5b ready"
+      fi
+    fi
+
+    export LLM_BACKEND="ollama"
+    export OLLAMA_MODEL="qwen2.5:0.5b"
+    export OLLAMA_BASE_URL="http://127.0.0.1:11434"
+  fi
+
+  # ── f. Summary ──
+  echo ""
+  step "Demo Configuration"
+  echo -e "  ${CYAN}Database:${RESET}    isolated demo PostgreSQL (port 5433, ~/…/postgres-demo)"
+  echo -e "  ${CYAN}LLM Backend:${RESET} ${LLM_BACKEND}$([ "$LLM_BACKEND" = "ollama" ] && echo " (qwen2.5:0.5b)")"
+  echo -e "  ${CYAN}Guard:${RESET}       disabled (demo)"
+  echo -e "  ${CYAN}Demo Mode:${RESET}   enabled"
+  echo ""
+fi
+
+# ── 2b. Reset embedded DB if requested ────────────────────────────────────────
+if [[ "$FLAG_RESET_DB" == "true" ]]; then
+  step "Resetting embedded database"
+  if [[ "$FLAG_DEMO" == "true" ]]; then
+    PG_DATA_DIR="$HOME/Library/Application Support/ectoledger/postgres-demo"
+  else
+    PG_DATA_DIR="$HOME/Library/Application Support/ectoledger/postgres"
+  fi
+  if [[ -d "$PG_DATA_DIR" ]]; then
+    warn "Deleting embedded Postgres data at: $PG_DATA_DIR"
+    rm -rf "$PG_DATA_DIR"
+    success "Database reset — pg-embed will re-initialise on next start"
+  else
+    info "No embedded database found at expected path — nothing to reset"
+  fi
+fi
+
+# ── 3. Build backend ────────────────────────────────────────────────────────
+step "Backend"
+
+if [[ "$FLAG_START" == "true" ]]; then
+  success "Backend already built — fast-start mode"
+else
+  # Auto-detect stale binary: rebuild if any crate source is newer than the binary.
+  NEED_BUILD=false
+  if [[ "$FLAG_REBUILD" == "true" ]]; then
+    NEED_BUILD=true
+  elif [[ ! -f "$BINARY" ]]; then
+    NEED_BUILD=true
+  elif [[ -n "$(find "$SCRIPT_DIR/crates" -name '*.rs' -newer "$BINARY" 2>/dev/null | head -1)" ]]; then
+    info "Source files changed since last build — rebuilding automatically."
+    NEED_BUILD=true
+  fi
+
+  if [[ "$NEED_BUILD" == "true" ]]; then
+  build_backend() {
+    local features="$1"
+    local build_log
+    build_log="$(mktemp)"
+    trap "rm -f '$build_log'" RETURN
+    if [[ -n "$features" ]]; then
+      cargo build --release -p ectoledger --features "$features" --manifest-path "$SCRIPT_DIR/Cargo.toml" > "$build_log" 2>&1
+    else
+      cargo build --release -p ectoledger --manifest-path "$SCRIPT_DIR/Cargo.toml" > "$build_log" 2>&1
+    fi
+    local rc=$?
+    grep -E "^(error|warning\[|Compiling|Finished)" "$build_log" || true
+    return $rc
+  }
+
+  info "Building Ecto Ledger (release mode) — this takes ~2 minutes on first run…"
+  if [[ "$FLAG_ENCLAVE" == "true" ]]; then
+    if ! build_backend "sandbox-apple-enclave"; then
+      warn "Apple enclave build failed. Building without enclave (standard mode)…"
+      build_backend "" || { error "Backend build failed."; exit 1; }
+    fi
+  else
+    build_backend "" || { error "Backend build failed."; exit 1; }
+  fi
+  if [[ ! -f "$BINARY" ]]; then
+    error "Build appeared to succeed but binary not found at: $BINARY"
+    error "Try: cargo build --release -p ectoledger"
+    exit 1
+  fi
+  success "Backend built → target/release/ectoledger"
+  else
+    success "Backend already built — skipping (use --rebuild to force)"
+  fi
+fi
+
+# ── 4. GUI dependencies ──────────────────────────────────────────────────────
+if [[ "$FLAG_BACKEND_ONLY" == "false" ]]; then
+  step "GUI dependencies"
+  if [[ "$FLAG_START" == "true" ]]; then
+    success "node_modules already present — fast-start mode"
+  elif [[ ! -d "$GUI_DIR/node_modules" ]]; then
+    info "Installing npm packages…"
+    npm install --prefix "$GUI_DIR" --silent
+    success "npm packages installed"
+  else
+    success "node_modules already present — skipping"
+  fi
+fi
+
+# ── 5. Launch app (always) ───────────────────────────────────────────────────
+# Note: --setup used to exit here.  It now falls through so the GUI launches
+# and the user sees the wizard (marker was deleted above).
+
+# ── 5b. Guard auto-detection ─────────────────────────────────────────────────
+# If GUARD_REQUIRED is still "true" (default from .env or config) but the
+# operator hasn't set GUARD_LLM_BACKEND and GUARD_LLM_MODEL, the session-
+# creation handler will fail with a 500.  Gracefully downgrade to no-guard
+# rather than presenting a cryptic error.
+if [[ "${GUARD_REQUIRED:-true}" == "true" ]] && { [[ -z "${GUARD_LLM_BACKEND:-}" ]] || [[ -z "${GUARD_LLM_MODEL:-}" ]]; }; then
+  export GUARD_REQUIRED="false"
+  warn "GUARD_LLM_BACKEND / GUARD_LLM_MODEL not set — disabling guard.  Set both to enable it."
+fi
+
+# ── 6. Start backend ─────────────────────────────────────────────────────────
+step "Starting backend"
+
+BIND_PORT="${ECTO_BIND_PORT:-3000}"
+
+if [[ -z "${OBSERVER_TOKEN:-}" ]]; then
+  OBSERVER_TOKEN=$(openssl rand -hex 32 2>/dev/null || head -c 32 /dev/urandom | xxd -p -c 32)
+  export OBSERVER_TOKEN
+  warn "No OBSERVER_TOKEN set. Generated token for this session."
+  echo -e "  Dashboard: ${CYAN}http://127.0.0.1:${BIND_PORT}?token=${OBSERVER_TOKEN}${RESET}"
+  echo ""
+fi
+
+if [[ -f "$PID_FILE" ]]; then
+  OLD_PID="$(cat "$PID_FILE")"
+  if kill -0 "$OLD_PID" 2>/dev/null; then
+    info "Stopping previous backend (PID $OLD_PID) and child processes…"
+    kill -- -"$OLD_PID" 2>/dev/null || kill "$OLD_PID" 2>/dev/null || true
+    sleep 1
+    kill -9 -- -"$OLD_PID" 2>/dev/null || kill -9 "$OLD_PID" 2>/dev/null || true
+  fi
+  rm -f "$PID_FILE"
+fi
+
+# Kill any orphaned embedded PG on the demo port before starting.
+if [[ "${FLAG_DEMO:-false}" == "true" ]]; then
+  lsof -ti:5433 2>/dev/null | xargs kill -9 2>/dev/null || true
+  sleep 1
+fi
+
+# ── Pre-Extract pg-embed binaries ────────────────────────────────────────────
+# pg-embed 0.7 / archiver_rs 0.5 fail to unzip Maven JAR files.  Pre-extract
+# the PostgreSQL binaries so pg-embed finds them and skips its broken extractor.
+PG_EMBED_LIB_DIR=""
+ensure_pg_embed_binaries
+
+info "Starting backend on http://127.0.0.1:${BIND_PORT} (logs → ectoledger.log)…"
+# Scope DYLD_LIBRARY_PATH to the backend process only so pg-embed's bundled
+# libs do not leak into the Tauri GUI process.
+DYLD_LIBRARY_PATH="${PG_EMBED_LIB_DIR:+$PG_EMBED_LIB_DIR:}${DYLD_LIBRARY_PATH:-}" "$BINARY" serve >> "$LOG_FILE" 2>&1 &
+BACKEND_PID=$!
+echo "$BACKEND_PID" > "$PID_FILE"
+
+# ── Pre-flight: detect port conflicts early ─────────────────────────────────
+PREFLIGHT_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 1 http://127.0.0.1:${BIND_PORT}/api/status 2>/dev/null || true)
+if [[ "$PREFLIGHT_CODE" != "000" && -n "$PREFLIGHT_CODE" ]]; then
+  sleep 3
+  if ! kill -0 "$BACKEND_PID" 2>/dev/null; then
+    error "Port ${BIND_PORT} is already in use by another process."
+    error "Find it with:  lsof -ti:${BIND_PORT}"
+    error "Kill it with:  lsof -ti:${BIND_PORT} | xargs kill"
+    exit 1
+  fi
+fi
+
+WAIT_SECS=120
+READY=false
+for i in $(seq 1 $WAIT_SECS); do
+  HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 2 http://127.0.0.1:${BIND_PORT}/api/status 2>/dev/null || true)
+  if [[ "$HTTP_CODE" == "200" ]]; then
+    READY=true
+    break
+  fi
+  if ! kill -0 "$BACKEND_PID" 2>/dev/null; then
+    error "Backend process died. Check ectoledger.log for details:"
+    tail -20 "$LOG_FILE" >&2
+    echo "" >&2
+    if grep -q 'password authentication failed\|Role.*does not exist\|EmbeddedSetup\|VersionMismatch' "$LOG_FILE" 2>/dev/null; then
+      if [[ "$FLAG_DEMO" == "true" ]]; then
+        error "Fix with: ${BOLD}./ectoledger-mac --demo --reset-db${RESET}"
+      else
+        error "Fix with: ${BOLD}./ectoledger-mac --reset-db${RESET}"
+      fi
+    elif grep -q 'address already in use\|port.*'"${BIND_PORT}" "$LOG_FILE" 2>/dev/null; then
+      error "  lsof -ti:${BIND_PORT} | xargs kill"
+    fi
+    exit 1
+  fi
+  sleep 1
+  SPIN=('⠋' '⠙' '⠹' '⠸' '⠼' '⠴' '⠦' '⠧' '⠇' '⠏')
+  printf "  %s Starting backend… %ds\r" "${SPIN[$((i % 10))]}" "$i"
+done
+echo ""
+
+if [[ "$READY" == "false" ]]; then
+  error "Backend did not become healthy within ${WAIT_SECS}s. Check ectoledger.log:"
+  tail -20 "$LOG_FILE" >&2
+  exit 1
+fi
+
+success "Backend healthy at http://127.0.0.1:${BIND_PORT}  (PID $BACKEND_PID)"
+echo ""
+echo -e "  ${CYAN}Observer dashboard:${RESET} http://127.0.0.1:${BIND_PORT}"
+echo -e "  ${CYAN}Backend logs:${RESET}       tail -f ectoledger.log"
+echo ""
+
+# ── 7. Start GUI or wait ─────────────────────────────────────────────────────
+if [[ "$FLAG_BACKEND_ONLY" == "true" ]]; then
+  step "Backend-only mode"
+  info "Backend is running. Press Ctrl+C to stop."
+  echo ""
+  echo -e "  ${BOLD}cargo run --bin ectoledger -- audit \"<your prompt>\"${RESET}"
+  echo ""
+  wait "$BACKEND_PID" 2>/dev/null || true
+else
+  step "Launching GUI"
+  if lsof -ti:1420 &>/dev/null; then
+    info "Stopping previous dev server on port 1420…"
+    lsof -ti:1420 | xargs kill 2>/dev/null || true
+    sleep 1
+  fi
+  # Tell the Tauri GUI to route all API calls to the standalone backend
+  # instead of its own embedded SQLite server.  This ensures the GUI uses
+  # the same Postgres database and OBSERVER_TOKEN that the backend knows.
+  export ECTO_HOST="http://127.0.0.1:${BIND_PORT}"
+  info "Starting Tauri desktop app…"
+  echo ""
+  cd "$GUI_DIR"
+  npm run tauri dev
+fi

@@ -5,44 +5,73 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Ecto Ledger — Observer</title>
   <style>
-    * { box-sizing: border-box; }
+    /* ── Reset & Base ─────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; overflow: hidden; }
     body {
-      margin: 0;
       background: #0d1117;
       color: #c9d1d9;
-      font-family: "SF Mono", "Fira Code", "Consolas", monospace;
+      font-family: "SF Mono", "Cascadia Code", "Fira Code", "Consolas", monospace;
       font-size: 13px;
       line-height: 1.5;
-      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      grid-template-rows: auto 1fr;
     }
+    /* Firefox */
+    * { scrollbar-width: thin; scrollbar-color: #30363d #0d1117; }
+    /* Chrome / Safari / Edge */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #0d1117; }
+    ::-webkit-scrollbar-thumb { background: #30363d; border-radius: 3px; }
+
+    /* ── Header ───────────────────────────────────────────────────── */
     .header {
-      padding: 12px 16px;
-      border-bottom: 1px solid #21262d;
-      background: #161b22;
-    }
-    .header h1 {
-      margin: 0;
-      font-size: 14px;
-      font-weight: 600;
-      color: #58a6ff;
-    }
-    .header-row {
-      margin-top: 8px;
+      grid-column: 1 / -1;
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 12px;
+      padding: 14px 24px;
+      background: #161b22;
+      border-bottom: 1px solid #21262d;
+      flex-wrap: wrap;
     }
-    .header-row label { font-size: 12px; color: #8b949e; }
-    .header-row select {
+    .header h1 { font-size: 16px; font-weight: 600; color: #58a6ff; white-space: nowrap; flex: 1; }
+    .header-status {
+      font-size: 11px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .status-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      display: inline-block;
+      background: #8b949e;
+    }
+    .status-dot.live { background: #3fb950; }
+    .status-dot.connecting { background: #d29922; animation: pulse 1.2s infinite; }
+    .status-dot.error { background: #f85149; }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .4; } }
+    .header-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+    .btn {
+      font-family: inherit;
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 4px;
+      border: 1px solid #30363d;
       background: #21262d;
       color: #c9d1d9;
-      border: 1px solid #30363d;
-      padding: 4px 8px;
-      font-size: 12px;
-      min-width: 200px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background .15s;
     }
+    .btn:hover { background: #30363d; }
+    .btn-primary { background: #238636; border-color: #2ea043; color: #fff; }
+    .btn-primary:hover { background: #2ea043; }
+    .btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+    .btn-danger { background: #da3633; border-color: #f85149; color: #fff; }
     .metrics-link {
-      margin-left: auto;
       font-size: 11px;
       color: #58a6ff;
       text-decoration: none;
@@ -51,198 +80,1006 @@
       border-radius: 3px;
     }
     .metrics-link:hover { background: #21262d; }
-    .session-goal {
-      font-size: 11px;
+
+    /* ── Sidebar — Session List ───────────────────────────────────── */
+    .sidebar {
+      grid-row: 2;
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid #21262d;
+      background: #0d1117;
+      min-height: 0;
+    }
+    .sidebar-header {
+      padding: 14px 16px 10px;
+      border-bottom: 1px solid #21262d;
+    }
+    .sidebar-header h2 {
+      font-size: 12px;
+      font-weight: 600;
       color: #8b949e;
-      max-width: 40%;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      margin-bottom: 8px;
+    }
+    .search-input {
+      width: 100%;
+      padding: 5px 8px;
+      font-family: inherit;
+      font-size: 12px;
+      background: #161b22;
+      color: #c9d1d9;
+      border: 1px solid #30363d;
+      border-radius: 4px;
+      outline: none;
+    }
+    .search-input:focus { border-color: #58a6ff; }
+    .filter-bar {
+      display: flex;
+      gap: 4px;
+      margin-top: 8px;
+      flex-wrap: wrap;
+    }
+    .filter-btn {
+      font-family: inherit;
+      font-size: 10px;
+      padding: 2px 7px;
+      border-radius: 12px;
+      border: 1px solid #30363d;
+      background: transparent;
+      color: #8b949e;
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .filter-btn:hover { border-color: #58a6ff; color: #c9d1d9; }
+    .filter-btn.active { background: #58a6ff; color: #0d1117; border-color: #58a6ff; }
+    .session-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px 8px;
+    }
+    .session-card {
+      padding: 12px;
+      margin-bottom: 6px;
+      border-radius: 6px;
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: background .12s, border-color .12s;
+    }
+    .session-card:hover { background: #161b22; }
+    .session-card.active { background: #161b22; border-color: #58a6ff; }
+    .session-card-top {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .session-status-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .session-status-dot.running { background: #3fb950; animation: pulse 1.5s infinite; }
+    .session-status-dot.completed { background: #58a6ff; }
+    .session-status-dot.failed { background: #f85149; }
+    .session-status-dot.aborted { background: #8b949e; }
+    .session-goal-text {
+      font-size: 12px;
+      color: #c9d1d9;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      flex: 1;
+    }
+    .session-meta {
+      margin-top: 4px;
+      font-size: 10px;
+      color: #8b949e;
+      display: flex;
+      gap: 8px;
+    }
+    .session-empty {
+      padding: 24px 12px;
+      text-align: center;
+      color: #484f58;
+      font-size: 12px;
+    }
+
+    /* ── Main — Event Timeline ────────────────────────────────────── */
+    .main {
+      grid-row: 2;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+    .main-empty {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex: 1;
+      color: #484f58;
+      font-size: 13px;
+    }
+    .detail-header {
+      padding: 14px 20px;
+      border-bottom: 1px solid #21262d;
+      background: #161b22;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .detail-goal {
+      flex: 1;
+      font-size: 12px;
+      color: #c9d1d9;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
     }
-    .header .status {
-      margin-top: 4px;
+    .detail-status {
       font-size: 11px;
-      color: #8b949e;
+      padding: 2px 8px;
+      border-radius: 12px;
+      text-transform: uppercase;
+      font-weight: 600;
+      letter-spacing: .3px;
     }
-    .terminal {
-      padding: 16px;
-      height: calc(100vh - 60px);
+    .detail-status.running { background: rgba(63,185,80,.15); color: #3fb950; }
+    .detail-status.completed { background: rgba(88,166,255,.15); color: #58a6ff; }
+    .detail-status.failed { background: rgba(248,81,73,.15); color: #f85149; }
+    .detail-status.aborted { background: rgba(139,148,158,.15); color: #8b949e; }
+
+    /* ── Verify banner ────────────────────────────────────────────── */
+    .verify-banner {
+      padding: 8px 16px;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      animation: slidein .2s ease;
+    }
+    @keyframes slidein { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+    .verify-banner.pass { background: rgba(63,185,80,.12); color: #3fb950; border-bottom: 1px solid rgba(63,185,80,.2); }
+    .verify-banner.fail { background: rgba(248,81,73,.12); color: #f85149; border-bottom: 1px solid rgba(248,81,73,.2); }
+    .verify-banner.running { background: rgba(210,153,34,.12); color: #d29922; border-bottom: 1px solid rgba(210,153,34,.2); }
+
+    /* ── Timeline ─────────────────────────────────────────────────── */
+    .timeline-scroll {
+      flex: 1;
       overflow-y: auto;
+      padding: 16px 16px 16px 36px;
     }
-    .event {
-      margin-bottom: 12px;
-      padding: 10px 12px;
-      border-radius: 4px;
+    .timeline-event {
+      position: relative;
+      margin-bottom: 2px;
+      padding: 10px 12px 10px 18px;
+      border-radius: 6px;
       border-left: 3px solid #21262d;
       background: #161b22;
+      transition: background .12s;
     }
-    .event.genesis { border-left-color: #3fb950; }
-    .event.thought { border-left-color: #58a6ff; }
-    .event.action { border-left-color: #d29922; }
-    .event.observation { border-left-color: #a371f7; }
-    .event.security-alert { border-left-color: #f85149; background: #1a0a0a; }
-    .event-meta {
-      font-size: 11px;
-      color: #8b949e;
+    .timeline-event:hover { background: #1c2128; }
+    /* Vertical connector line */
+    .timeline-event::before {
+      content: '';
+      position: absolute;
+      left: -20px;
+      top: 0;
+      bottom: -2px;
+      width: 2px;
+      background: #21262d;
+    }
+    .timeline-event:last-child::before { bottom: 50%; }
+    /* Dot on timeline */
+    .timeline-event::after {
+      content: '';
+      position: absolute;
+      left: -24px;
+      top: 16px;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #30363d;
+      border: 2px solid #0d1117;
+    }
+    /* Event type colors */
+    .timeline-event.genesis { border-left-color: #a371f7; }
+    .timeline-event.genesis::after { background: #a371f7; }
+    .timeline-event.prompt_input { border-left-color: #3fb950; }
+    .timeline-event.prompt_input::after { background: #3fb950; }
+    .timeline-event.thought { border-left-color: #58a6ff; }
+    .timeline-event.thought::after { background: #58a6ff; }
+    .timeline-event.action { border-left-color: #d29922; }
+    .timeline-event.action::after { background: #d29922; }
+    .timeline-event.observation { border-left-color: #a371f7; }
+    .timeline-event.observation::after { background: #a371f7; }
+    .timeline-event.schema_error { border-left-color: #f85149; background: #200d0d; }
+    .timeline-event.schema_error::after { background: #f85149; }
+    .timeline-event.circuit_breaker { border-left-color: #f85149; background: #200d0d; }
+    .timeline-event.circuit_breaker::after { background: #f85149; }
+    .timeline-event.approval_required { border-left-color: #f0883e; }
+    .timeline-event.approval_required::after { background: #f0883e; }
+    .timeline-event.approval_decision { border-left-color: #3fb950; }
+    .timeline-event.approval_decision::after { background: #3fb950; }
+    .timeline-event.anchor { border-left-color: #a371f7; }
+    .timeline-event.anchor::after { background: #a371f7; }
+    .timeline-event.key_rotation { border-left-color: #58a6ff; }
+    .timeline-event.key_rotation::after { background: #58a6ff; }
+    .timeline-event.verifiable_credential { border-left-color: #a371f7; }
+    .timeline-event.verifiable_credential::after { background: #a371f7; }
+    .timeline-event.cross_ledger_seal { border-left-color: #58a6ff; }
+    .timeline-event.cross_ledger_seal::after { background: #58a6ff; }
+    .timeline-event.chat_message { border-left-color: #8b949e; }
+    .timeline-event.chat_message::after { background: #8b949e; }
+
+    .event-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
       margin-bottom: 4px;
     }
-    .event-payload {
-      white-space: pre-wrap;
-      word-break: break-all;
-      color: #c9d1d9;
+    .event-seq {
+      font-size: 10px;
+      color: #484f58;
+      min-width: 28px;
     }
-    .connecting { color: #d29922; }
-    .live { color: #3fb950; }
-    .error { color: #f85149; }
-    .findings-table { margin-top: 8px; width: 100%; border-collapse: collapse; font-size: 12px; }
-    .findings-table th, .findings-table td { padding: 6px 8px; text-align: left; border: 1px solid #30363d; }
+    .event-type-badge {
+      font-size: 10px;
+      padding: 1px 6px;
+      border-radius: 3px;
+      background: #21262d;
+      color: #8b949e;
+      text-transform: uppercase;
+      letter-spacing: .3px;
+      font-weight: 600;
+    }
+    .event-time {
+      font-size: 10px;
+      color: #484f58;
+      margin-left: auto;
+    }
+    .event-verify-icon {
+      font-size: 12px;
+      margin-left: 4px;
+    }
+    .event-verify-icon.pass { color: #3fb950; }
+    .event-verify-icon.fail { color: #f85149; }
+    .event-body {
+      font-size: 12px;
+      color: #c9d1d9;
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-height: 120px;
+      overflow: hidden;
+      position: relative;
+      transition: max-height .2s;
+    }
+    .event-body.expanded { max-height: none; }
+    .event-body-toggle {
+      font-size: 10px;
+      color: #58a6ff;
+      cursor: pointer;
+      margin-top: 2px;
+      display: inline-block;
+    }
+
+    /* ── Hash chain visualisation ─────────────────────────────────── */
+    .hash-chain {
+      margin-top: 6px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 10px;
+      font-family: inherit;
+    }
+    .hash-block {
+      padding: 2px 6px;
+      border-radius: 3px;
+      background: #21262d;
+      color: #8b949e;
+      cursor: default;
+    }
+    .hash-block.prev { border: 1px solid #30363d; }
+    .hash-block.current { border: 1px solid #58a6ff; color: #58a6ff; }
+    .hash-arrow { color: #484f58; }
+
+    /* ── Findings table ───────────────────────────────────────────── */
+    .findings-table { margin-top: 8px; width: 100%; border-collapse: collapse; font-size: 11px; }
+    .findings-table th, .findings-table td { padding: 5px 8px; text-align: left; border: 1px solid #30363d; }
     .findings-table th { background: #21262d; color: #8b949e; }
-    .severity-low { color: #3fb950; }
-    .severity-medium { color: #d29922; }
-    .severity-high { color: #f85149; }
-    .severity-critical { color: #f85149; font-weight: bold; }
+    .sev-low { color: #3fb950; }
+    .sev-medium { color: #d29922; }
+    .sev-high { color: #f85149; }
+    .sev-critical { color: #f85149; font-weight: bold; }
+
+    /* ── Sidebar toggle (collapse/expand sessions) ────────────────── */
+    .sidebar-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 6px;
+      cursor: pointer;
+      color: #8b949e;
+      font-size: 11px;
+      border-top: 1px solid #21262d;
+      background: #161b22;
+      flex-shrink: 0;
+      user-select: none;
+    }
+    .sidebar-toggle:hover { color: #c9d1d9; background: #21262d; }
+    /* When collapsed, hide children but keep toggle visible */
+    .sidebar.collapsed .sidebar-header { display: none; }
+    .sidebar.collapsed .session-list { display: none; }
+
+    /* ── Responsive: single column ────────────────────────────────── */
+    @media (max-width: 768px) {
+      body { grid-template-columns: 1fr; }
+      .sidebar { max-height: 35vh; border-right: none; border-bottom: 1px solid #21262d; }
+    }
+
+    /* ── Auth prompt ──────────────────────────────────────────────── */
+    .auth-prompt {
+      grid-column: 1 / -1;
+      grid-row: 2;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #8b949e;
+      font-size: 13px;
+    }
   </style>
 </head>
 <body>
-  <div class="header">
-    <h1>Ecto Ledger — Real Time Observer</h1>
-    <div class="header-row">
-      <label for="session">Session:</label>
-      <select id="session">
-        <option value="">All events</option>
-      </select>
-      <span id="session-goal" class="session-goal"></span>
-      <a id="metrics-link" href="/metrics" target="_blank" class="metrics-link">Prometheus metrics</a>
+  <!-- ── Header ──────────────────────────────────────────────────── -->
+  <header class="header">
+    <h1>Ecto Ledger — Observer</h1>
+    <div class="header-status">
+      <span class="status-dot" id="status-dot"></span>
+      <span id="status-text">Initialising…</span>
     </div>
-    <div class="status" id="status">Connecting to stream…</div>
-  </div>
-  <div class="terminal" id="terminal"></div>
+    <div class="header-actions">
+      <a id="metrics-link" href="/metrics" target="_blank" class="metrics-link" role="button">Prometheus metrics</a>
+    </div>
+  </header>
+
+  <!-- ── Sidebar ─────────────────────────────────────────────────── -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <h2>Sessions</h2>
+      <input type="text" class="search-input" id="session-search" placeholder="Filter sessions…" autocomplete="off" spellcheck="false">
+      <div class="filter-bar">
+        <button class="filter-btn active" data-filter="all">All</button>
+        <button class="filter-btn" data-filter="running">Running</button>
+        <button class="filter-btn" data-filter="completed">Completed</button>
+        <button class="filter-btn" data-filter="failed">Failed</button>
+      </div>
+    </div>
+    <div class="session-list" id="session-list">
+      <div class="session-empty">Loading sessions…</div>
+    </div>
+    <div class="sidebar-toggle" id="sidebar-toggle">▲ Sessions</div>
+  </aside>
+
+  <!-- ── Main content ────────────────────────────────────────────── -->
+  <main class="main" id="main">
+    <div class="main-empty" id="main-empty">Select a session to view its event timeline</div>
+  </main>
+
   <script>
-    const terminal = document.getElementById('terminal');
-    const statusEl = document.getElementById('status');
-    const sessionSelect = document.getElementById('session');
-    const sessionGoalEl = document.getElementById('session-goal');
-    let lastId = 0;
-    let sessions = [];
-    let currentEs = null;
+  (function () {
+    'use strict';
 
-    // Extract auth token from the page URL so all API calls include it.
-    const _params = new URLSearchParams(window.location.search);
-    const _token = _params.get('token') || '';
+    /* ── DOM refs ────────────────────────────────────────────────── */
+    var statusDot   = document.getElementById('status-dot');
+    var statusText  = document.getElementById('status-text');
+    var metricsLink = document.getElementById('metrics-link');
+    var sidebar     = document.getElementById('sidebar');
+    var searchInput = document.getElementById('session-search');
+    var sessionList = document.getElementById('session-list');
+    var mainEl      = document.getElementById('main');
+    var mainEmpty   = document.getElementById('main-empty');
+    var sideToggle  = document.getElementById('sidebar-toggle');
+
+    /* ── State ───────────────────────────────────────────────────── */
+    var sessions        = [];
+    var activeSessionId = null;
+    var activeSession   = null;
+    var events          = [];
+    var lastSseId       = 0;
+    var currentEs       = null;
+    var statusFilter    = 'all';
+    var searchQuery     = '';
+    var verifyResults   = {};   // seq -> 'pass' | 'fail'
+    var verifyBanner    = null; // { type, text }
+
+    /* ── Auth ────────────────────────────────────────────────────── */
+    var _params = new URLSearchParams(window.location.search);
+    var _token  = _params.get('token') || '';
+
+    function authHeaders() {
+      if (!_token) return {};
+      return { 'Authorization': 'Bearer ' + _token };
+    }
     function authQuery(base) {
+      if (!_token) return base;
       var sep = base.indexOf('?') === -1 ? '?' : '&';
-      return _token ? base + sep + 'token=' + encodeURIComponent(_token) : base;
+      return base + sep + 'token=' + encodeURIComponent(_token);
     }
 
-    // Update the metrics link to include the auth token.
-    document.getElementById('metrics-link').href = authQuery('/metrics');
+    // Accept token from Tauri parent frame via postMessage.
+    window.addEventListener('message', function (e) {
+      if (e.data && e.data.type === 'ectoledgerSetToken' && typeof e.data.token === 'string') {
+        _token = e.data.token;
+        metricsLink.href = authQuery('/metrics');
+        loadSessions();
+      }
+    });
 
-    function setStatus(msg, className) {
-      statusEl.textContent = msg;
-      statusEl.className = 'status ' + (className || '');
+    // Metrics link: when embedded in iframe, navigate parent tab instead.
+    (function () {
+      if (window.parent && window.parent !== window) {
+        metricsLink.style.display = 'none';
+      }
+      metricsLink.href = authQuery('/metrics');
+      metricsLink.addEventListener('click', function (ev) {
+        if (window.self !== window.top) {
+          ev.preventDefault();
+          ev.stopPropagation();
+          window.top.postMessage({ type: 'ectoledgerNavigateToTab', tab: 'metrics' }, '*');
+        }
+      });
+    })();
+
+    /* ── Responsive sidebar toggle ───────────────────────────────── */
+    sideToggle.addEventListener('click', function () {
+      sidebar.classList.toggle('collapsed');
+      sideToggle.textContent = sidebar.classList.contains('collapsed') ? '\u25BC Sessions' : '\u25B2 Sessions';
+    });
+
+    /* ── Helpers ─────────────────────────────────────────────────── */
+    function esc(s) {
+      var d = document.createElement('div');
+      d.textContent = s;
+      return d.innerHTML;
+    }
+    function setStatus(msg, state) {
+      statusText.textContent = msg;
+      statusDot.className = 'status-dot ' + (state || '');
+    }
+    function fmtType(t) {
+      return (t || '').replace(/_/g, ' ').replace(/\b\w/g, function (c) { return c.toUpperCase(); });
+    }
+    function fmtTime(iso) {
+      try { return new Date(iso).toLocaleString(); } catch (_) { return iso; }
+    }
+    function shortHash(h) {
+      return h ? h.substring(0, 8) : '—';
+    }
+    function sevClass(s) {
+      s = (s || '').toLowerCase();
+      if (s === 'critical') return 'sev-critical';
+      if (s === 'high')     return 'sev-high';
+      if (s === 'medium')   return 'sev-medium';
+      return 'sev-low';
     }
 
-    function severityClass(sev) {
-      if (!sev) return '';
-      const s = (sev + '').toLowerCase();
-      if (s === 'critical') return 'severity-critical';
-      if (s === 'high') return 'severity-high';
-      if (s === 'medium') return 'severity-medium';
-      return 'severity-low';
+    /* ── Canonical payload JSON (matches Rust serde serialisation) ── */
+    // serde #[serde(tag = "type", rename_all = "snake_case")] puts the
+    // "type" key first, then struct fields in declaration order.
+    // serde_json without preserve_order serialises Value objects with
+    // BTreeMap (alphabetical).  ChatMessage uses skip_serializing_if
+    // on backend / model.
+    var FIELD_ORDER = {
+      genesis:                 ['type','message'],
+      prompt_input:            ['type','content'],
+      thought:                 ['type','content'],
+      schema_error:            ['type','message','attempt','max_attempts'],
+      circuit_breaker:         ['type','reason','consecutive_failures'],
+      action:                  ['type','name','params'],
+      observation:             ['type','content'],
+      approval_required:       ['type','gate_id','action_name','action_params_summary'],
+      approval_decision:       ['type','gate_id','approved','reason'],
+      cross_ledger_seal:       ['type','seal_hash','session_ids','session_tip_hashes'],
+      anchor:                  ['type','ledger_tip_hash','ots_proof_hex','bitcoin_block_height'],
+      key_rotation:            ['type','new_public_key','rotation_index'],
+      verifiable_credential:   ['type','vc_jwt'],
+      chat_message:            ['type','role','content','backend','model']
+    };
+    // Fields that serde skips when null (skip_serializing_if = "Option::is_none")
+    var SKIP_IF_NONE = { chat_message: { backend: true, model: true } };
+
+    // Recursively serialise a serde_json::Value-like JS value with
+    // alphabetical key ordering (BTreeMap default in Rust).
+    function canonicalValue(v) {
+      if (v === null || v === undefined) return 'null';
+      if (typeof v === 'boolean') return v ? 'true' : 'false';
+      if (typeof v === 'number') {
+        // serde_json formats integers without decimal, floats with minimal repr
+        if (Number.isInteger(v)) return String(v);
+        return JSON.stringify(v);
+      }
+      if (typeof v === 'string') return JSON.stringify(v);
+      if (Array.isArray(v)) {
+        return '[' + v.map(canonicalValue).join(',') + ']';
+      }
+      // Object: sort keys alphabetically (BTreeMap)
+      var keys = Object.keys(v).sort();
+      var parts = [];
+      for (var i = 0; i < keys.length; i++) {
+        parts.push(JSON.stringify(keys[i]) + ':' + canonicalValue(v[keys[i]]));
+      }
+      return '{' + parts.join(',') + '}';
     }
 
-    function appendEvent(data) {
-      const type = (data.payload && data.payload.type) || 'unknown';
-      const pl = data.payload;
-      const isSecurityAlert = pl && type === 'thought' && typeof pl.content === 'string' && pl.content.indexOf('Security:') === 0;
-      const meta = `#${data.id} seq=${data.sequence} ${data.created_at || ''}`;
-      const payload = typeof data.payload === 'string'
-        ? data.payload
-        : JSON.stringify(data.payload, null, 2);
-      const div = document.createElement('div');
-      div.className = 'event ' + (isSecurityAlert ? 'security-alert' : (type.replace('_', '') || ''));
-      let inner = '<div class="event-meta">' + escapeHtml(meta) + ' [' + escapeHtml(type) + ']</div>' +
-        '<div class="event-payload">' + escapeHtml(payload) + '</div>';
-      if (pl && pl.type === 'action' && pl.name === 'complete' && Array.isArray(pl.params && pl.params.findings)) {
-        const findings = pl.params.findings;
-        inner += '<table class="findings-table"><thead><tr><th>Severity</th><th>Title</th><th>Evidence</th><th>Recommendation</th></tr></thead><tbody>';
-        findings.forEach(function (f) {
-          const sev = (f.severity || 'low') + '';
-          inner += '<tr><td class="' + severityClass(sev) + '">' + escapeHtml(sev) + '</td><td>' + escapeHtml(f.title || '') + '</td><td>' + escapeHtml(f.evidence || '') + '</td><td>' + escapeHtml(f.recommendation || '') + '</td></tr>';
+    // Build the canonical JSON string for an EventPayload, matching
+    // Rust's serde_json::to_string(&EventPayload).
+    function canonicalPayloadJson(payload) {
+      if (!payload || typeof payload !== 'object') return JSON.stringify(payload);
+      var t = payload.type;
+      var order = FIELD_ORDER[t];
+      if (!order) {
+        // Unknown type — fall back to alphabetical (may not match)
+        return canonicalValue(payload);
+      }
+      var skips = SKIP_IF_NONE[t] || {};
+      var parts = [];
+      for (var i = 0; i < order.length; i++) {
+        var k = order[i];
+        var val = payload[k];
+        // skip_serializing_if = "Option::is_none": omit if null/undefined
+        if (skips[k] && (val === null || val === undefined)) continue;
+        parts.push(JSON.stringify(k) + ':' + canonicalValue(val));
+      }
+      return '{' + parts.join(',') + '}';
+    }
+
+    /* ── SHA-256 via SubtleCrypto ────────────────────────────────── */
+    function sha256hex(str) {
+      var buf = new TextEncoder().encode(str);
+      return crypto.subtle.digest('SHA-256', buf).then(function (ab) {
+        var arr = new Uint8Array(ab);
+        var hex = '';
+        for (var i = 0; i < arr.length; i++) {
+          hex += arr[i].toString(16).padStart(2, '0');
+        }
+        return hex;
+      });
+    }
+
+    var ZERO_HASH = '0000000000000000000000000000000000000000000000000000000000000000';
+
+    /* ── Chain verification ──────────────────────────────────────── */
+    async function verifyChain() {
+      if (!activeSessionId) return;
+      verifyResults = {};
+      verifyBanner = { type: 'running', text: 'Verifying hash chain\u2026' };
+      renderMain();
+
+      try {
+        var resp = await fetch(authQuery('/api/events?session_id=' + encodeURIComponent(activeSessionId)), {
+          headers: authHeaders()
         });
-        inner += '</tbody></table>';
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        var evts = await resp.json();
+        evts.sort(function (a, b) { return a.sequence - b.sequence; });
+
+        var expectedPrev = ZERO_HASH;
+        for (var i = 0; i < evts.length; i++) {
+          var ev = evts[i];
+          if (ev.previous_hash !== expectedPrev) {
+            verifyResults[ev.sequence] = 'fail';
+            verifyBanner = {
+              type: 'fail',
+              text: 'Chain broken at seq ' + ev.sequence + ' \u2014 previous_hash mismatch (expected ' + shortHash(expectedPrev) + '\u2026 got ' + shortHash(ev.previous_hash) + '\u2026)'
+            };
+            renderMain();
+            return;
+          }
+          var input = ev.previous_hash + '\0' + String(ev.sequence) + '\0' + canonicalPayloadJson(ev.payload);
+          var computed = await sha256hex(input);
+          if (computed !== ev.content_hash) {
+            verifyResults[ev.sequence] = 'fail';
+            verifyBanner = {
+              type: 'fail',
+              text: 'Chain broken at seq ' + ev.sequence + ' \u2014 content_hash mismatch (expected ' + shortHash(computed) + '\u2026 got ' + shortHash(ev.content_hash) + '\u2026)'
+            };
+            renderMain();
+            return;
+          }
+          verifyResults[ev.sequence] = 'pass';
+          expectedPrev = ev.content_hash;
+        }
+        verifyBanner = {
+          type: 'pass',
+          text: 'Chain verified \u2014 ' + evts.length + ' event' + (evts.length !== 1 ? 's' : '') + ', all hashes valid'
+        };
+      } catch (err) {
+        verifyBanner = { type: 'fail', text: 'Verification error: ' + err.message };
       }
-      div.innerHTML = inner;
-      terminal.appendChild(div);
-      terminal.scrollTop = terminal.scrollHeight;
-      if (data.id > lastId) lastId = data.id;
+      renderMain();
     }
 
-    function escapeHtml(s) {
-      const div = document.createElement('div');
-      div.textContent = s;
-      return div.innerHTML;
+    /* ── API: Load sessions ──────────────────────────────────────── */
+    function loadSessions() {
+      fetch(authQuery('/api/sessions'), { headers: authHeaders() })
+        .then(function (r) {
+          if (!r.ok) throw new Error('HTTP ' + r.status);
+          return r.json();
+        })
+        .then(function (list) {
+          sessions = (list || []).sort(function (a, b) {
+            return new Date(b.created_at) - new Date(a.created_at);
+          });
+          renderSessions();
+          // If we had an active session, refresh its status
+          if (activeSessionId) {
+            activeSession = sessions.find(function (s) { return s.id === activeSessionId; }) || activeSession;
+          }
+          sseConnectGlobal();
+        })
+        .catch(function (err) {
+          sessionList.innerHTML = '<div class="session-empty">Failed to load sessions</div>';
+          sseConnectGlobal();
+        });
     }
 
-    function updateSessionGoal() {
-      const val = sessionSelect.value;
-      if (!val) {
-        sessionGoalEl.textContent = '';
-        return;
-      }
-      const s = sessions.find(function (x) { return x.id === val; });
-      sessionGoalEl.textContent = s ? 'Goal: ' + s.goal : '';
+    /* ── API: Load events for a session ──────────────────────────── */
+    function loadEvents(sessionId) {
+      activeSessionId = sessionId;
+      activeSession = sessions.find(function (s) { return s.id === sessionId; });
+      events = [];
+      verifyResults = {};
+      verifyBanner = null;
+      lastSseId = 0;
+      renderSessions();
+      // Show loading state instead of rendering empty detail header (prevents blink)
+      mainEl.innerHTML = '<div class="main-empty">Loading events\u2026</div>';
+
+      fetch(authQuery('/api/events?session_id=' + encodeURIComponent(sessionId)), { headers: authHeaders() })
+        .then(function (r) {
+          if (!r.ok) throw new Error('HTTP ' + r.status);
+          return r.json();
+        })
+        .then(function (list) {
+          events = (list || []).sort(function (a, b) { return a.sequence - b.sequence; });
+          for (var i = 0; i < events.length; i++) {
+            if (events[i].id > lastSseId) lastSseId = events[i].id;
+          }
+          renderMain();
+          scrollTimelineToBottom();
+          // Reconnect SSE filtered to this session
+          sseConnect();
+        })
+        .catch(function (err) {
+          mainEl.innerHTML = '<div class="main-empty">Error loading events: ' + esc(err.message) + '</div>';
+        });
     }
 
-    function connect() {
-      const sessionId = sessionSelect.value || '';
-      let url = '/api/stream?after=' + lastId;
-      if (sessionId) url += '&session_id=' + encodeURIComponent(sessionId);
+    /* ── SSE connection ──────────────────────────────────────────── */
+    var _sseRetries = 0;
+    function sseConnect() {
+      if (currentEs) { currentEs.close(); currentEs = null; }
+      // Stop global SSE when a session-specific stream is active
+      if (globalEs) { globalEs.close(); globalEs = null; }
+
+      var url = '/api/stream?after=' + lastSseId;
+      if (activeSessionId) url += '&session_id=' + encodeURIComponent(activeSessionId);
       url = authQuery(url);
-      if (currentEs) currentEs.close();
-      setStatus('Connecting…', 'connecting');
-      const es = new EventSource(url);
+
+      setStatus('Connecting\u2026', 'connecting');
+      var es = new EventSource(url);
       currentEs = es;
-      es.onopen = function () { setStatus('Live', 'live'); };
+
+      es.onopen = function () { setStatus('Live', 'live'); _sseRetries = 0; };
       es.onerror = function () {
-        setStatus('Reconnecting…', 'connecting');
+        setStatus('Reconnecting\u2026', 'connecting');
         es.close();
-        setTimeout(connect, 2000);
+        currentEs = null;
+        _sseRetries++;
+        var delay = Math.min(2000 * Math.pow(2, _sseRetries - 1), 30000);
+        setTimeout(sseConnect, delay);
       };
-      es.addEventListener('event', function (e) {
+      es.addEventListener('event', function (msg) {
         try {
-          const data = JSON.parse(e.data);
-          appendEvent(data);
+          var data = JSON.parse(msg.data);
+          handleSseEvent(data);
         } catch (err) {
-          console.error(err);
+          console.error('SSE parse error:', err);
         }
       });
     }
 
-    sessionSelect.addEventListener('change', function () {
-      updateSessionGoal();
-      lastId = 0;
-      terminal.innerHTML = '';
-      connect();
+    // Global SSE (no session filter) for detecting new sessions and
+    // updating status indicators in the sidebar.
+    var globalEs = null;
+    var _globalSseRetries = 0;
+    function sseConnectGlobal() {
+      if (globalEs) { globalEs.close(); globalEs = null; }
+      var url = authQuery('/api/stream?after=0');
+      setStatus('Connecting\u2026', 'connecting');
+      var es = new EventSource(url);
+      globalEs = es;
+      es.onopen = function () { setStatus('Live', 'live'); _globalSseRetries = 0; };
+      es.onerror = function () {
+        setStatus('Reconnecting\u2026', 'connecting');
+        es.close();
+        globalEs = null;
+        _globalSseRetries++;
+        var delay = Math.min(2000 * Math.pow(2, _globalSseRetries - 1), 30000);
+        setTimeout(sseConnectGlobal, delay);
+      };
+      es.addEventListener('event', function (msg) {
+        try {
+          var data = JSON.parse(msg.data);
+          // If this event belongs to the active session, add it to the timeline
+          if (activeSessionId && data.payload) {
+            // Detect session-level events
+            var pt = data.payload.type;
+            if (pt === 'genesis' || pt === 'prompt_input') {
+              // Might be a new session — refresh session list
+              refreshSessionsQuietly();
+            }
+          }
+        } catch (err) { /* ignore */ }
+      });
+    }
+
+    function handleSseEvent(data) {
+      if (data.id > lastSseId) lastSseId = data.id;
+      // Check if this event already exists
+      var exists = events.some(function (e) { return e.id === data.id; });
+      if (exists) return;
+      events.push(data);
+      events.sort(function (a, b) { return a.sequence - b.sequence; });
+      renderMain();
+      scrollTimelineToBottom();
+    }
+
+    var refreshTimer = null;
+    function refreshSessionsQuietly() {
+      if (refreshTimer) return;
+      refreshTimer = setTimeout(function () {
+        refreshTimer = null;
+        fetch(authQuery('/api/sessions'), { headers: authHeaders() })
+          .then(function (r) { return r.ok ? r.json() : []; })
+          .then(function (list) {
+            sessions = (list || []).sort(function (a, b) {
+              return new Date(b.created_at) - new Date(a.created_at);
+            });
+            if (activeSessionId) {
+              activeSession = sessions.find(function (s) { return s.id === activeSessionId; }) || activeSession;
+            }
+            renderSessions();
+          })
+          .catch(function () {});
+      }, 2000);
+    }
+
+    function scrollTimelineToBottom() {
+      var el = document.getElementById('timeline-scroll');
+      if (el) el.scrollTop = el.scrollHeight;
+    }
+
+    /* ── Render: Session list ────────────────────────────────────── */
+    function renderSessions() {
+      var q = searchQuery.toLowerCase();
+      var filtered = sessions.filter(function (s) {
+        if (statusFilter !== 'all' && s.status !== statusFilter) return false;
+        if (q && (s.goal || '').toLowerCase().indexOf(q) === -1 && s.id.indexOf(q) === -1) return false;
+        return true;
+      });
+
+      if (filtered.length === 0) {
+        sessionList.innerHTML = '<div class="session-empty">' +
+          (sessions.length === 0 ? 'No sessions yet' : 'No matching sessions') + '</div>';
+        return;
+      }
+
+      var html = '';
+      for (var i = 0; i < filtered.length; i++) {
+        var s = filtered[i];
+        var isActive = s.id === activeSessionId;
+        var goalText = s.goal || s.id;
+        if (goalText.length > 60) goalText = goalText.substring(0, 60) + '\u2026';
+        var backend = s.llm_backend || '';
+        var model = s.llm_model || '';
+        var metaStr = backend + (model ? ' / ' + model : '');
+
+        html += '<div class="session-card' + (isActive ? ' active' : '') + '" data-id="' + esc(s.id) + '">'
+          + '<div class="session-card-top">'
+          + '<span class="session-status-dot ' + esc(s.status) + '" title="' + esc(s.status) + '"></span>'
+          + '<span class="session-goal-text">' + esc(goalText) + '</span>'
+          + '</div>'
+          + '<div class="session-meta">'
+          + '<span>' + esc(fmtTime(s.created_at)) + '</span>'
+          + (metaStr ? '<span>' + esc(metaStr) + '</span>' : '')
+          + '</div>'
+          + '</div>';
+      }
+      sessionList.innerHTML = html;
+
+      // Attach click handlers
+      var cards = sessionList.querySelectorAll('.session-card');
+      for (var j = 0; j < cards.length; j++) {
+        cards[j].addEventListener('click', function () {
+          loadEvents(this.getAttribute('data-id'));
+        });
+      }
+    }
+
+    /* ── Render: Main panel ──────────────────────────────────────── */
+    function renderMain() {
+      if (!activeSessionId || !activeSession) {
+        mainEl.innerHTML = '<div class="main-empty" id="main-empty">Select a session to view its event timeline</div>';
+        return;
+      }
+
+      var s = activeSession;
+      var html = '';
+
+      // Detail header
+      html += '<div class="detail-header">';
+      html += '<span class="detail-status ' + esc(s.status) + '">' + esc(s.status) + '</span>';
+      html += '<span class="detail-goal" title="' + esc(s.goal || '') + '">' + esc(s.goal || s.id) + '</span>';
+      html += '<button class="btn btn-primary" id="verify-btn"'
+        + (events.length === 0 ? ' disabled' : '')
+        + '>\u2713 Verify Chain</button>';
+      html += '</div>';
+
+      // Verify banner
+      if (verifyBanner) {
+        html += '<div class="verify-banner ' + verifyBanner.type + '">';
+        if (verifyBanner.type === 'pass') html += '<span>\u2705</span>';
+        else if (verifyBanner.type === 'fail') html += '<span>\u274C</span>';
+        else html += '<span>\u23F3</span>';
+        html += '<span>' + esc(verifyBanner.text) + '</span>';
+        html += '</div>';
+      }
+
+      // Timeline
+      html += '<div class="timeline-scroll" id="timeline-scroll">';
+
+      if (events.length === 0) {
+        html += '<div class="main-empty">No events yet \u2014 waiting for SSE stream\u2026</div>';
+      }
+
+      for (var i = 0; i < events.length; i++) {
+        var ev = events[i];
+        var pl = ev.payload || {};
+        var evType = pl.type || 'unknown';
+        var vr = verifyResults[ev.sequence];
+
+        html += '<div class="timeline-event ' + esc(evType) + '">';
+
+        // Header row
+        html += '<div class="event-header">';
+        html += '<span class="event-seq">#' + ev.sequence + '</span>';
+        html += '<span class="event-type-badge">' + esc(fmtType(evType)) + '</span>';
+        html += '<span class="event-time">' + esc(fmtTime(ev.created_at)) + '</span>';
+        if (vr === 'pass') html += '<span class="event-verify-icon pass" title="Hash verified">\u2713</span>';
+        else if (vr === 'fail') html += '<span class="event-verify-icon fail" title="Hash mismatch">\u2717</span>';
+        html += '</div>';
+
+        // Body (payload content)
+        html += '<div class="event-body" id="evt-body-' + ev.sequence + '">';
+        html += esc(formatPayload(pl));
+        html += '</div>';
+
+        // Findings table for complete action
+        if (evType === 'action' && pl.name === 'complete' && pl.params && Array.isArray(pl.params.findings)) {
+          html += renderFindings(pl.params.findings);
+        }
+
+        // Hash chain visualisation
+        html += '<div class="hash-chain">';
+        html += '<span class="hash-block prev" title="previous_hash: ' + esc(ev.previous_hash || '') + '">'
+          + esc(shortHash(ev.previous_hash)) + '</span>';
+        html += '<span class="hash-arrow">\u2192</span>';
+        html += '<span class="hash-block current" title="content_hash: ' + esc(ev.content_hash || '') + '">'
+          + esc(shortHash(ev.content_hash)) + '</span>';
+        html += '</div>';
+
+        html += '</div>'; // .timeline-event
+      }
+
+      html += '</div>'; // .timeline-scroll
+
+      mainEl.innerHTML = html;
+
+      // Attach verify button handler
+      var vb = document.getElementById('verify-btn');
+      if (vb) vb.addEventListener('click', verifyChain);
+
+      // Attach expand/collapse to long event bodies
+      var bodies = mainEl.querySelectorAll('.event-body');
+      for (var k = 0; k < bodies.length; k++) {
+        (function (body) {
+          if (body.scrollHeight > 124) {
+            var toggle = document.createElement('span');
+            toggle.className = 'event-body-toggle';
+            toggle.textContent = 'Show more';
+            toggle.addEventListener('click', function () {
+              body.classList.toggle('expanded');
+              toggle.textContent = body.classList.contains('expanded') ? 'Show less' : 'Show more';
+            });
+            body.parentNode.insertBefore(toggle, body.nextSibling);
+          }
+        })(bodies[k]);
+      }
+    }
+
+    /* ── Format payload for display ──────────────────────────────── */
+    function formatPayload(pl) {
+      if (!pl || typeof pl !== 'object') return String(pl);
+      var t = pl.type;
+      switch (t) {
+        case 'genesis':            return pl.message || '';
+        case 'prompt_input':       return pl.content || '';
+        case 'thought':            return pl.content || '';
+        case 'observation':        return pl.content || '';
+        case 'schema_error':       return 'Schema Error (attempt ' + pl.attempt + '/' + pl.max_attempts + '): ' + (pl.message || '');
+        case 'circuit_breaker':    return 'Circuit breaker: ' + (pl.reason || '') + ' (' + pl.consecutive_failures + ' failures)';
+        case 'action':
+          var pStr = '';
+          if (pl.params) {
+            if (pl.params.command) pStr = pl.params.command;
+            else if (pl.params.path) pStr = pl.params.path;
+            else if (pl.params.url) pStr = pl.params.url;
+            else pStr = JSON.stringify(pl.params, null, 2);
+          }
+          return pl.name + (pStr ? ': ' + pStr : '');
+        case 'approval_required':  return 'Approval required for ' + (pl.action_name || '') + ': ' + (pl.action_params_summary || '');
+        case 'approval_decision':  return 'Approval ' + (pl.approved ? 'granted' : 'denied') + (pl.reason ? ' \u2014 ' + pl.reason : '');
+        case 'cross_ledger_seal':  return 'Cross-ledger seal: ' + (pl.seal_hash || '').substring(0, 16) + '\u2026';
+        case 'anchor':             return 'Anchored: ' + (pl.ledger_tip_hash || '').substring(0, 16) + '\u2026' + (pl.bitcoin_block_height ? ' (block ' + pl.bitcoin_block_height + ')' : '');
+        case 'key_rotation':       return 'Key rotation #' + pl.rotation_index + ': ' + (pl.new_public_key || '').substring(0, 16) + '\u2026';
+        case 'verifiable_credential': return 'VC JWT: ' + (pl.vc_jwt || '').substring(0, 40) + '\u2026';
+        case 'chat_message':       return '[' + (pl.role || '') + '] ' + (pl.content || '');
+        default:                   return JSON.stringify(pl, null, 2);
+      }
+    }
+
+    /* ── Render findings table ───────────────────────────────────── */
+    function renderFindings(findings) {
+      var h = '<table class="findings-table"><thead><tr><th>Severity</th><th>Title</th><th>Evidence</th><th>Recommendation</th></tr></thead><tbody>';
+      for (var i = 0; i < findings.length; i++) {
+        var f = findings[i];
+        var sev = (f.severity || 'low') + '';
+        h += '<tr><td class="' + sevClass(sev) + '">' + esc(sev) + '</td>'
+          + '<td>' + esc(f.title || '') + '</td>'
+          + '<td>' + esc(f.evidence || '') + '</td>'
+          + '<td>' + esc(f.recommendation || '') + '</td></tr>';
+      }
+      h += '</tbody></table>';
+      return h;
+    }
+
+    /* ── Filter bar ──────────────────────────────────────────────── */
+    var filterBtns = document.querySelectorAll('.filter-btn');
+    for (var i = 0; i < filterBtns.length; i++) {
+      filterBtns[i].addEventListener('click', function () {
+        for (var j = 0; j < filterBtns.length; j++) filterBtns[j].classList.remove('active');
+        this.classList.add('active');
+        statusFilter = this.getAttribute('data-filter');
+        renderSessions();
+      });
+    }
+
+    /* ── Search ──────────────────────────────────────────────────── */
+    searchInput.addEventListener('input', function () {
+      searchQuery = this.value;
+      renderSessions();
     });
 
-    fetch(authQuery('/api/sessions'))
-      .then(function (r) { return r.json(); })
-      .then(function (list) {
-        sessions = list || [];
-        sessionSelect.innerHTML = '<option value="">All events</option>';
-        sessions.forEach(function (s) {
-          const opt = document.createElement('option');
-          opt.value = s.id;
-          opt.textContent = (s.goal && s.goal.length > 40 ? s.goal.slice(0, 40) + '…' : s.goal) || s.id;
-          sessionSelect.appendChild(opt);
-        });
-        updateSessionGoal();
-        connect();
-      })
-      .catch(function () {
-        connect();
-      });
+    /* ── Init ────────────────────────────────────────────────────── */
+    // When opened directly with ?token=, start immediately.
+    // When embedded in an iframe (no token yet), defer until
+    // the parent delivers the token via postMessage to prevent 401.
+    if (_token) {
+      loadSessions();
+    }
+
+  })();
   </script>
 </body>
 </html>

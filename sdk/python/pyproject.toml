@@ -1,0 +1,57 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ectoledger-sdk"
+version = "0.6.2"
+description = "Python REST SDK for Ecto Ledger - The Cryptographic Veto Engine for AI Agents"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Apache-2.0" }
+authors = [{ name = "Björn Roman Kohlberger", email = "ectoledger@pm.me" }]
+keywords = ["ai", "audit", "ledger", "compliance", "langchain", "autogen"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Programming Language :: Python :: 3",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: Apache Software License",
+  "Topic :: Security",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+  "Typing :: Typed",
+]
+dependencies = [
+  "httpx>=0.28",
+  "pydantic>=2.10",
+]
+
+[project.optional-dependencies]
+langchain = [
+  "langchain-core>=0.3",
+]
+autogen = [
+  "autogen-agentchat>=0.4",
+]
+dev = [
+  "pytest>=9",
+  "pytest-asyncio>=0.21",
+  "pytest-timeout>=2.3",
+  "respx>=0.22",
+]
+
+[project.urls]
+GitHub       = "https://github.com/EctoSpace/EctoLedger"
+LinkedIn     = "https://linkedin.com/in/bkohlberger"
+
+[tool.pytest.ini_options]
+pythonpath = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+timeout = 15
+filterwarnings = [
+    "ignore:The test .* is marked with '@pytest.mark.asyncio' but it is not an async function:pytest.PytestWarning",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["ectoledger_sdk"]

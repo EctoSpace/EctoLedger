@@ -1,0 +1,929 @@
+#!/usr/bin/env bash
+# =============================================================================
+#  Ecto Ledger — One-Click Launcher (Linux)
+#  Usage:  ./ectoledger-linux [FLAGS]
+#
+#  FLAGS:
+#    --demo           Zero-config demo: SQLite DB, auto-detect/install LLM, seed demo session
+#    --setup          Build & install deps only, then exit (no servers started)
+#    --rebuild        Force cargo build even if binary already exists
+#    --backend-only   Start backend server without the GUI
+#    --reset-db       Wipe embedded Postgres data and start fresh
+#    --help           Show this message
+# =============================================================================
+
+set -euo pipefail
+
+# ── Colours ──────────────────────────────────────────────────────────────────
+RESET="\033[0m"
+BOLD="\033[1m"
+RED="\033[0;31m"
+YELLOW="\033[0;33m"
+GREEN="\033[0;32m"
+CYAN="\033[0;36m"
+PURPLE="\033[0;35m"
+
+# ── Paths ──────────────────────────────────────────────────────────────────
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+BINARY="$SCRIPT_DIR/target/release/ectoledger"
+GUI_DIR="$SCRIPT_DIR/gui"
+PID_FILE="${XDG_RUNTIME_DIR:-$HOME/.local/run}/ectoledger_backend.pid"
+mkdir -p "$(dirname "$PID_FILE")"
+LOG_FILE="$SCRIPT_DIR/ectoledger.log"
+
+# ── Flags ───────────────────────────────────────────────────────────────────
+FLAG_SETUP=false
+FLAG_REBUILD=false
+FLAG_BACKEND_ONLY=false
+FLAG_RESET_DB=false
+FLAG_DEMO=false
+
+for arg in "$@"; do
+  case "$arg" in
+    --demo)          FLAG_DEMO=true ;;
+    --setup)         FLAG_SETUP=true ;;
+    --rebuild)       FLAG_REBUILD=true ;;
+    --backend-only)  FLAG_BACKEND_ONLY=true ;;
+    --reset-db)      FLAG_RESET_DB=true ;;
+    --help|-h)
+      echo "Usage: ./ectoledger-linux [--demo] [--setup] [--rebuild] [--backend-only] [--reset-db] [--help]"
+      echo ""
+      echo "  --demo           Zero-config demo: SQLite DB, auto-detect/install LLM, seed session"
+      echo "  --setup          Build & install deps only (no servers started)"
+      echo "  --rebuild        Force cargo build even if binary exists"
+      echo "  --backend-only   Start backend server without the GUI"
+      echo "  --reset-db       Wipe the embedded Postgres data dir and start fresh"
+      exit 0
+      ;;
+    *)
+      echo -e "${RED}Unknown flag: $arg${RESET}"
+      echo "Usage: ./ectoledger-linux [--demo] [--setup] [--rebuild] [--backend-only] [--reset-db] [--help]"
+      exit 1
+      ;;
+  esac
+done
+
+# ── Banner ───────────────────────────────────────────────────────────────────
+R1="\033[1;31m"
+R2="\033[1;33m"
+R3="\033[1;32m"
+R4="\033[1;36m"
+R5="\033[1;34m"
+R6="\033[1;35m"
+
+echo ""
+echo -e "${R1}  ██╗██████╗  ██████╗ ███╗   ██╗ ██████╗██╗      █████╗ ██████╗ ${RESET}"
+echo -e "${R2}  ██║██╔══██╗██╔═══██╗████╗  ██║██╔════╝██║     ██╔══██╗██╔══██╗${RESET}"
+echo -e "${R3}  ██║██████╔╝██║   ██║██╔██╗ ██║██║     ██║     ███████║██║  ██║${RESET}"
+echo -e "${R4}  ██║██╔══██╗██║   ██║██║╚██╗██║██║     ██║     ██╔══██║██║  ██║${RESET}"
+echo -e "${R5}  ██║██║  ██║╚██████╔╝██║ ╚████║╚██████╗███████╗██║  ██║██████╔╝${RESET}"
+echo -e "${R6}  ╚═╝╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═══╝ ╚═════╝╚══════╝╚═╝  ╚═╝╚═════╝ ${RESET}"
+echo -e "${CYAN}  Agent Ledger 2026${RESET}"
+echo ""
+
+# ── Helpers ──────────────────────────────────────────────────────────────────
+info()    { echo -e "  ${CYAN}▶${RESET} $*"; }
+success() { echo -e "  ${GREEN}✔${RESET} $*"; }
+warn()    { echo -e "  ${YELLOW}⚠${RESET}  $*"; }
+error()   { echo -e "  ${RED}✘${RESET}  $*" >&2; }
+step()    { echo -e "\n${BOLD}${CYAN}── $* ──${RESET}"; }
+
+# ── pg-embed binary pre-extraction ───────────────────────────────────────────
+# archiver_rs (used by pg-embed 0.7) has a compatibility issue with Maven JAR
+# files (zip flag 0x0800) and fails with "Could not find central directory end".
+# We pre-extract the PostgreSQL binaries from the cached zip using system tools
+# so pg-embed detects existing binaries and skips its own extraction step.
+# The calling code scopes LD_LIBRARY_PATH to the backend process only, so that
+# pg-embed's bundled libs do not leak into downstream processes (e.g. Tauri GUI).
+ensure_pg_embed_binaries() {
+  local cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}"
+  local arch
+  arch="$(uname -m)"
+  case "$arch" in
+    x86_64)  arch="amd64" ;;
+    aarch64) arch="arm64" ;;
+    *)       arch="amd64" ;;
+  esac
+  local pg_version="15.1.0"
+  local platform="linux-${arch}"
+  local pg_cache="$cache_dir/pg-embed/linux/${arch}/${pg_version}"
+  local initdb_exe="$pg_cache/bin/initdb"
+  local lib_dir="$pg_cache/lib"
+
+  # If binaries are already extracted, save the lib dir for the backend process.
+  if [[ -f "$initdb_exe" ]]; then
+    if [[ -d "$lib_dir" ]]; then
+      PG_EMBED_LIB_DIR="$lib_dir"
+    fi
+    return 0
+  fi
+
+  local zip_file="$pg_cache/${platform}-${pg_version}.zip"
+  # If zip not in cache yet, pg-embed will download it on first run.
+  # After that first (failed) run the zip will be present and we can extract.
+  [[ -f "$zip_file" ]] || return 0
+
+  info "Pre-extracting pg-embed PostgreSQL binaries (archiver_rs compat workaround)…"
+
+  local tmpdir
+  tmpdir="$(mktemp -d)"
+  local txz_name="postgres-${platform}.txz"
+
+  # Step 1: extract the .txz from the JAR/zip using system unzip.
+  if ! unzip -q -o "$zip_file" "$txz_name" -d "$tmpdir" 2>/dev/null; then
+    warn "unzip: could not extract $txz_name — pg-embed will retry its own extraction."
+    rm -rf "$tmpdir"
+    return 0
+  fi
+
+  # Step 2: extract the tar.xz binaries to the pg-embed cache directory.
+  mkdir -p "$pg_cache"
+  if ! tar -xJf "$tmpdir/$txz_name" -C "$pg_cache/" 2>/dev/null; then
+    warn "tar: could not extract pg binaries — pg-embed will retry."
+    rm -rf "$tmpdir"
+    return 0
+  fi
+
+  rm -rf "$tmpdir"
+
+  if [[ -f "$initdb_exe" ]]; then
+    success "pg-embed binaries pre-extracted → $pg_cache/bin/"
+    if [[ -d "$lib_dir" ]]; then
+      PG_EMBED_LIB_DIR="$lib_dir"
+      success "pg-embed lib dir saved for backend process"
+    fi
+  else
+    warn "pg-embed pre-extraction: initdb not found after extraction."
+  fi
+}
+
+# ── sudo wrapper ─────────────────────────────────────────────────────────────
+# Uses sudo when available and the user is not already root.
+maybe_sudo() {
+  if [[ "${EUID:-$(id -u)}" -eq 0 ]]; then
+    "$@"
+  elif command -v sudo &>/dev/null; then
+    sudo "$@"
+  else
+    error "This operation requires root privileges but sudo is not available."
+    error "Re-run the script as root or install sudo."
+    return 1
+  fi
+}
+
+# ── Cleanup on exit ──────────────────────────────────────────────────────────
+cleanup() {
+  if [[ -f "$PID_FILE" ]]; then
+    local pid
+    pid="$(cat "$PID_FILE")"
+    if kill -0 "$pid" 2>/dev/null; then
+      info "Stopping backend (PID $pid) and child processes…"
+      kill -- -"$pid" 2>/dev/null || kill "$pid" 2>/dev/null || true
+      sleep 1
+      kill -9 -- -"$pid" 2>/dev/null || kill -9 "$pid" 2>/dev/null || true
+    fi
+    rm -f "$PID_FILE"
+  fi
+  # Clean up any orphaned embedded PG on the demo port.
+  if [[ "${FLAG_DEMO:-false}" == "true" ]]; then
+    lsof -ti:5433 2>/dev/null | xargs kill -9 2>/dev/null || true
+  fi
+  echo -e "\n${PURPLE}  Ecto Ledger stopped.${RESET}\n"
+}
+trap cleanup EXIT INT TERM
+
+# ── 1. Check prerequisites ───────────────────────────────────────────────────
+# If tools are missing the script offers to install them interactively.
+step "Checking prerequisites"
+
+# Helper: prompt the user yes/no.  Returns 0 for yes, 1 for no.
+# In non-interactive mode (piped stdin) always returns 1 (no).
+ask_install() {
+  local tool_name="$1"
+  if [[ ! -t 0 ]]; then
+    return 1
+  fi
+  local reply
+  read -r -p "  ${YELLOW}?${RESET}  $tool_name is not installed. Install it now? [y/N]: " reply
+  case "$reply" in
+    [Yy]|[Yy][Ee][Ss]) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+# Refresh PATH so newly installed tools are found in this session.
+rehash_path() {
+  [[ -f "$HOME/.cargo/env" ]] && source "$HOME/.cargo/env"
+  export PATH="/usr/local/bin:$HOME/.local/bin:$PATH"
+  hash -r 2>/dev/null || true
+}
+
+# Detect the system package manager for Node.js installation.
+detect_pkg_manager() {
+  if command -v apt-get &>/dev/null; then
+    echo "apt"
+  elif command -v dnf &>/dev/null; then
+    echo "dnf"
+  elif command -v pacman &>/dev/null; then
+    echo "pacman"
+  elif command -v zypper &>/dev/null; then
+    echo "zypper"
+  else
+    echo ""
+  fi
+}
+
+UNRESOLVED=()
+
+# ── curl (needed by rustup and NodeSource installers) ────────────────────────
+if ! command -v curl &>/dev/null; then
+  PKG_MGR_CURL="$(detect_pkg_manager)"
+  case "$PKG_MGR_CURL" in
+    apt)
+      if ask_install "curl (required to download installers)"; then
+        info "Installing curl via apt-get …"
+        sudo apt-get update -qq && sudo apt-get install -y curl
+      fi
+      ;;
+    dnf)
+      if ask_install "curl (required to download installers)"; then
+        info "Installing curl via dnf …"
+        sudo dnf install -y curl
+      fi
+      ;;
+    pacman)
+      if ask_install "curl (required to download installers)"; then
+        info "Installing curl via pacman …"
+        sudo pacman -S --noconfirm curl
+      fi
+      ;;
+    zypper)
+      if ask_install "curl (required to download installers)"; then
+        info "Installing curl via zypper …"
+        sudo zypper install -y curl
+      fi
+      ;;
+  esac
+  if ! command -v curl &>/dev/null; then
+    warn "curl is not installed — some auto-install options will be unavailable."
+  fi
+fi
+
+# ── Cargo / Rust ─────────────────────────────────────────────────────────────
+if ! command -v cargo &>/dev/null; then
+  if ask_install "Rust/Cargo"; then
+    if command -v curl &>/dev/null; then
+      info "Installing Rust via rustup …"
+      curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+      rehash_path
+      if command -v cargo &>/dev/null; then
+        success "Rust $(rustc --version | awk '{print $2}') installed"
+      else
+        error "Rust installation succeeded but cargo is still not in PATH."
+        UNRESOLVED+=("Rust/Cargo  →  https://rustup.rs")
+      fi
+    else
+      error "Cannot install Rust automatically — curl is not available."
+      UNRESOLVED+=("Rust/Cargo  →  https://rustup.rs")
+    fi
+  else
+    UNRESOLVED+=("Rust/Cargo  →  https://rustup.rs")
+  fi
+fi
+# Re-check: cargo may now be available (just installed or was already present).
+if command -v cargo &>/dev/null; then
+  RUST_VER="$(rustc --version | awk '{print $2}')"
+  RUST_MAJOR="$(echo "$RUST_VER" | cut -d. -f1)"
+  RUST_MINOR="$(echo "$RUST_VER" | cut -d. -f2)"
+  if [[ "$RUST_MAJOR" -lt 1 ]] || { [[ "$RUST_MAJOR" -eq 1 ]] && [[ "$RUST_MINOR" -lt 94 ]]; }; then
+    warn "Rust $RUST_VER is too old (need >= 1.94)"
+    if command -v rustup &>/dev/null; then
+      if ask_install "Rust update (current: $RUST_VER, need >= 1.94)"; then
+        info "Running rustup update …"
+        rustup update stable
+        rehash_path
+        RUST_VER="$(rustc --version | awk '{print $2}')"
+        success "Rust updated to $RUST_VER"
+      else
+        UNRESOLVED+=("Rust >= 1.94  →  run: rustup update stable")
+      fi
+    else
+      UNRESOLVED+=("Rust >= 1.94  →  https://rustup.rs  (then: rustup update stable)")
+    fi
+  else
+    success "Rust $RUST_VER"
+  fi
+fi
+
+# ── Node.js & npm ────────────────────────────────────────────────────────────
+if [[ "$FLAG_BACKEND_ONLY" == "false" ]]; then
+  if ! command -v node &>/dev/null; then
+    PKG_MGR="$(detect_pkg_manager)"
+    case "$PKG_MGR" in
+      apt)
+        if ask_install "Node.js (via apt / NodeSource)"; then
+          if command -v curl &>/dev/null; then
+            info "Installing Node.js 20.x via NodeSource …"
+            curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+            sudo apt-get install -y nodejs
+            rehash_path
+          else
+            info "Installing Node.js via apt (system version) …"
+            sudo apt-get update -qq && sudo apt-get install -y nodejs npm
+            rehash_path
+          fi
+        fi
+        ;;
+      dnf)
+        if ask_install "Node.js (via dnf)"; then
+          info "Installing Node.js via dnf …"
+          sudo dnf install -y nodejs npm
+          rehash_path
+        fi
+        ;;
+      pacman)
+        if ask_install "Node.js (via pacman)"; then
+          info "Installing Node.js via pacman …"
+          sudo pacman -S --noconfirm nodejs npm
+          rehash_path
+        fi
+        ;;
+      zypper)
+        if ask_install "Node.js (via zypper)"; then
+          info "Installing Node.js via zypper …"
+          sudo zypper install -y nodejs20 npm20
+          rehash_path
+        fi
+        ;;
+      *)
+        warn "No supported package manager detected (apt, dnf, pacman, zypper)."
+        ;;
+    esac
+    # Final check after attempted install.
+    if ! command -v node &>/dev/null; then
+      UNRESOLVED+=("Node.js >= 20  →  https://nodejs.org")
+    fi
+  fi
+  # Re-check: node may now be available.
+  if command -v node &>/dev/null; then
+    NODE_VER="$(node --version | tr -d 'v')"
+    NODE_MAJOR="$(echo "$NODE_VER" | cut -d. -f1)"
+    if [[ "$NODE_MAJOR" -lt 20 ]]; then
+      warn "Node.js $NODE_VER is too old (need >= 20)"
+      UNRESOLVED+=("Node.js >= 20 (current: $NODE_VER)  →  https://nodejs.org")
+    else
+      success "Node.js $NODE_VER"
+    fi
+  fi
+  if ! command -v npm &>/dev/null; then
+    UNRESOLVED+=("npm  →  https://nodejs.org  (included with Node.js)")
+  else
+    success "npm $(npm --version)"
+  fi
+fi
+
+# ── System build dependencies (C compiler, OpenSSL headers, etc.) ────────────
+# These are needed to compile native Rust crates (openssl-sys, ring, etc.).
+if command -v cargo &>/dev/null; then
+  MISSING_BUILD_DEPS=()
+  # Check for a C compiler (gcc/cc)
+  if ! command -v cc &>/dev/null && ! command -v gcc &>/dev/null; then
+    MISSING_BUILD_DEPS+=("build-essential")
+  fi
+  # Check for pkg-config
+  if ! command -v pkg-config &>/dev/null; then
+    MISSING_BUILD_DEPS+=("pkg-config")
+  fi
+  # Check for OpenSSL headers
+  if ! pkg-config --exists openssl 2>/dev/null; then
+    # Only flag if pkg-config is available or if the header file is simply missing.
+    if [[ ! -f /usr/include/openssl/ssl.h ]] && [[ ! -f /usr/include/x86_64-linux-gnu/openssl/ssl.h ]]; then
+      MISSING_BUILD_DEPS+=("libssl-dev")
+    fi
+  fi
+  # Check for perl (needed by OpenSSL build scripts)
+  if ! command -v perl &>/dev/null; then
+    MISSING_BUILD_DEPS+=("perl")
+  fi
+
+  if [[ ${#MISSING_BUILD_DEPS[@]} -gt 0 ]]; then
+    PKG_MGR_BUILD="$(detect_pkg_manager)"
+    # Map package names to distro-specific names
+    declare -A PKG_MAP_DNF=([build-essential]="gcc make" [pkg-config]="pkgconf-pkg-config" [libssl-dev]="openssl-devel" [perl]="perl")
+    declare -A PKG_MAP_PACMAN=([build-essential]="base-devel" [pkg-config]="pkgconf" [libssl-dev]="openssl" [perl]="perl")
+    declare -A PKG_MAP_ZYPPER=([build-essential]="gcc make" [pkg-config]="pkg-config" [libssl-dev]="libopenssl-devel" [perl]="perl")
+
+    INSTALL_LIST=""
+    case "$PKG_MGR_BUILD" in
+      apt) INSTALL_LIST="${MISSING_BUILD_DEPS[*]}" ;;
+      dnf) for p in "${MISSING_BUILD_DEPS[@]}"; do INSTALL_LIST+="${PKG_MAP_DNF[$p]:-$p} "; done ;;
+      pacman) for p in "${MISSING_BUILD_DEPS[@]}"; do INSTALL_LIST+="${PKG_MAP_PACMAN[$p]:-$p} "; done ;;
+      zypper) for p in "${MISSING_BUILD_DEPS[@]}"; do INSTALL_LIST+="${PKG_MAP_ZYPPER[$p]:-$p} "; done ;;
+    esac
+
+    warn "Missing build dependencies: ${MISSING_BUILD_DEPS[*]}"
+    if [[ -n "$PKG_MGR_BUILD" ]] && [[ -n "$INSTALL_LIST" ]]; then
+      if ask_install "build dependencies (${INSTALL_LIST})"; then
+        info "Installing build dependencies …"
+        case "$PKG_MGR_BUILD" in
+          apt)    sudo apt-get update -qq && sudo apt-get install -y $INSTALL_LIST ;;
+          dnf)    sudo dnf install -y $INSTALL_LIST ;;
+          pacman) sudo pacman -S --noconfirm $INSTALL_LIST ;;
+          zypper) sudo zypper install -y $INSTALL_LIST ;;
+        esac
+        rehash_path
+        success "Build dependencies installed"
+      else
+        for dep in "${MISSING_BUILD_DEPS[@]}"; do
+          UNRESOLVED+=("$dep (build dependency for Rust native crates)")
+        done
+      fi
+    else
+      for dep in "${MISSING_BUILD_DEPS[@]}"; do
+        UNRESOLVED+=("$dep (build dependency for Rust native crates)")
+      done
+    fi
+  else
+    success "System build dependencies"
+  fi
+fi
+
+# ── Tauri GUI dependencies (WebKit, GTK, etc.) ──────────────────────────────
+# Required only when building the Tauri desktop app (not backend-only).
+if [[ "$FLAG_BACKEND_ONLY" == "false" ]]; then
+  MISSING_GUI_DEPS=()
+  PKG_MGR_GUI="$(detect_pkg_manager)"
+
+  # Check for libwebkit2gtk-4.1-dev (or equivalent)
+  if ! pkg-config --exists webkit2gtk-4.1 2>/dev/null; then
+    MISSING_GUI_DEPS+=("libwebkit2gtk-4.1-dev")
+  fi
+  # Check for libgtk-3-dev
+  if ! pkg-config --exists gtk+-3.0 2>/dev/null; then
+    MISSING_GUI_DEPS+=("libgtk-3-dev")
+  fi
+  # Check for librsvg2-dev
+  if ! pkg-config --exists librsvg-2.0 2>/dev/null; then
+    MISSING_GUI_DEPS+=("librsvg2-dev")
+  fi
+  # Check for lsof (used for port conflict detection)
+  if ! command -v lsof &>/dev/null; then
+    MISSING_GUI_DEPS+=("lsof")
+  fi
+
+  if [[ ${#MISSING_GUI_DEPS[@]} -gt 0 ]]; then
+    # Map to distro-specific package names
+    declare -A GUI_MAP_DNF=([libwebkit2gtk-4.1-dev]="webkit2gtk4.1-devel" [libgtk-3-dev]="gtk3-devel" [librsvg2-dev]="librsvg2-devel" [lsof]="lsof")
+    declare -A GUI_MAP_PACMAN=([libwebkit2gtk-4.1-dev]="webkit2gtk-4.1" [libgtk-3-dev]="gtk3" [librsvg2-dev]="librsvg" [lsof]="lsof")
+    declare -A GUI_MAP_ZYPPER=([libwebkit2gtk-4.1-dev]="webkit2gtk3-devel" [libgtk-3-dev]="gtk3-devel" [librsvg2-dev]="librsvg-devel" [lsof]="lsof")
+
+    GUI_INSTALL_LIST=""
+    case "$PKG_MGR_GUI" in
+      apt) GUI_INSTALL_LIST="${MISSING_GUI_DEPS[*]}" ;;
+      dnf) for p in "${MISSING_GUI_DEPS[@]}"; do GUI_INSTALL_LIST+="${GUI_MAP_DNF[$p]:-$p} "; done ;;
+      pacman) for p in "${MISSING_GUI_DEPS[@]}"; do GUI_INSTALL_LIST+="${GUI_MAP_PACMAN[$p]:-$p} "; done ;;
+      zypper) for p in "${MISSING_GUI_DEPS[@]}"; do GUI_INSTALL_LIST+="${GUI_MAP_ZYPPER[$p]:-$p} "; done ;;
+    esac
+
+    warn "Missing Tauri GUI dependencies: ${MISSING_GUI_DEPS[*]}"
+    if [[ -n "$PKG_MGR_GUI" ]] && [[ -n "$GUI_INSTALL_LIST" ]]; then
+      if ask_install "Tauri GUI dependencies (${GUI_INSTALL_LIST})"; then
+        info "Installing GUI dependencies …"
+        case "$PKG_MGR_GUI" in
+          apt)    maybe_sudo apt-get update -qq && maybe_sudo apt-get install -y $GUI_INSTALL_LIST ;;
+          dnf)    maybe_sudo dnf install -y $GUI_INSTALL_LIST ;;
+          pacman) maybe_sudo pacman -S --noconfirm $GUI_INSTALL_LIST ;;
+          zypper) maybe_sudo zypper install -y $GUI_INSTALL_LIST ;;
+        esac
+        rehash_path
+        success "GUI dependencies installed"
+      else
+        for dep in "${MISSING_GUI_DEPS[@]}"; do
+          UNRESOLVED+=("$dep (required for Tauri GUI)")
+        done
+      fi
+    else
+      for dep in "${MISSING_GUI_DEPS[@]}"; do
+        UNRESOLVED+=("$dep (required for Tauri GUI)")
+      done
+    fi
+  else
+    success "Tauri GUI dependencies"
+  fi
+fi
+
+# ── Final gate ───────────────────────────────────────────────────────────────
+if [[ "${#UNRESOLVED[@]}" -gt 0 ]]; then
+  echo ""
+  error "The following dependencies are still missing:"
+  for dep in "${UNRESOLVED[@]}"; do
+    echo -e "  ${YELLOW}•${RESET} $dep"
+  done
+  echo ""
+  error "Install them and re-run the script."
+  exit 1
+fi
+
+if [[ "$FLAG_DEMO" == "false" ]]; then
+  if ! command -v ollama &>/dev/null; then
+    warn "ollama not found in PATH — set LLM_BACKEND=openai in .env to use OpenAI instead"
+  elif ! curl -sf --max-time 1 http://localhost:11434 &>/dev/null; then
+    warn "Ollama is installed but not running — start it with: ollama serve"
+  else
+    success "Ollama reachable at http://localhost:11434"
+  fi
+fi
+
+# ── 2. Create .env if missing ─────────────────────────────────────────────────
+step "Environment"
+
+ENV_FILE="$SCRIPT_DIR/.env"
+if [[ ! -f "$ENV_FILE" ]]; then
+  info "Creating .env with dev defaults…"
+  cat > "$ENV_FILE" <<'EOF'
+# ─────────────────────────────────────────────────────────────────
+# Ecto Ledger — Dev Environment
+# Edit this file to customise your setup.
+# See README.md for all available options.
+# ─────────────────────────────────────────────────────────────────
+
+DATABASE_URL=postgres://ectoledger:ectoledger@localhost:5432/ectoledger
+LLM_BACKEND=ollama
+OLLAMA_BASE_URL=http://localhost:11434
+OLLAMA_MODEL=qwen2.5:0.5b
+GUARD_REQUIRED=false  # Set to true AND set GUARD_LLM_BACKEND + GUARD_LLM_MODEL for production
+RUST_LOG=info
+EOF
+  success ".env created"
+else
+  success ".env already exists — skipping"
+fi
+
+# Safe env loading: parse key=value lines without executing arbitrary shell code.
+while IFS='=' read -r key value; do
+  # Skip comments and blank lines.
+  [[ -z "$key" || "$key" == \#* ]] && continue
+  # Strip leading/trailing whitespace from key and value.
+  key="$(echo "$key" | xargs)"
+  value="$(echo "$value" | sed "s/^[\"']//;s/[\"']$//")"
+  # Strip inline comments (e.g. "true   # comment").
+  value="$(echo "$value" | sed 's/[[:space:]]*#.*$//')"
+  # Validate that the key is a legal POSIX identifier before exporting.
+  # Keys with spaces, IFS characters, or shell metacharacters would otherwise
+  # cause silent environment corruption or unexpected word-splitting.
+  if [[ ! "$key" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+    warn ".env: skipping malformed key '${key}' (must match [A-Za-z_][A-Za-z0-9_]*)"
+    continue
+  fi
+  export "$key=$value"
+done < "$ENV_FILE" || [ -n "$key" ]
+
+# ── Demo Mode ────────────────────────────────────────────────────────────────
+if [[ "$FLAG_DEMO" == "true" ]]; then
+  echo ""
+  echo -e "  ${GREEN}${BOLD}🚀 Demo Mode Activated${RESET}"
+  echo ""
+
+  # ── a. Environment isolation ──
+  info "🗄️  Setting up isolated demo database…"
+  unset DATABASE_URL   # clear any .env value so the backend uses embedded Postgres (pg-embed)
+  export ECTO_DEMO_MODE="true"
+  export ECTO_DEV_MODE="true"       # allow config::database_url() to succeed without DATABASE_URL
+  export GUARD_REQUIRED="false"     # disable guard — GUARD_LLM_BACKEND/MODEL not needed in demo
+  export RUST_LOG="${RUST_LOG:-info}"
+  success "Database: isolated demo PostgreSQL (pg-embed, separate from normal mode)"
+
+  # ── b. LLM auto-detection ──
+  echo ""
+  info "🔍 Detecting LLM capabilities…"
+
+  DEMO_LLM_RESOLVED=false
+
+  if [[ -n "${OPENAI_API_KEY:-}" ]]; then
+    export LLM_BACKEND="openai"
+    success "🔑 OpenAI API key detected — using cloud LLM"
+    DEMO_LLM_RESOLVED=true
+  elif [[ -n "${ANTHROPIC_API_KEY:-}" ]]; then
+    export LLM_BACKEND="anthropic"
+    success "🔑 Anthropic API key detected — using cloud LLM"
+    DEMO_LLM_RESOLVED=true
+  fi
+
+  if [[ "$DEMO_LLM_RESOLVED" == "false" ]]; then
+    # ── c. Ollama detection + install (Linux: curl) ──
+    if command -v ollama &>/dev/null; then
+      success "Ollama found at $(command -v ollama)"
+    else
+      echo ""
+      warn "📦 Ollama not found. It is required to run local AI agents."
+      echo -e "  ${YELLOW}⏳ Auto-installing Ollama via official install script in 5 seconds…${RESET}"
+      echo -e "  ${YELLOW}   Press Ctrl+C to cancel.${RESET}"
+      for countdown in 5 4 3 2 1; do
+        printf "  %s…\r" "$countdown"
+        sleep 1
+      done
+      echo ""
+
+      info "Running: curl -fsSL https://ollama.com/install.sh | sh"
+      curl -fsSL https://ollama.com/install.sh | sh
+      if ! command -v ollama &>/dev/null; then
+        error "Ollama installation failed. Install manually: https://ollama.com/download"
+        exit 1
+      fi
+      success "Ollama installed"
+    fi
+
+    # ── d. Ensure Ollama is running ──
+    if ! curl -sf --max-time 2 http://127.0.0.1:11434 &>/dev/null; then
+      info "Starting Ollama daemon…"
+      ollama serve &>/dev/null &
+      OLLAMA_SERVE_PID=$!
+      OLLAMA_WAIT=0
+      while ! curl -sf --max-time 1 http://127.0.0.1:11434 &>/dev/null; do
+        sleep 1
+        OLLAMA_WAIT=$((OLLAMA_WAIT + 1))
+        if [[ "$OLLAMA_WAIT" -ge 15 ]]; then
+          error "Ollama did not start within 15 seconds."
+          exit 1
+        fi
+      done
+      success "Ollama daemon started (PID $OLLAMA_SERVE_PID)"
+    else
+      success "Ollama already running at http://127.0.0.1:11434"
+    fi
+
+    # ── e. Pull model ──
+    if ollama list 2>/dev/null | grep -q "qwen2.5:0.5b"; then
+      success "Model qwen2.5:0.5b already available"
+    else
+      echo ""
+      info "📥 Pulling qwen2.5:0.5b model (this may take a few minutes on first run)…"
+      if ! ollama pull qwen2.5:0.5b; then
+        warn "Failed to pull qwen2.5:0.5b — the backend may not have a model available"
+      else
+        success "Model qwen2.5:0.5b ready"
+      fi
+    fi
+
+    export LLM_BACKEND="ollama"
+    export OLLAMA_MODEL="qwen2.5:0.5b"
+    export OLLAMA_BASE_URL="http://127.0.0.1:11434"
+  fi
+
+  # ── f. Summary ──
+  echo ""
+  step "Demo Configuration"
+  echo -e "  ${CYAN}Database:${RESET}    isolated demo PostgreSQL (port 5433, ~/…/postgres-demo)"
+  echo -e "  ${CYAN}LLM Backend:${RESET} ${LLM_BACKEND}$([ "$LLM_BACKEND" = "ollama" ] && echo " (qwen2.5:0.5b)")"
+  echo -e "  ${CYAN}Guard:${RESET}       disabled (demo)"
+  echo -e "  ${CYAN}Demo Mode:${RESET}   enabled"
+  echo ""
+fi
+
+# ── 2b. Reset embedded DB if requested ────────────────────────────────────────
+if [[ "$FLAG_RESET_DB" == "true" ]]; then
+  step "Resetting embedded database"
+  if [[ "$FLAG_DEMO" == "true" ]]; then
+    PG_DATA_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/ectoledger/postgres-demo"
+  else
+    PG_DATA_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/ectoledger/postgres"
+  fi
+  if [[ -d "$PG_DATA_DIR" ]]; then
+    warn "Deleting embedded Postgres data at: $PG_DATA_DIR"
+    rm -rf "$PG_DATA_DIR"
+    success "Database reset — pg-embed will re-initialise on next start"
+  else
+    info "No embedded database found at expected path — nothing to reset"
+  fi
+fi
+
+# ── 3. Build backend ────────────────────────────────────────────────────────
+step "Backend"
+
+# Auto-detect stale binary: rebuild if any crate source is newer than the binary.
+NEED_BUILD=false
+if [[ "$FLAG_REBUILD" == "true" ]]; then
+  NEED_BUILD=true
+elif [[ ! -f "$BINARY" ]]; then
+  NEED_BUILD=true
+elif [[ -n "$(find "$SCRIPT_DIR/crates" -name '*.rs' -newer "$BINARY" 2>/dev/null | head -1)" ]]; then
+  info "Source files changed since last build — rebuilding automatically."
+  NEED_BUILD=true
+fi
+
+if [[ "$NEED_BUILD" == "true" ]]; then
+  info "Building Ecto Ledger (release mode + remote enclave) — this takes ~2 minutes on first run…"
+  BUILD_LOG="$(mktemp)"
+  set +e
+  cargo build --release -p ectoledger --features evm --manifest-path "$SCRIPT_DIR/Cargo.toml" > "$BUILD_LOG" 2>&1
+  BUILD_RC=$?
+  set -e
+  # Show filtered output (errors, warnings, compile progress)
+  grep -E "^(error|warning\[|Compiling|Finished)" "$BUILD_LOG" || true
+  rm -f "$BUILD_LOG"
+  if [[ $BUILD_RC -ne 0 ]]; then
+    error "Backend build failed (exit code $BUILD_RC)."
+    error "Run 'cargo build --release -p ectoledger --features evm' manually to see full output."
+    exit 1
+  fi
+  if [[ ! -f "$BINARY" ]]; then
+    error "Build appeared to succeed but binary not found at: $BINARY"
+    error "Try: cargo build --release -p ectoledger --features evm"
+    exit 1
+  fi
+  success "Backend built → target/release/ectoledger"
+else
+  success "Backend already built — skipping (use --rebuild to force)"
+fi
+
+# ── 4. GUI dependencies ──────────────────────────────────────────────────────
+if [[ "$FLAG_BACKEND_ONLY" == "false" ]]; then
+  step "GUI dependencies"
+  if [[ ! -d "$GUI_DIR/node_modules" ]]; then
+    info "Installing npm packages…"
+    npm install --prefix "$GUI_DIR" --silent
+    success "npm packages installed"
+  else
+    success "node_modules already present — skipping"
+  fi
+fi
+
+# ── 5. Exit early if --setup ─────────────────────────────────────────────────
+if [[ "$FLAG_SETUP" == "true" ]]; then
+  echo ""
+  success "Setup complete. Run ${BOLD}./ectoledger-linux${RESET} to start."
+  trap - EXIT
+  exit 0
+fi
+
+# ── 5b. Guard auto-detection ─────────────────────────────────────────────────
+# If GUARD_REQUIRED is still "true" but the operator hasn't set
+# GUARD_LLM_BACKEND and GUARD_LLM_MODEL, the session-creation handler will
+# return a 500.  Gracefully downgrade rather than a cryptic error.
+if [[ "${GUARD_REQUIRED:-true}" == "true" ]] && { [[ -z "${GUARD_LLM_BACKEND:-}" ]] || [[ -z "${GUARD_LLM_MODEL:-}" ]]; }; then
+  export GUARD_REQUIRED="false"
+  warn "GUARD_LLM_BACKEND / GUARD_LLM_MODEL not set — disabling guard.  Set both to enable it."
+fi
+
+# ── 6. Start backend ─────────────────────────────────────────────────────────
+step "Starting backend"
+
+BIND_PORT="${ECTO_BIND_PORT:-3000}"
+
+if [[ -z "${OBSERVER_TOKEN:-}" ]]; then
+  OBSERVER_TOKEN=$(
+    openssl rand -hex 32 2>/dev/null \
+    || head -c 32 /dev/urandom | xxd -p -c 32 2>/dev/null \
+    || head -c 64 /dev/urandom | od -An -tx1 | tr -d ' \n' | head -c 64 \
+    || awk 'BEGIN{srand();for(i=0;i<32;i++)printf "%02x",int(rand()*256)}'
+  )
+  export OBSERVER_TOKEN
+  warn "No OBSERVER_TOKEN set. Generated token for this session."
+  echo -e "  Dashboard: ${CYAN}http://127.0.0.1:${BIND_PORT}?token=${OBSERVER_TOKEN}${RESET}"
+  echo ""
+fi
+
+if [[ -f "$PID_FILE" ]]; then
+  OLD_PID="$(cat "$PID_FILE")"
+  if kill -0 "$OLD_PID" 2>/dev/null; then
+    info "Stopping previous backend (PID $OLD_PID) and child processes…"
+    kill -- -"$OLD_PID" 2>/dev/null || kill "$OLD_PID" 2>/dev/null || true
+    sleep 1
+    kill -9 -- -"$OLD_PID" 2>/dev/null || kill -9 "$OLD_PID" 2>/dev/null || true
+  fi
+  rm -f "$PID_FILE"
+fi
+
+# Kill any orphaned embedded PG on the demo port before starting.
+if [[ "${FLAG_DEMO:-false}" == "true" ]]; then
+  lsof -ti:5433 2>/dev/null | xargs kill -9 2>/dev/null || true
+  sleep 1
+fi
+
+# ── Pre-Extract pg-embed binaries ────────────────────────────────────────────
+# pg-embed 0.7 / archiver_rs 0.5 fail to unzip Maven JAR files.  Pre-extract
+# the PostgreSQL binaries so pg-embed finds them and skips its broken extractor.
+PG_EMBED_LIB_DIR=""
+ensure_pg_embed_binaries
+
+info "Starting backend on http://127.0.0.1:${BIND_PORT} (logs → ectoledger.log)…"
+# Scope LD_LIBRARY_PATH to the backend process only so pg-embed's bundled libs
+# (built against Ubuntu 14.04 glibc) do not leak into the Tauri GUI process.
+LD_LIBRARY_PATH="${PG_EMBED_LIB_DIR:+$PG_EMBED_LIB_DIR:}${LD_LIBRARY_PATH:-}" "$BINARY" serve >> "$LOG_FILE" 2>&1 &
+BACKEND_PID=$!
+echo "$BACKEND_PID" > "$PID_FILE"
+
+# ── Pre-flight: detect port conflicts early ─────────────────────────────────
+PREFLIGHT_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 1 http://127.0.0.1:${BIND_PORT}/api/status 2>/dev/null || true)
+if [[ "$PREFLIGHT_CODE" != "000" && -n "$PREFLIGHT_CODE" ]]; then
+  sleep 3
+  if ! kill -0 "$BACKEND_PID" 2>/dev/null; then
+    error "Port ${BIND_PORT} is already in use by another process."
+    error "Find it with:  lsof -ti:${BIND_PORT}  or  ss -tlnp | grep :${BIND_PORT}"
+    error "Kill it with:  lsof -ti:${BIND_PORT} | xargs kill"
+    exit 1
+  fi
+fi
+
+WAIT_SECS=120
+READY=false
+for i in $(seq 1 $WAIT_SECS); do
+  HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 2 http://127.0.0.1:${BIND_PORT}/api/status 2>/dev/null || true)
+  if [[ "$HTTP_CODE" == "200" ]]; then
+    READY=true
+    break
+  fi
+  if ! kill -0 "$BACKEND_PID" 2>/dev/null; then
+    error "Backend process died. Check ectoledger.log for details:"
+    tail -20 "$LOG_FILE" >&2
+    echo "" >&2
+    if grep -q 'password authentication failed\|Role.*does not exist\|EmbeddedSetup\|VersionMismatch' "$LOG_FILE" 2>/dev/null; then
+      if [[ "$FLAG_DEMO" == "true" ]]; then
+        error "Fix with: ${BOLD}./ectoledger-linux --demo --reset-db${RESET}"
+      else
+        error "Fix with: ${BOLD}./ectoledger-linux --reset-db${RESET}"
+      fi
+    elif grep -q 'Operation not permitted\|can.*spawn.*thread\|EPERM' "$LOG_FILE" 2>/dev/null; then
+      error "Thread creation was blocked (seccomp or ulimit restriction)."
+      error "Try: ulimit -u unlimited  then re-run, or rebuild with:"
+      error "  cargo build --release -p ectoledger --no-default-features --features evm"
+    elif grep -q 'address already in use\|port.*'"${BIND_PORT}" "$LOG_FILE" 2>/dev/null; then
+      error "  lsof -ti:${BIND_PORT} | xargs kill"
+    fi
+    exit 1
+  fi
+  sleep 1
+  SPIN=('⠋' '⠙' '⠹' '⠸' '⠼' '⠴' '⠦' '⠧' '⠇' '⠏')
+  printf "  %s Starting backend… %ds\r" "${SPIN[$((i % 10))]}" "$i"
+done
+echo ""
+
+if [[ "$READY" == "false" ]]; then
+  error "Backend did not become healthy within ${WAIT_SECS}s. Check ectoledger.log:"
+  tail -20 "$LOG_FILE" >&2
+  exit 1
+fi
+
+success "Backend healthy at http://127.0.0.1:${BIND_PORT}  (PID $BACKEND_PID)"
+echo ""
+echo -e "  ${CYAN}Observer dashboard:${RESET} http://127.0.0.1:${BIND_PORT}"
+echo -e "  ${CYAN}Backend logs:${RESET}       tail -f ectoledger.log"
+echo ""
+
+# ── 7. Start GUI or wait ─────────────────────────────────────────────────────
+if [[ "$FLAG_BACKEND_ONLY" == "true" ]]; then
+  step "Backend-only mode"
+  info "Backend is running. Press Ctrl+C to stop."
+  echo ""
+  echo -e "  ${BOLD}cargo run --bin ectoledger -- audit \"<your prompt>\"${RESET}"
+  echo ""
+  wait "$BACKEND_PID" 2>/dev/null || true
+else
+  # Headless detection: if no display server is available, fall back to backend-only.
+  if [[ -z "${DISPLAY:-}" ]] && [[ -z "${WAYLAND_DISPLAY:-}" ]]; then
+    warn "No display server detected (\$DISPLAY and \$WAYLAND_DISPLAY are unset)."
+    warn "Falling back to backend-only mode. Use --backend-only to suppress this warning."
+    step "Backend-only mode (headless)"
+    info "Backend is running at http://127.0.0.1:${BIND_PORT}. Press Ctrl+C to stop."
+    echo ""
+    wait "$BACKEND_PID" 2>/dev/null || true
+  else
+    step "Launching GUI"
+    if lsof -ti:1420 &>/dev/null; then
+      info "Stopping previous dev server on port 1420…"
+      lsof -ti:1420 | xargs kill 2>/dev/null || true
+      sleep 1
+    fi
+    # Tell the Tauri GUI to route all API calls to the standalone backend
+    # instead of its own embedded SQLite server.  This ensures the GUI uses
+    # the same Postgres database and OBSERVER_TOKEN that the backend knows.
+    export ECTO_HOST="http://127.0.0.1:${BIND_PORT}"
+    info "Starting Tauri desktop app…"
+    echo ""
+    cd "$GUI_DIR"
+    # Force the system linker to prefer host glibc/pthreads over any snap
+    # core20 libraries that may appear in the ld cache.  Without this, the
+    # Tauri/WebKitGTK binary can resolve libpthread.so.0 from
+    # /snap/core20/current/lib/… which is incompatible with the host glibc,
+    # causing: "undefined symbol: __libc_pthread_init, version GLIBC_PRIVATE".
+    export LD_LIBRARY_PATH="/usr/lib/x86_64-linux-gnu:/lib/x86_64-linux-gnu${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+
+    # If launched from a VS Code snap terminal, the snap sandbox injects
+    # GTK_PATH, GTK_EXE_PREFIX, GIO_MODULE_DIR, etc. pointing into
+    # /snap/code/…  WebKitGTK (used by Tauri) follows them, loading snap
+    # glibc components incompatible with the host.  Restore the originals
+    # (saved in *_VSCODE_SNAP_ORIG) or unset them entirely.
+    for __snap_var in GTK_PATH GTK_EXE_PREFIX GIO_MODULE_DIR GTK_IM_MODULE_FILE LOCPATH; do
+      __orig_var="${__snap_var}_VSCODE_SNAP_ORIG"
+      if [ -n "${!__orig_var+x}" ]; then
+        if [ -n "${!__orig_var}" ]; then
+          export "$__snap_var=${!__orig_var}"
+        else
+          unset "$__snap_var"
+        fi
+      fi
+    done
+
+    npm run tauri dev
+  fi
+fi

@@ -55,11 +55,8 @@ impl Guard {
         goal: &str,
         proposed: &ProposedIntent,
     ) -> Result<GuardDecision, LlmError> {
-        let user = format!(
-            "Goal: {}\nProposed action: {}",
-            goal,
-            serde_json::to_string(proposed).unwrap_or_else(|_| "{}".to_string())
-        );
+        let action_json = serde_json::to_string(proposed).map_err(LlmError::InvalidJson)?;
+        let user = format!("Goal: {}\nProposed action: {}", goal, action_json);
         let raw = self.backend.raw_call(GUARD_SYSTEM, &user).await?;
         let raw = raw.trim();
         if raw.to_uppercase().starts_with("ALLOW") {
@@ -73,8 +70,13 @@ impl Guard {
                 .unwrap_or_else(|| raw.to_string());
             return Ok(GuardDecision::Deny { reason });
         }
-        tracing::warn!("Guard parse failure, defaulting to Allow: {:?}", raw);
-        Ok(GuardDecision::Allow)
+        tracing::warn!(
+            "Guard parse failure, defaulting to Deny (fail-closed): {:?}",
+            raw
+        );
+        Ok(GuardDecision::Deny {
+            reason: format!("Guard returned unparseable response (fail-closed): {}", raw),
+        })
     }
 }
 
