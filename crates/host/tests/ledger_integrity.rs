@@ -3,8 +3,10 @@ mod common;
 use common::{assert_chain_valid, reset_ledger, spawn_test_pool};
 use ectoledger::ledger;
 use ectoledger::schema::EventPayload;
+use serial_test::serial;
 
 #[tokio::test]
+#[serial]
 #[cfg_attr(not(feature = "integration"), ignore)] // run with: cargo test --features integration
 async fn genesis_valid() {
     let (pool, _db) = spawn_test_pool().await;
@@ -15,6 +17,7 @@ async fn genesis_valid() {
 }
 
 #[tokio::test]
+#[serial]
 #[cfg_attr(not(feature = "integration"), ignore)] // run with: cargo test --features integration
 async fn chain_of_10_valid() {
     let (pool, _db) = spawn_test_pool().await;
@@ -37,6 +40,7 @@ async fn chain_of_10_valid() {
 }
 
 #[tokio::test]
+#[serial]
 #[cfg_attr(not(feature = "integration"), ignore)] // run with: cargo test --features integration
 async fn tampered_hash_detected() {
     let (pool, _db) = spawn_test_pool().await;

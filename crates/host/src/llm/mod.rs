@@ -118,7 +118,11 @@ struct MockBackend;
 
 #[async_trait]
 impl LlmBackend for MockBackend {
-    async fn propose(&self, _system: &str, _user: &str) -> Result<ectoledger_core::intent::ProposedIntent, LlmError> {
+    async fn propose(
+        &self,
+        _system: &str,
+        _user: &str,
+    ) -> Result<ectoledger_core::intent::ProposedIntent, LlmError> {
         Ok(ectoledger_core::intent::ProposedIntent {
             action: "complete".to_string(),
             params: json!({ "findings": [] }),

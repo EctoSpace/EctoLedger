@@ -373,13 +373,13 @@ class LedgerClient:
 
     async def get_tripwire_config(self) -> TripwireConfig:
         """Retrieve the current tripwire guard configuration."""
-        r = await self._client.get("/api/tripwire")
+        r = await self._client.get("/api/config/tripwire")
         self._check(r, "get_tripwire_config")
         return TripwireConfig.model_validate(self._parse_json(r, "get_tripwire_config"))
 
     async def update_tripwire_config(self, patch: dict) -> dict:
         """Apply a partial tripwire configuration update."""
-        r = await self._client.put("/api/tripwire", json=patch)
+        r = await self._client.put("/api/config/tripwire", json=patch)
         self._check(r, "update_tripwire_config")
         return self._parse_json(r, "update_tripwire_config")
 
@@ -443,7 +443,7 @@ class LedgerClient:
     async def toggle_webhook(self, webhook_id: str, enabled: bool) -> dict:
         """Enable or disable a webhook."""
         r = await self._client.put(
-            f"/api/webhooks/{quote(webhook_id, safe='')}",
+            f"/api/webhooks/{quote(webhook_id, safe='')}/toggle",
             json={"enabled": enabled},
         )
         self._check(r, "toggle_webhook")

@@ -8,6 +8,7 @@ import httpx
 from ectoledger_sdk.client import LedgerClient, LedgerSdkError
 from ectoledger_sdk.models import (
     AppendResult,
+    ComplianceBundle,
     ConfigResponse,
     CreateTokenResponse,
     LedgerEvent,
@@ -186,12 +187,18 @@ async def test_verify_chain_tampered(base_url: str, session_id: str) -> None:
 
 @respx.mock
 async def test_prove_compliance_returns_dict(base_url: str, session_id: str) -> None:
-    payload = {"session_id": session_id, "hashes": ["a", "b"], "policy": "soc2-audit"}
+    policy_hash = "b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9"
+    payload = {
+        "session_id": session_id,
+        "events": [{"seq": 0, "content_hash": "a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a"}],
+        "policy_hash": policy_hash,
+        "generated_at": "2026-02-22T12:00:00Z",
+    }
     respx.get(f"{base_url}/api/sessions/{session_id}/compliance").mock(return_value=httpx.Response(200, json=payload))
     async with LedgerClient(base_url) as client:
         result = await client.prove_compliance(session_id)
-    assert isinstance(result, dict)
-    assert result["policy"] == "soc2-audit"
+    assert isinstance(result, ComplianceBundle)
+    assert result.policy_hash == policy_hash
 
 
 # ---------------------------------------------------------------------------
