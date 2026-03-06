@@ -2,12 +2,20 @@ name: Release
 
 on:
   push:
-    tags: ['v*']
+    tags: ["v*"]
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: "1"
+
+permissions:
+  contents: read
 
 jobs:
-  # ── Per-platform builds ────────────────────────────────────────────────────
   build:
-    name: Build — ${{ matrix.target }}
+    name: Build - ${{ matrix.target }}
+    timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:
@@ -15,20 +23,23 @@ jobs:
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             archive_ext: tar.gz
+            features: "sandbox,evm"
 
           - os: macos-latest
             target: aarch64-apple-darwin
             archive_ext: tar.gz
+            features: "evm"
 
           - os: windows-latest
             target: x86_64-pc-windows-msvc
             archive_ext: zip
+            features: "evm"
 
     runs-on: ${{ matrix.os }}
 
     steps:
       - name: Checkout source
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -36,62 +47,178 @@ jobs:
           targets: ${{ matrix.target }}
 
       - name: Cache Cargo dependencies
-        uses: Swatinem/rust-cache@v2
+        uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6 # v2.7.8
         with:
-          key: release-${{ matrix.target }}
+          shared-key: release-${{ matrix.target }}
 
       - name: Build release binaries
-        run: cargo build --release --target ${{ matrix.target }}
+        run: cargo build --release -p ectoledger --target ${{ matrix.target }} --features ${{ matrix.features }}
 
-      # ── Archive (Linux / macOS) ──────────────────────────────────────────
       - name: Package binaries (Linux / macOS)
         if: runner.os != 'Windows'
         run: |
           mkdir -p staging
-          cp target/${{ matrix.target }}/release/ecto-ledger staging/
-          cp target/${{ matrix.target }}/release/guard-worker            staging/
-          cp target/${{ matrix.target }}/release/verify-cert             staging/
-          tar -czf ecto-ledger-${{ matrix.target }}.tar.gz -C staging .
+          cp target/${{ matrix.target }}/release/ectoledger staging/
+          cp target/${{ matrix.target }}/release/guard-worker staging/
+          cp target/${{ matrix.target }}/release/verify-cert staging/
+          tar -czf ectoledger-${{ matrix.target }}.tar.gz -C staging .
 
-      # ── Archive (Windows) ────────────────────────────────────────────────
       - name: Package binaries (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Path staging | Out-Null
-          Copy-Item "target\${{ matrix.target }}\release\ecto-ledger.exe" staging\
-          Copy-Item "target\${{ matrix.target }}\release\guard-worker.exe"            staging\
-          Copy-Item "target\${{ matrix.target }}\release\verify-cert.exe"             staging\
-          Compress-Archive -Path staging\* -DestinationPath "ecto-ledger-${{ matrix.target }}.zip"
+          Copy-Item "target\${{ matrix.target }}\release\ectoledger.exe" staging\
+          Copy-Item "target\${{ matrix.target }}\release\guard-worker.exe" staging\
+          Copy-Item "target\${{ matrix.target }}\release\verify-cert.exe" staging\
+          Compress-Archive -Path staging\* -DestinationPath "ectoledger-${{ matrix.target }}.zip"
 
       - name: Upload archive artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: ecto-ledger-${{ matrix.target }}
-          path: ecto-ledger-${{ matrix.target }}.${{ matrix.archive_ext }}
+          name: ectoledger-${{ matrix.target }}
+          path: ectoledger-${{ matrix.target }}.${{ matrix.archive_ext }}
           if-no-files-found: error
           retention-days: 1
 
-  # ── GitHub Release (assembles all platform archives) ──────────────────────
+  gui-build:
+    name: GUI - ${{ matrix.platform }}
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-latest
+          - platform: ubuntu-latest
+          - platform: windows-latest
+    runs-on: ${{ matrix.platform }}
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Install system dependencies (Linux)
+        if: matrix.platform == 'ubuntu-latest'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev \
+            patchelf libssl-dev libgtk-3-dev
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: gui/package-lock.json
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6 # v2.7.8
+        with:
+          workspaces: gui/src-tauri
+
+      - name: Install frontend dependencies
+        working-directory: gui
+        run: npm ci --no-audit --no-fund
+
+      - name: Build Tauri app
+        working-directory: gui
+        run: npm run tauri build
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+
+      - name: Upload GUI artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: ectoledger-gui-${{ matrix.platform }}
+          path: gui/src-tauri/target/release/bundle/
+          retention-days: 1
+
   release:
     name: Create GitHub Release
-    needs: build
+    needs: [build, gui-build]
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: write
 
     steps:
       - name: Download all platform archives
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           path: artifacts
-          merge-multiple: true   # flatten all artifacts into artifacts/
+          merge-multiple: true
+
+      - name: List release assets
+        run: find artifacts -type f | sort
+
+      - name: Generate SHA256SUMS
+        run: |
+          cd artifacts
+          find . -type f -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS
+          cat SHA256SUMS
 
       - name: Create GitHub Release and upload assets
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@da05d552573ad5aba039eaac05058a918a7bf631 # v2.2.2
         with:
-          files: artifacts/*
+          files: artifacts/**/*
           generate_release_notes: true
           draft: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ── SDK Publishing ──────────────────────────────────────────────────
+  publish-pypi:
+    name: Publish Python SDK to PyPI
+    needs: release
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      id-token: write          # OIDC trusted publishing
+    environment: pypi
+
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.12"
+
+      - name: Build Python SDK
+        working-directory: sdk/python
+        run: |
+          pip install --upgrade build
+          python -m build
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@76f52bc884231f62b9a034ebfe128415bbaabdfc # v1.12.4
+        with:
+          packages-dir: sdk/python/dist/
+
+  publish-npm:
+    name: Publish TypeScript SDK to npm
+    needs: release
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "22"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Build TypeScript SDK
+        working-directory: sdk/typescript
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build
+
+      - name: Publish to npm
+        working-directory: sdk/typescript
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

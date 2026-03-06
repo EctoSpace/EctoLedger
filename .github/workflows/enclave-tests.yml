@@ -1,0 +1,46 @@
+# Enclave-only deep tests — manual trigger only.
+# The basic enclave-unit and enclave-apple-hv jobs are already in ci.yml.
+# This workflow adds the full feature-combination build check.
+
+name: Enclave Tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: "Reason for manual run"
+        required: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: enclave-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: "1"
+  RUSTFLAGS: -D warnings
+
+jobs:
+  # ── Full build check with all enclave features ─────────────────────────────
+  enclave-build-check:
+    name: Build check (all enclave features)
+    runs-on: macos-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,aarch64-unknown-none
+          components: llvm-tools
+      - uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6 # v2.7.8
+        with:
+          shared-key: "ci-macos-enclave"
+
+      - name: Build and test all enclave features
+        run: |
+          cargo build --features sandbox-apple-enclave,enclave-remote
+          cargo test --features sandbox-apple-enclave,enclave-remote -p ectoledger --lib -- enclave --nocapture
+          cargo test --features enclave -p ectoledger --test enclave_ipc -- --nocapture
