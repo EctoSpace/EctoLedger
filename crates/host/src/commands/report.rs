@@ -200,10 +200,10 @@ pub fn run_verify_certificate(
             .and_then(|b: &[u8; 32]| VerifyingKey::from_bytes(b).ok())
             .and_then(|vk| {
                 hex::decode(sig_hex).ok().and_then(|sb| {
-                    sb.as_slice()
-                        .try_into()
-                        .ok()
-                        .map(|s: Ed25519Sig| vk.verify(canonical.as_bytes(), &s).is_ok())
+                    <[u8; 64]>::try_from(sb.as_slice()).ok().map(|b| {
+                        let s = Ed25519Sig::from_bytes(&b);
+                        vk.verify(canonical.as_bytes(), &s).is_ok()
+                    })
                 })
             })
             .unwrap_or(false);

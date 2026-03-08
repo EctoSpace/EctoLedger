@@ -225,10 +225,11 @@ mod tests {
         let host_pubkey = PublicKey::from(host_key_bytes);
         let guest_shared = guest_secret.diffie_hellman(&host_pubkey);
 
-        let mut hasher = Sha256::new();
-        hasher.update(b"ectoledger-enclave-ipc-v1");
-        hasher.update(guest_shared.as_bytes());
-        let guest_key = hasher.finalize();
+        // Derive the guest-side key using the same HKDF-SHA256 construction as `handshake()`.
+        let hkdf = Hkdf::<Sha256>::new(None, guest_shared.as_bytes());
+        let mut guest_key = [0u8; 32];
+        hkdf.expand(b"ectoledger-enclave-ipc-v1", &mut guest_key)
+            .expect("HKDF expand for guest key");
         let guest_cipher = ChaCha20Poly1305::new_from_slice(&guest_key).unwrap();
 
         // Host encrypts a request.

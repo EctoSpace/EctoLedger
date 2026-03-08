@@ -102,18 +102,24 @@ pub async fn start_server_with_llm(
     llm_factory: Arc<dyn Fn() -> Box<dyn ectoledger_llm::LlmBackend> + Send + Sync>,
 ) -> Result<(), std::io::Error> {
     let cancel = tokio_util::sync::CancellationToken::new();
+    let shutdown_token = cancel.clone();
+    tokio::spawn(async move {
+        let _ = tokio::signal::ctrl_c().await;
+        shutdown_token.cancel();
+    });
     let approval_state = Arc::new(approvals::ApprovalState::new());
     let (made_router, _task_tracker) = server::router_with_approval_state(
         pool,
         metrics_handle,
         approval_state,
-        cancel,
+        cancel.clone(),
         Some(llm_factory),
     );
     axum::serve(
         listener,
         made_router.into_make_service_with_connect_info::<std::net::SocketAddr>(),
     )
+    .with_graceful_shutdown(cancel.cancelled_owned())
     .await
 }
 

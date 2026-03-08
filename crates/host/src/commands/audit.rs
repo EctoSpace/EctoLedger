@@ -264,7 +264,7 @@ pub async fn run(
     // ── Webhook egress worker ─────────────────────────────────────────────────
     let (egress_sender, egress_handle) =
         crate::webhook::spawn_egress_worker(config::webhook_config(), pool.clone());
-    
+
     // Keep the original sender for explicit cleanup; pass a clone into the
     // agent config so the channel is guaranteed to close even if the cognitive
     // loop future is cancelled mid-flight.

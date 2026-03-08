@@ -189,15 +189,22 @@ fn tripwire_error_kind(e: &TripwireError) -> &'static str {
 /// Sanitise a template expansion value: keep only safe characters and
 /// reject directory-traversal sequences.
 fn sanitize_template_value(s: &str) -> String {
-    let mut sanitized: String = s
+    let sanitized: String = s
         .chars()
         .filter(|c| c.is_alphanumeric() || matches!(c, '/' | '.' | '-' | '_' | ' '))
         .collect();
-    // Remove directory traversal sequences to prevent path escape.
-    while sanitized.contains("..") {
-        sanitized = sanitized.replace("..", "");
+    // Remove directory traversal *components* (".." path segments) to prevent
+    // path escape. Operate on segments so "/tmp/../etc/passwd" is caught.
+    let is_absolute = sanitized.starts_with('/');
+    let parts: Vec<&str> = sanitized
+        .split('/')
+        .filter(|p| !p.is_empty() && *p != "..")
+        .collect();
+    let mut rebuilt = parts.join("/");
+    if is_absolute {
+        rebuilt.insert(0, '/');
     }
-    sanitized
+    rebuilt
 }
 
 /// Expand `{{params.key}}` placeholders in a string using values from the
