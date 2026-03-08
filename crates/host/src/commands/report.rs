@@ -255,10 +255,20 @@ pub fn run_verify_certificate(
                 let mut proof_ok = true;
                 for finding in &cert.findings {
                     for (&seq, mp) in finding.evidence_sequence.iter().zip(&finding.merkle_proofs) {
-                        if let Some(h) = seq_to_hash.get(&seq)
-                            && !merkle::verify_proof(&cert.merkle_root, h, mp).unwrap_or(false)
-                        {
-                            proof_ok = false;
+                        if let Some(h) = seq_to_hash.get(&seq) {
+                            match merkle::verify_proof(&cert.merkle_root, h, mp) {
+                                Ok(true) => {}
+                                Ok(false) => {
+                                    proof_ok = false;
+                                }
+                                Err(e) => {
+                                    println!(
+                                        "\u{2717}  Merkle proof verification error for sequence {}: {}",
+                                        seq, e
+                                    );
+                                    proof_ok = false;
+                                }
+                            }
                         }
                     }
                 }

@@ -212,12 +212,12 @@ pub extern "C" fn main() -> ! {
     dmb_ish();
 
     let host_pubkey = x25519_dalek::PublicKey::from(host_pubkey_bytes);
-    let _shared_secret = guest_secret.diffie_hellman(&host_pubkey);
+    let shared_secret = guest_secret.diffie_hellman(&host_pubkey);
 
     // Derive ChaCha20-Poly1305 key via HKDF-SHA256(shared_secret).
     use hkdf::Hkdf;
     use sha2::Sha256;
-    let hkdf = Hkdf::<Sha256>::new(None, _shared_secret.as_bytes());
+    let hkdf = Hkdf::<Sha256>::new(None, shared_secret.as_bytes());
     let mut derived_key_bytes = [0u8; 32];
     hkdf.expand(b"ectoledger-enclave-ipc-v1", &mut derived_key_bytes)
         .expect("HKDF expand failed");

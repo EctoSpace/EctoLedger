@@ -84,8 +84,14 @@ pub fn select_enclave(config: &EnclaveConfig) -> Box<dyn EnclaveRuntime> {
                 return Box::new(crate::enclave::apple_hv::AppleHvEnclaveRuntime::new());
             }
 
-            #[allow(unreachable_code)]
-            Box::new(SoftwareEnclaveRuntime::new())
+            #[cfg(not(all(
+                feature = "sandbox-apple-enclave",
+                target_os = "macos",
+                target_arch = "aarch64"
+            )))]
+            {
+                Box::new(SoftwareEnclaveRuntime::new())
+            }
         }
     }
 }
