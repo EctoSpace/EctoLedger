@@ -123,9 +123,10 @@ pub fn main() {
     // Build the Merkle tree from the COMPUTED content hashes (not from any DB values).
     // This proves the tree is derived from the same chain we just verified.
     let hash_refs: Vec<&str> = computed_content_hashes.iter().map(|s| s.as_str()).collect();
-    let tree = merkle::build_merkle_tree(&hash_refs);
-    let actual_root = merkle::root(&tree.expect("guest: failed to build Merkle tree"))
-        .expect("guest: Merkle tree has no leaves");
+    let tree = merkle::build_merkle_tree(&hash_refs)
+        .unwrap_or_else(|e| panic!("guest: failed to build Merkle tree: {e}"));
+    let actual_root = merkle::root(&tree)
+        .unwrap_or_else(|e| panic!("guest: failed to get Merkle root: {e}"));
 
     assert_eq!(
         actual_root,

@@ -378,7 +378,7 @@ pub async fn run(
             }
             // Signal the server to shut down gracefully now that the audit is done.
             cancel.cancel();
-            false
+            (false, false)
         }
         result = &mut server_handle => {
             // The dashboard server exited or panicked while the cognitive
@@ -391,12 +391,12 @@ pub async fn run(
                 tracing::warn!("Failed to mark session {} as failed: {}", session_id, e);
             }
             cancel.cancel();
-            true
+            (true, true)
         }
         _ = tokio::signal::ctrl_c() => {
             tracing::info!("Shutdown signal received; cancelling tasks…");
             cancel.cancel();
-            true
+            (true, false)
         }
     };
 
@@ -414,12 +414,14 @@ pub async fn run(
         {
             tracing::warn!("Failed to snapshot on abort: {}", e);
         }
-        if let Err(e) = ledger::finish_session(&pool, session_id, "aborted").await {
-            tracing::warn!(
-                "Failed to mark session {} as aborted on signal: {}",
-                session_id,
-                e
-            );
+        if !session_finished {
+            if let Err(e) = ledger::finish_session(&pool, session_id, "aborted").await {
+                tracing::warn!(
+                    "Failed to mark session {} as aborted on signal: {}",
+                    session_id,
+                    e
+                );
+            }
         }
         tracing::info!("Shutdown signal received; session aborted.");
     }

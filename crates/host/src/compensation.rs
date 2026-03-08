@@ -187,18 +187,18 @@ fn tripwire_error_kind(e: &TripwireError) -> &'static str {
 }
 
 /// Sanitise a template expansion value: keep only safe characters and
-/// reject directory-traversal sequences.
+/// reject directory-traversal sequences (both `..` and `.` segments).
 fn sanitize_template_value(s: &str) -> String {
     let sanitized: String = s
         .chars()
         .filter(|c| c.is_alphanumeric() || matches!(c, '/' | '.' | '-' | '_'))
         .collect();
-    // Remove directory traversal *components* (".." path segments) to prevent
-    // path escape. Operate on segments so "/tmp/../etc/passwd" is caught.
+    // Remove directory traversal *components* (".." and "." path segments) to
+    // prevent path escape. Operate on segments so "/tmp/../etc/passwd" is caught.
     let is_absolute = sanitized.starts_with('/');
     let parts: Vec<&str> = sanitized
         .split('/')
-        .filter(|p| !p.is_empty() && *p != "..")
+        .filter(|p| !p.is_empty() && *p != ".." && *p != ".")
         .collect();
     let mut rebuilt = parts.join("/");
     if is_absolute {

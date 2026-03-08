@@ -170,11 +170,8 @@ impl SharedMemoryChannel {
         len_bytes.copy_from_slice(&shared_page[OFF_RESP_LEN..OFF_RESP_LEN + 4]);
         let total_len = u32::from_le_bytes(len_bytes) as usize;
 
-        if total_len < 12 {
-            return Err(format!("Response too short: {total_len}"));
-        }
-        if total_len > 4096 - OFF_PAYLOAD {
-            return Err(format!("Response length exceeds page: {total_len}"));
+        if total_len < 12 || total_len > 12 + MAX_CIPHERTEXT {
+            return Err(format!("Response length out of range: {total_len}"));
         }
 
         let nonce_bytes = &shared_page[OFF_PAYLOAD..OFF_PAYLOAD + 12];
