@@ -1,5 +1,5 @@
 # ISO/IEC 42001:2023 Compliance Policy Pack
-# Ecto Ledger — enterprise-2026
+# Ecto Ledger 2026
 #
 # This file maps each relevant ISO 42001 control to concrete Ecto Ledger features
 # and is loaded by the policy engine alongside the other compliance packs.

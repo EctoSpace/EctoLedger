@@ -192,7 +192,7 @@
             <div class="text-center">
               <div class="reveal flex flex-wrap items-center justify-center gap-4">
                 <img
-                  src="images/ectoledger-logo.png"
+                  src="images/el-logo.webp"
                   alt=""
                   class="h-20 w-auto sm:h-24"
                 />
@@ -393,10 +393,10 @@
       <section id="updates" class="py-16 sm:py-24">
         <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div class="reveal glass rounded-3xl p-6 sm:p-8">
-            <p class="font-mono text-xs uppercase tracking-[0.22em] text-brand-300">v0.6 release</p>
+            <p class="font-mono text-xs uppercase tracking-[0.22em] text-brand-300">v0.6.2 release</p>
             <h2 class="mt-3 font-display text-3xl tracking-tight sm:text-4xl">Changelog and updates</h2>
             <p class="mt-4 max-w-3xl text-sm text-zinc-300">
-              Enterprise highlights from <a href="https://github.com/EctoSpace/EctoLedger/tree/v0.6" class="text-aqua-300 hover:text-aqua-200 underline">v0.6</a>. Full README and CLI reference live on GitHub.
+              Highlights from <a href="https://github.com/EctoSpace/EctoLedger" class="text-aqua-300 hover:text-aqua-200 underline">v0.6</a>. Full README and CLI reference live on GitHub.
             </p>
             <div class="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               <div class="rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3 text-sm text-zinc-200"><strong class="text-white">Pluggable ledger backends</strong> — PostgreSQL or SQLite via <code class="font-mono text-xs">DATABASE_URL</code>; <code class="font-mono text-xs">LedgerBackend</code> trait for custom stores.</div>
@@ -458,7 +458,7 @@
 
           <div class="reveal mt-8 glass rounded-3xl p-6 sm:p-8">
             <h3 class="font-display text-xl text-white">Python SDK</h3>
-            <p class="mt-2 text-sm text-zinc-300">pip install ectoledger-sdk · Optional: <code class="font-mono text-xs">[langchain]</code> or <code class="font-mono text-xs">[autogen]</code>. <a href="https://github.com/EctoSpace/EctoLedger/tree/v0.6/sdk/python" class="text-aqua-300 hover:text-aqua-200">sdk/python</a></p>
+            <p class="mt-2 text-sm text-zinc-300">pip install ectoledger-sdk · Optional: <code class="font-mono text-xs">[langchain]</code> or <code class="font-mono text-xs">[autogen]</code>. <a href="https://github.com/EctoSpace/EctoLedger/sdk/python" class="text-aqua-300 hover:text-aqua-200">sdk/python</a></p>
             <div class="mt-4 overflow-x-auto rounded-2xl border border-white/10 bg-ink-950/85">
               <div class="flex items-center gap-2 border-b border-white/10 px-4 py-3">
                 <span class="h-2.5 w-2.5 rounded-full bg-red-400/70"></span>
@@ -472,7 +472,7 @@
 
           <div class="reveal mt-8 glass rounded-3xl p-6 sm:p-8">
             <h3 class="font-display text-xl text-white">TypeScript SDK</h3>
-            <p class="mt-2 text-sm text-zinc-300">npm install ectoledger-sdk · Zero deps, native fetch. <a href="https://github.com/EctoSpace/EctoLedger/tree/v0.6/sdk/typescript" class="text-aqua-300 hover:text-aqua-200">sdk/typescript</a></p>
+            <p class="mt-2 text-sm text-zinc-300">npm install ectoledger-sdk · Zero deps, native fetch. <a href="https://github.com/EctoSpace/EctoLedger/sdk/typescript" class="text-aqua-300 hover:text-aqua-200">sdk/typescript</a></p>
             <pre class="mt-4 p-4 rounded-2xl border border-white/10 bg-ink-950/85 font-mono text-xs leading-relaxed text-zinc-200 overflow-x-auto"><code>import { EctoLedgerClient } from "ectoledger-sdk";
 const client = new EctoLedgerClient({ baseUrl: "http://localhost:3000" });
 const session = await client.createSession("Summarise quarterly report");
@@ -521,7 +521,7 @@ const cert = await client.exportCertificate(session.id);</code></pre>
       <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div class="glass flex flex-col items-center justify-between gap-4 rounded-2xl px-6 py-5 text-sm text-zinc-400 md:flex-row">
           <div class="flex items-center gap-2">
-            <img src="images/ectoledger-logo.png" alt="EctoSpace" class="h-7 w-auto max-w-[100px] object-contain" />
+            <img src="images/el-logo.webp" alt="EctoSpace" class="h-7 w-auto max-w-[100px] object-contain" />
             <span class="text-zinc-500">·</span>
             <span>Ecto Ledger</span>
           </div>

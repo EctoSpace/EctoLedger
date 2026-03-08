@@ -34,7 +34,7 @@
 
 Ecto Ledger gives every AI agent a cryptographically sealed audit trail. Each action is hash-chained, signature-verified, and policy-gated before execution. The result is an immutable ledger that regulators, auditors, and security teams can inspect, replay, and independently verify - with no trust in the issuer.
 
-**Enterprise highlights (v0.6.2):**
+**Highlights of version 0.6.2:**
 
 | Capability | What it provides |
 |---|---|
@@ -1222,14 +1222,14 @@ EctoLedger/
 │       └── policies/           # Policy packs: soc2, pci-dss, owasp-top10, iso42001
 ├── assets/
 │   ├── ectoLedger-Logo.webp # README logo
-│   └── el-icon.png          # Icon source (icons generated via npm run icon:generate)
+│   └── el-logo.webp          # Icon source (icons generated via npm run icon:generate)
 ├── scripts/
 │   ├── test-integration.sh         # Integration test harness (Docker Postgres)
 │   ├── setup-firecracker.sh        # Firecracker microVM setup (Linux/KVM)
 │   └── provision-firecracker.sh    # Firecracker provisioning with custom prefix
 ├── gui/                    # Tauri 2 + Svelte 5 management GUI
 │   ├── scripts/
-│   │   └── generate-icons.mjs   # Generates Tauri icons from assets/el-icon.png
+│   │   └── generate-icons.mjs   # Generates Tauri icons from assets/el-logo.webp
 │   ├── src/
 │   │   ├── App.svelte              # Root layout - three-tab glassmorphic shell
 │   │   └── lib/

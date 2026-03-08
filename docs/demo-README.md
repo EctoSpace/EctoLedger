@@ -82,3 +82,44 @@ Running `--demo` multiple times is safe:
 - Ollama is not re-installed if already present
 - The `qwen2.5:0.5b` model is not re-downloaded if already pulled
 - The embedded Postgres data persists between runs (use `--reset-db` to start fresh)
+
+## Docker Demo (No Rust or Node Required)
+
+If you prefer a fully containerized experience, you can run the Ecto Ledger demo using Docker Compose. This method requires only Docker and Docker Compose—no Rust toolchain, Node.js, or local dependencies are needed.
+
+### Quick Start
+
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/EctoSpace/EctoLedger.git
+   cd EctoLedger
+   ```
+2. **Start the demo stack:**
+   ```bash
+   docker compose -f docker-compose.demo.yml up
+   ```
+   This will launch:
+   - Ecto Ledger backend (with embedded Postgres)
+   - Ollama LLM backend (for local inference)
+   - PostgreSQL 17 (for persistent data)
+
+3. **Access the dashboard:**
+   Open [http://localhost:3000](http://localhost:3000) in your browser to use the Observer dashboard.
+
+### Stopping and Cleaning Up
+
+- **Stop the demo:**
+  ```bash
+  docker compose -f docker-compose.demo.yml down
+  ```
+- **Remove all containers and volumes (reset demo data):**
+  ```bash
+  docker compose -f docker-compose.demo.yml down -v
+  ```
+
+### Notes
+- The Docker demo does **not** include the Tauri desktop GUI. For the full desktop experience, use the native launcher with `--demo` as described above.
+- The demo stack auto-provisions all required services and models. No manual setup is needed.
+- You can customize ports and environment variables by editing `docker-compose.demo.yml`.
+
+For more details, see the [Docker Demo section](https://github.com/EctoSpace/EctoLedger/tree/v0.6#-docker-demo) in the GitHub repository README.

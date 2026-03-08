@@ -1,6 +1,6 @@
 <!--
   Select — accessible dropdown built on the native <select> element.
-  Styled to match the Ecto Ledger enterprise design system.
+  Styled to match the Ecto Ledger design system.
 -->
 <script lang="ts">
   interface Option {

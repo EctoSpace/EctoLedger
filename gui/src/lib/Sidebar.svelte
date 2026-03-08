@@ -76,7 +76,7 @@
 <nav class="w-64 min-w-64 flex flex-col bg-surface border-r border-border-muted/15 shadow-sm py-6 px-4 overflow-y-auto overflow-x-hidden">
   <!-- Wordmark -->
   <div class="flex items-center gap-3.5 px-3 mb-6 pb-5 border-b border-border-muted/10">
-    <img src="/el-icon.png" alt="" class="w-9 h-9 object-contain shrink-0" />
+    <img src="/el-logo.webp" alt="" class="w-9 h-9 object-contain shrink-0" />
     <span class="text-lg font-semibold tracking-tight text-text-primary">Ecto Ledger</span>
     {#if demoMode}
       <span class="ml-auto text-[10px] font-bold uppercase tracking-widest text-amber-400 bg-amber-400/10 border border-amber-400/25 rounded-md px-2 py-0.5 select-none">Demo</span>

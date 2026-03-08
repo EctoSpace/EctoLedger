@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
- * Generate Tauri app icons from assets/el-icon.png.
+ * Generate Tauri app icons from assets/el-logo.webp.
  * Creates a square version (required by tauri icon) and runs tauri icon.
- * Single source of truth: assets/el-icon.png
+ * Single source of truth: assets/el-logo.webp
  */
 import { createRequire } from "module";
 import { dirname, join } from "path";
@@ -11,12 +11,12 @@ import { existsSync, unlinkSync } from "fs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const rootDir = join(__dirname, "../..");
-const logoPath = join(rootDir, "assets/el-icon.png");
+const logoPath = join(rootDir, "assets/el-logo.webp");
 const squarePath = join(rootDir, "assets/logo-square-temp.png");
 
 async function main() {
   if (!existsSync(logoPath)) {
-    console.error("Error: assets/el-icon.png not found");
+    console.error("Error: assets/el-logo.webp not found");
     process.exit(1);
   }
 

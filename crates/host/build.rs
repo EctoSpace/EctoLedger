@@ -160,14 +160,14 @@ fn embed_windows_icon() {
 
     let manifest_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
     // The crate lives in `crates/host` whereas the logo lives at the workspace
-    // root (`assets/el-icon.png`).  On Windows CI we were failing because we tried
-    // to open `crates/host/assets/el-icon.png` which doesn't exist.  Climb two
+    // root (`assets/el-logo.webp`).  On Windows CI we were failing because we tried
+    // to open `crates/host/assets/el-logo.webp` which doesn't exist.  Climb two
     // levels to reach the workspace root.
     let logo_path = Path::new(&manifest_dir)
         .join("..")
         .join("..")
         .join("assets")
-        .join("el-icon.png");
+        .join("el-logo.webp");
 
     if !logo_path.exists() {
         eprintln!(
@@ -180,7 +180,7 @@ fn embed_windows_icon() {
     let out_dir = env::var("OUT_DIR").unwrap();
     let ico_path = Path::new(&out_dir).join("icon.ico");
 
-    let img = image::open(&logo_path).expect("failed to open assets/el-icon.png");
+    let img = image::open(&logo_path).expect("failed to open assets/el-logo.webp");
     let rgba = img.to_rgba8();
     let (w, h) = (rgba.width(), rgba.height());
     let sizes = [256u32, 48, 32, 16];
