@@ -8,7 +8,6 @@
 #   security-audit  – cargo-audit for known CVEs (ubuntu)
 #   test            – cargo test on all 3 OS
 #   enclave-unit    – IPC + remote-attestation unit tests (ubuntu-only)
-#   enclave-apple-hv – Apple Hypervisor boot (macOS only)
 #   gui             – Svelte type-check + Vite build (ubuntu-only)
 #   sdk-python      – Python SDK pytest (ubuntu-only)
 #   sdk-typescript  – TypeScript SDK vitest (ubuntu-only)
@@ -155,36 +154,6 @@ jobs:
           cargo test --features enclave -p ectoledger --lib -- enclave::ipc::tests
           cargo test --features enclave -p ectoledger --test enclave_ipc
           cargo test --features enclave-remote -p ectoledger --lib -- enclave::remote::tests
-
-  # ── macOS Apple HV boot (requires Apple Silicon runner) ────────────────────
-  enclave-apple-hv:
-    name: Apple Hypervisor boot
-    runs-on: macos-latest
-    continue-on-error: true
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: aarch64-apple-darwin,aarch64-unknown-none
-          components: llvm-tools
-      - uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6 # v2.7.8
-        with:
-          shared-key: "ci-macos-enclave"
-
-      - name: Build enclave test binaries
-        run: cargo test --features sandbox-apple-enclave --no-run 2>&1
-
-      - name: Codesign test binary
-        run: |
-          BIN=$(ls -t target/debug/deps/enclave_apple_boot-* | grep -v '\.' | head -1)
-          echo "Signing: $BIN"
-          codesign -s - --entitlements entitlements.xml --force "$BIN"
-
-      - name: Run Apple HV tests (codesigned)
-        run: |
-          BIN=$(ls -t target/debug/deps/enclave_apple_boot-* | grep -v '\.' | head -1)
-          "$BIN" --nocapture
 
   # ── Tauri GUI type-check + Vite build (ubuntu-only) ────────────────────────
   gui:

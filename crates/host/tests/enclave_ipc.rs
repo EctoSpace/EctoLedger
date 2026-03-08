@@ -19,7 +19,8 @@ mod tests {
         aead::{Aead, KeyInit},
     };
     use ectoledger::enclave::ipc::*;
-    use sha2::{Digest, Sha256};
+    use hkdf::Hkdf;
+    use sha2::Sha256;
     use x25519_dalek::{PublicKey, StaticSecret};
 
     /// Full bidirectional round-trip: host sends prompt, guest responds.
@@ -46,10 +47,11 @@ mod tests {
         let mut host_pk_bytes = [0u8; 32];
         host_pk_bytes.copy_from_slice(&page[0..32]);
         let guest_shared = guest_secret.diffie_hellman(&PublicKey::from(host_pk_bytes));
-        let mut h = Sha256::new();
-        h.update(b"ectoledger-enclave-ipc-v1");
-        h.update(guest_shared.as_bytes());
-        let guest_cipher = ChaCha20Poly1305::new_from_slice(&h.finalize()).unwrap();
+        let hkdf = Hkdf::<Sha256>::new(None, guest_shared.as_bytes());
+        let mut guest_key = [0u8; 32];
+        hkdf.expand(b"ectoledger-enclave-ipc-v1", &mut guest_key)
+            .expect("HKDF expand for guest key");
+        let guest_cipher = ChaCha20Poly1305::new_from_slice(&guest_key).unwrap();
 
         // ── Host → Guest (prompt) ──────────────────────────────────────────
         let prompt = b"Analyze the PCI-DSS compliance gaps.";
@@ -131,10 +133,11 @@ mod tests {
         let mut hpk = [0u8; 32];
         hpk.copy_from_slice(&page[0..32]);
         let gs = guest_secret.diffie_hellman(&PublicKey::from(hpk));
-        let mut h = Sha256::new();
-        h.update(b"ectoledger-enclave-ipc-v1");
-        h.update(gs.as_bytes());
-        let guest_cipher = ChaCha20Poly1305::new_from_slice(&h.finalize()).unwrap();
+        let hkdf = Hkdf::<Sha256>::new(None, gs.as_bytes());
+        let mut guest_key = [0u8; 32];
+        hkdf.expand(b"ectoledger-enclave-ipc-v1", &mut guest_key)
+            .expect("HKDF expand for guest key");
+        let guest_cipher = ChaCha20Poly1305::new_from_slice(&guest_key).unwrap();
 
         // Host encrypts.
         let msg = b"test";
