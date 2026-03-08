@@ -1,4 +1,4 @@
-# Ecto Ledger Policy Packs (v0.5)
+# Ecto Ledger Policy Packs (v0.6)
 
 Pre-configured policy files for common security and compliance standards.
 Each pack is a valid `--policy` input for the host CLI.
@@ -10,19 +10,20 @@ Each pack is a valid `--policy` input for the host CLI.
 | `soc2-audit.toml`      | SOC 2     | Access management, logging, encryption at rest      |
 | `pci-dss-audit.toml`   | PCI-DSS   | Cardholder data scope, network segmentation         |
 | `owasp-top10.toml`     | OWASP Top 10 | Injection, broken auth, sensitive data exposure  |
+| `iso42001.toml`        | ISO 42001 | AI management system, risk assessment, governance |
 
 ## Usage (workspace root)
 
 ```bash
-cargo run -p ecto-ledger -- \
+cargo run -p ectoledger -- \
   audit "Verify SOC2 controls on this server" \
   --policy crates/host/policies/soc2-audit.toml
 
-cargo run -p ecto-ledger -- \
+cargo run -p ectoledger -- \
   audit "Audit cardholder data environment" \
   --policy crates/host/policies/pci-dss-audit.toml
 
-cargo run -p ecto-ledger -- \
+cargo run -p ectoledger -- \
   audit "Check OWASP Top 10 vulnerabilities" \
   --policy crates/host/policies/owasp-top10.toml
 ```
@@ -38,7 +39,7 @@ cargo run -- audit "Verify SOC2 controls" --policy policies/soc2-audit.toml
 Or with a pre-built binary:
 
 ```bash
-ecto-ledger audit "Verify SOC2 controls" --policy crates/host/policies/soc2-audit.toml
+ectoledger audit "Verify SOC2 controls" --policy crates/host/policies/soc2-audit.toml
 ```
 
 ## Customising a pack

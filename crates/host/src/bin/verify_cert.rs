@@ -2,20 +2,24 @@
 //
 // Usage: verify-cert <path-to-audit.elc>
 //
-// Performs five independent checks in order:
+// Performs six independent checks in order:
 //   1. Ed25519 signature validity
 //   2. Hash-chain reconstruction
 //   3. Merkle proof verification for all findings
 //   4. Goal hash integrity
 //   5. OTS timestamp (if stamp is complete; warns if incomplete)
+//   6. Enclave attestation pillar (informational)
 //
 // Exit code: 0 = VALID, 1 = INVALID or error.
 
+use ectoledger::certificate::{EctoLedgerCertificate, canonical_json_for_signing};
+use ectoledger::merkle;
 use ed25519_dalek::{Signature, Verifier, VerifyingKey};
-use ecto_ledger::certificate::{canonical_json_for_signing, EctoLedgerCertificate};
-use ecto_ledger::merkle;
 use sha2::{Digest, Sha256};
 use std::process;
+
+#[cfg(feature = "enclave-remote")]
+use coset::CborSerializable as _;
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -33,7 +37,7 @@ fn main() {
         process::exit(1);
     }
     let path = std::path::Path::new(&args[1]);
-    let cert = match ecto_ledger::certificate::read_certificate_file(path) {
+    let cert = match ectoledger::certificate::read_certificate_file(path) {
         Ok(c) => c,
         Err(e) => {
             eprintln!("{RED}ERROR:{RESET} Could not read certificate: {}", e);
@@ -54,10 +58,14 @@ fn main() {
     all_ok &= check_merkle_proofs(&cert);
     all_ok &= check_goal_hash(&cert);
     check_ots(&cert); // OTS failures are warnings, not fatal.
+    check_enclave_attestation(&cert); // Informational; not fatal.
 
     println!();
     if all_ok {
-        println!("{GREEN}CERTIFICATE VALID{RESET}  — session {}", cert.session_id);
+        println!(
+            "{GREEN}CERTIFICATE VALID{RESET}  — session {}",
+            cert.session_id
+        );
         process::exit(0);
     } else {
         println!("{RED}CERTIFICATE INVALID{RESET} — one or more checks failed.");
@@ -115,7 +123,10 @@ fn check_signature(cert: &EctoLedgerCertificate) -> bool {
     let sig: Signature = match sig_bytes.as_slice().try_into() {
         Ok(s) => s,
         Err(e) => {
-            println!("{RED}✗  Signature{RESET} — could not parse ed25519 signature: {}", e);
+            println!(
+                "{RED}✗  Signature{RESET} — could not parse ed25519 signature: {}",
+                e
+            );
             return false;
         }
     };
@@ -154,20 +165,25 @@ fn check_hash_chain(cert: &EctoLedgerCertificate) -> bool {
     // and the last one must equal `ledger_tip_hash`.
     let mut prev_seq: Option<i64> = None;
     for entry in &cert.events {
-        if let Some(prev) = prev_seq {
-            if entry.sequence != prev + 1 {
-                println!(
-                    "{RED}✗  Hash chain{RESET} — sequence gap: expected {}, got {}",
-                    prev + 1,
-                    entry.sequence
-                );
-                return false;
-            }
+        if let Some(prev) = prev_seq
+            && entry.sequence != prev + 1
+        {
+            println!(
+                "{RED}✗  Hash chain{RESET} — sequence gap: expected {}, got {}",
+                prev + 1,
+                entry.sequence
+            );
+            return false;
         }
         prev_seq = Some(entry.sequence);
     }
 
-    let actual_tip = &cert.events.last().unwrap().content_hash;
+    // SAFETY: cert.events.is_empty() is checked and returns early above.
+    let actual_tip = &cert
+        .events
+        .last()
+        .expect("non-empty: guarded by is_empty early return above")
+        .content_hash;
     if actual_tip != &cert.ledger_tip_hash {
         println!(
             "{RED}✗  Hash chain{RESET} — ledger_tip_hash mismatch: expected {}, got {}",
@@ -203,9 +219,25 @@ fn check_merkle_proofs(cert: &EctoLedgerCertificate) -> bool {
     }
 
     // Rebuild the Merkle root from the embedded events so we have a reference.
-    let content_hashes: Vec<&str> = cert.events.iter().map(|e| e.content_hash.as_str()).collect();
-    let tree = merkle::build_merkle_tree(&content_hashes);
-    let expected_root = merkle::root(&tree);
+    let content_hashes: Vec<&str> = cert
+        .events
+        .iter()
+        .map(|e| e.content_hash.as_str())
+        .collect();
+    let tree = match merkle::build_merkle_tree(&content_hashes) {
+        Ok(t) => t,
+        Err(e) => {
+            println!("{RED}✗  Merkle build error{RESET} — {}", e);
+            return false;
+        }
+    };
+    let expected_root = match merkle::root(&tree) {
+        Ok(r) => r,
+        Err(e) => {
+            println!("{RED}✗  Merkle root error{RESET} — {}", e);
+            return false;
+        }
+    };
 
     if expected_root != cert.merkle_root {
         println!(
@@ -241,7 +273,7 @@ fn check_merkle_proofs(cert: &EctoLedgerCertificate) -> bool {
                 failures += 1;
                 continue;
             };
-            if !merkle::verify_proof(&cert.merkle_root, hash, proof) {
+            if !merkle::verify_proof(&cert.merkle_root, hash, proof).unwrap_or(false) {
                 println!(
                     "{RED}✗  Merkle proofs{RESET} — proof {} for finding '{}' (seq {}) is invalid",
                     i, finding.title, seq
@@ -293,7 +325,10 @@ fn check_ots(cert: &EctoLedgerCertificate) -> bool {
     let stamp_bytes = match hex::decode(ots_hex) {
         Ok(b) => b,
         Err(e) => {
-            println!("{YELLOW}⚠  OTS timestamp{RESET} — invalid hex in ots_proof_hex: {}", e);
+            println!(
+                "{YELLOW}⚠  OTS timestamp{RESET} — invalid hex in ots_proof_hex: {}",
+                e
+            );
             return true;
         }
     };
@@ -330,14 +365,78 @@ fn check_ots(cert: &EctoLedgerCertificate) -> bool {
         if has_bitcoin {
             println!("{GREEN}✓  OTS timestamp — Bitcoin attestation present in stamp{RESET}");
         } else {
-            println!("{YELLOW}⚠  OTS timestamp{RESET} — stamp is present but not yet confirmed on Bitcoin");
-            println!("   Run `ecto-ledger upgrade-certificate {}` later to embed the completed proof.", "[file]");
+            println!(
+                "{YELLOW}⚠  OTS timestamp{RESET} — stamp is present but not yet confirmed on Bitcoin"
+            );
+            println!(
+                "   Run `ectoledger upgrade-certificate [file]` later to embed the completed proof."
+            );
         }
     } else {
         // The aggregators sometimes return a non-standard envelope for the pending receipt.
-        println!("{YELLOW}⚠  OTS timestamp{RESET} — stamp is present ({} bytes) but format unrecognised; manual verification required", stamp_bytes.len());
+        println!(
+            "{YELLOW}⚠  OTS timestamp{RESET} — stamp is present ({} bytes) but format unrecognised; manual verification required",
+            stamp_bytes.len()
+        );
     }
 
     // OTS check is informational; does not affect exit code.
     true
+}
+
+// ── Check 6: Enclave attestation ──────────────────────────────────────────────
+
+fn check_enclave_attestation(cert: &EctoLedgerCertificate) {
+    let Some(ref att) = cert.enclave_attestation else {
+        println!(
+            "{YELLOW}⚠  Enclave{RESET} — no enclave attestation pillar (session ran without an enclave)"
+        );
+        return;
+    };
+
+    println!("{GREEN}✓  Enclave attestation present{RESET}");
+    println!("     Level       : {}", att.level);
+    println!("     Measurement : {}", att.measurement_hash);
+
+    match &att.raw_attestation_hex {
+        Some(hex_blob) => {
+            let blob_bytes = hex_blob.len() / 2;
+            println!("     Raw blob    : {} bytes (hex-encoded)", blob_bytes);
+
+            // For remote hardware enclaves, attempt basic COSE-Sign1 structure validation.
+            #[cfg(feature = "enclave-remote")]
+            {
+                use ectoledger::enclave::runtime::EnclaveLevel;
+                if att.level == EnclaveLevel::RemoteHardwareEnclave {
+                    match hex::decode(hex_blob) {
+                        Ok(raw) => {
+                            // Try to parse as COSE-Sign1 to validate envelope integrity.
+                            match coset::CoseSign1::from_slice(&raw) {
+                                Ok(_cose) => {
+                                    println!(
+                                        "     {GREEN}COSE-Sign1 envelope parsed successfully{RESET}"
+                                    );
+                                }
+                                Err(e) => {
+                                    println!(
+                                        "     {YELLOW}COSE-Sign1 parse warning{RESET}: {} (may be a non-COSE format)",
+                                        e
+                                    );
+                                }
+                            }
+                        }
+                        Err(e) => {
+                            println!(
+                                "     {YELLOW}Could not decode raw_attestation_hex{RESET}: {}",
+                                e
+                            );
+                        }
+                    }
+                }
+            }
+        }
+        None => {
+            println!("     Raw blob    : not present (software-level attestation)");
+        }
+    }
 }

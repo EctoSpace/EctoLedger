@@ -1,26 +1,31 @@
 // Helpers for integration tests (used when tests are run with --ignored).
 #![allow(dead_code)]
 
-use ecto_ledger::ledger;
-use ecto_ledger::llm::{LlmBackend, LlmError};
-use ecto_ledger::intent::ProposedIntent;
-use ecto_ledger::db_setup;
-use ecto_ledger::config;
 use async_trait::async_trait;
-use sqlx::postgres::PgPoolOptions;
+use ectoledger::config;
+use ectoledger::db_setup;
+use ectoledger::intent::ProposedIntent;
+use ectoledger::ledger;
+use ectoledger::llm::{LlmBackend, LlmError};
 use sqlx::PgPool;
+use sqlx::postgres::PgPoolOptions;
 use std::collections::VecDeque;
 use std::sync::Mutex;
 
-pub async fn spawn_test_pool() -> (PgPool, ecto_ledger::db_setup::EmbeddedDb) {
+pub async fn spawn_test_pool() -> (PgPool, ectoledger::db_setup::EmbeddedDb) {
     let url = config::database_url().expect("DATABASE_URL");
-    let (database_url, embedded) = db_setup::ensure_postgres_ready(&url).await.expect("postgres ready");
+    let (database_url, embedded) = db_setup::ensure_postgres_ready(&url)
+        .await
+        .expect("postgres ready");
     let pool = PgPoolOptions::new()
         .max_connections(2)
         .connect(&database_url)
         .await
         .expect("connect");
-    sqlx::migrate!("./migrations").run(&pool).await.expect("migrate");
+    sqlx::migrate!("./migrations")
+        .run(&pool)
+        .await
+        .expect("migrate");
     (pool, embedded)
 }
 
@@ -32,8 +37,14 @@ pub async fn reset_ledger(pool: &PgPool) {
 }
 
 pub async fn assert_chain_valid(pool: &PgPool, from: i64, to: i64) {
-    let valid = ledger::verify_chain(pool, from, to).await.expect("verify_chain");
-    assert!(valid, "chain verification failed for sequence {}..{}", from, to);
+    let valid = ledger::verify_chain(pool, from, to)
+        .await
+        .expect("verify_chain");
+    assert!(
+        valid,
+        "chain verification failed for sequence {}..{}",
+        from, to
+    );
 }
 
 pub struct MockLlmBackend {

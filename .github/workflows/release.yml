@@ -4,6 +4,10 @@ on:
   push:
     tags: ["v*"]
   workflow_dispatch:
+    inputs:
+      tag:
+        description: "Git tag to release (must start with 'v')"
+        required: true
 
 env:
   CARGO_TERM_COLOR: always
@@ -40,6 +44,8 @@ jobs:
     steps:
       - name: Checkout source
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -50,6 +56,13 @@ jobs:
         uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6 # v2.7.8
         with:
           shared-key: release-${{ matrix.target }}
+
+      - name: Install system dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            libssl-dev libgtk-3-dev
 
       - name: Build release binaries
         run: cargo build --release -p ectoledger --target ${{ matrix.target }} --features ${{ matrix.features }}
@@ -93,10 +106,12 @@ jobs:
           - platform: windows-latest
     runs-on: ${{ matrix.platform }}
     permissions:
-      contents: write
+      contents: read
 
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
 
       - name: Install system dependencies (Linux)
         if: matrix.platform == 'ubuntu-latest'
@@ -133,7 +148,14 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: ectoledger-gui-${{ matrix.platform }}
-          path: gui/src-tauri/target/release/bundle/
+          path: |
+            gui/src-tauri/target/release/bundle/**/*.dmg
+            gui/src-tauri/target/release/bundle/**/*.AppImage
+            gui/src-tauri/target/release/bundle/**/*.deb
+            gui/src-tauri/target/release/bundle/**/*.rpm
+            gui/src-tauri/target/release/bundle/**/*.msi
+            gui/src-tauri/target/release/bundle/**/*.exe
+            gui/src-tauri/target/release/bundle/**/*.nsis.zip
           retention-days: 1
 
   release:
@@ -157,12 +179,14 @@ jobs:
       - name: Generate SHA256SUMS
         run: |
           cd artifacts
-          find . -type f -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS
+          find . -type f -not -name SHA256SUMS -print0 | sort -z | xargs -0 sha256sum \
+            | sed 's|  .*/|  |' > SHA256SUMS
           cat SHA256SUMS
 
       - name: Create GitHub Release and upload assets
         uses: softprops/action-gh-release@da05d552573ad5aba039eaac05058a918a7bf631 # v2.2.2
         with:
+          tag_name: ${{ github.event.inputs.tag || github.ref_name }}
           files: artifacts/**/*
           generate_release_notes: true
           draft: false
@@ -176,11 +200,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
+      contents: read
       id-token: write          # OIDC trusted publishing
     environment: pypi
 
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
 
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
@@ -202,9 +229,13 @@ jobs:
     needs: release
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      contents: read
 
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
 
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:

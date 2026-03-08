@@ -1,13 +1,12 @@
 mod common;
 
 use common::{reset_ledger, spawn_test_pool};
-use ecto_ledger::ledger;
-use ecto_ledger::schema::EventPayload;
-use ecto_ledger::wakeup;
+use ectoledger::ledger;
+use ectoledger::schema::EventPayload;
+use ectoledger::wakeup;
 
-#[tokio::test(flavor = "multi_thread")]
+#[tokio::test]
 #[cfg_attr(not(feature = "integration"), ignore)] // run with: cargo test --features integration
-#[serial_test::serial]
 async fn recover_incomplete_actions_appends_failure_observation() {
     let (pool, _db) = spawn_test_pool().await;
     reset_ledger(&pool).await;
@@ -24,9 +23,13 @@ async fn recover_incomplete_actions_appends_failure_observation() {
     )
     .await
     .expect("append");
-    ledger::mark_action_executing(&pool, appended.id).await.expect("mark_executing");
+    ledger::mark_action_executing(&pool, appended.id)
+        .await
+        .expect("mark_executing");
 
-    wakeup::recover_incomplete_actions(&pool).await.expect("recover");
+    wakeup::recover_incomplete_actions(&pool)
+        .await
+        .expect("recover");
 
     let events = ledger::get_events(&pool, 0, 10).await.expect("get_events");
     let has_recovered_observation = events.iter().any(|e| {
@@ -36,5 +39,8 @@ async fn recover_incomplete_actions_appends_failure_observation() {
             false
         }
     });
-    assert!(has_recovered_observation, "expected a recovery observation to be appended");
+    assert!(
+        has_recovered_observation,
+        "expected a recovery observation to be appended"
+    );
 }

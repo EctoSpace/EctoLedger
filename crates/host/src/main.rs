@@ -1,25 +1,20 @@
 use clap::{Parser, Subcommand};
-use colored::Colorize;
-use ecto_ledger::agent::{self, AgentLoopConfig};
-use ecto_ledger::config;
-use ecto_ledger::db_setup;
-use ecto_ledger::guard::GuardExecutor;
-use ecto_ledger::guard_process::GuardProcess;
-use ecto_ledger::agent::AgentError;
-use ecto_ledger::ledger::{self, AppendError};
-use ecto_ledger::llm;
-use ecto_ledger::server;
-use ecto_ledger::schema::EventPayload;
-use ecto_ledger::tripwire::{self, Tripwire};
+use ectoledger::commands;
+use ectoledger::config;
+use ectoledger::db_setup;
+use ectoledger::ledger;
+#[cfg(any(all(target_os = "linux", feature = "sandbox"), windows))]
+use ectoledger::sandbox;
+use ectoledger::secrets;
 use sqlx::postgres::PgPoolOptions;
-use std::path::PathBuf;
-use std::net::SocketAddr;
-use tokio::net::TcpListener;
+use tokio_util::sync::CancellationToken;
 use uuid::Uuid;
 
 #[derive(Parser)]
-#[command(name = "ecto-ledger")]
-#[command(about = "Cryptographically verified, state-driven agent framework for automated security auditing")]
+#[command(name = "ectoledger")]
+#[command(
+    about = "Cryptographically verified, state-driven agent framework for automated security auditing"
+)]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
@@ -54,6 +49,22 @@ enum Commands {
         /// Prompt for approval gate decisions interactively on stdin instead of the dashboard.
         #[arg(long, default_value_t = false)]
         interactive: bool,
+        /// Read the key-encryption password from the given file descriptor
+        /// instead of the interactive prompt or ECTO_KEY_PASSWORD env var.
+        /// More secure than env vars (not visible via /proc, ps, docker inspect).
+        /// Unix only.  Example: `ectoledger audit "..." --key-password-fd 3  3< <(pass show ectoledger)`
+        #[arg(long)]
+        key_password_fd: Option<i32>,
+        /// Automatically anchor the ledger tip to the target chain at this
+        /// interval (in seconds) during the audit.  0 = disabled (default).
+        /// Requires EVM env vars for `ethereum`, or OTS for `bitcoin`.
+        /// This is defense-in-depth: periodic anchoring limits the window
+        /// in which a compromised system could rewrite unanchored history (TM-1e).
+        #[arg(long, default_value_t = 0)]
+        auto_anchor_interval: u64,
+        /// Target chain for auto-anchoring: `bitcoin` or `ethereum`.
+        #[arg(long, default_value = "bitcoin", value_parser = ["bitcoin", "ethereum"])]
+        auto_anchor_chain: String,
     },
 
     /// Replay events for a session (colored output).
@@ -144,10 +155,16 @@ enum Commands {
         no_ots: bool,
     },
 
-    /// Anchor a session's ledger tip to the Bitcoin timechain via OpenTimestamps.
+    /// Anchor a session's ledger tip to the Bitcoin timechain via OpenTimestamps,
+    /// or to an EVM-compatible chain via a smart contract call.
     AnchorSession {
         /// Session UUID whose ledger tip to anchor.
         session: Uuid,
+        /// Target chain: `bitcoin` (default, via OpenTimestamps) or `ethereum`
+        /// (EVM-compatible — requires EVM_RPC_URL, EVM_CHAIN_ID, EVM_CONTRACT_ADDRESS,
+        /// EVM_PRIVATE_KEY env vars and `--features evm` build flag).
+        #[arg(long, default_value = "bitcoin", value_parser = ["bitcoin", "ethereum"])]
+        chain: String,
     },
 
     /// Verify an Ecto Ledger Audit Certificate (.elc) file.
@@ -155,6 +172,54 @@ enum Commands {
         /// Path to the .elc certificate file.
         file: std::path::PathBuf,
     },
+
+    /// Decode and verify a W3C VC-JWT issued by Ecto Ledger.
+    ///
+    /// Checks structure, expiry, and (when --issuer-hex is provided) the Ed25519 signature
+    /// over the VC payload.  Prints the decoded credential subject to stdout.
+    ///
+    /// # Examples
+    ///
+    ///   ectoledger verify-vc "eyJhbGci..."
+    ///   ectoledger verify-vc "eyJhbGci..." --issuer-hex <hex-encoded verifying key>
+    VerifyVc {
+        /// The VC-JWT string (three base64url parts separated by `.`).
+        jwt: String,
+        /// Optional hex-encoded Ed25519 verifying key (32 bytes / 64 hex chars).
+        /// When provided, the JWT signature is verified against this key.
+        #[arg(long)]
+        issuer_hex: Option<String>,
+    },
+}
+
+/// Returns true when the configured DATABASE_URL uses a SQLite scheme.
+fn is_sqlite_url(url: &str) -> bool {
+    url.starts_with("sqlite:") || url.starts_with("sqlite://")
+}
+
+/// Extract a filesystem path from a SQLite DATABASE_URL.
+///
+/// Handles the common variants:
+///   sqlite:ledger.db      → ledger.db
+///   sqlite://ledger.db    → ledger.db
+///   sqlite:///tmp/l.db    → /tmp/l.db
+///   sqlite::memory:       → None  (in-memory, no file)
+fn sqlite_path_from_url(url: &str) -> Option<std::path::PathBuf> {
+    let path_str = if let Some(rest) = url.strip_prefix("sqlite:///") {
+        // sqlite:///tmp/l.db → /tmp/l.db  (absolute path — restore leading slash)
+        format!("/{rest}")
+    } else if let Some(rest) = url.strip_prefix("sqlite://") {
+        rest.to_string()
+    } else if let Some(rest) = url.strip_prefix("sqlite:") {
+        rest.to_string()
+    } else {
+        url.to_string()
+    };
+    if path_str == ":memory:" || path_str.is_empty() {
+        None
+    } else {
+        Some(std::path::PathBuf::from(path_str))
+    }
 }
 
 #[tokio::main]
@@ -163,791 +228,369 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
         .init();
     dotenvy::dotenv().ok();
+
+    // Windows: apply Job Object sandbox to the current process.
+    // All child processes inherit KILL_ON_JOB_CLOSE + UI restrictions.
+    // This is done at startup (not per-child) because Windows lacks Unix pre_exec.
+    #[cfg(target_os = "windows")]
+    {
+        let ws = std::env::current_dir().unwrap_or_default();
+        if let Err(e) = sandbox::apply_child_sandbox(&ws) {
+            tracing::error!("Windows Job Object sandbox could not be applied: {}", e);
+            return Err("Aborting: Windows Job Object sandbox could not be applied.".into());
+        }
+    }
+
     let cli = Cli::parse();
 
+    // ── Offline commands: no database required ─────────────────────────────
+    // Handle commands that are purely local (no DB, no ledger) before
+    // attempting any database connection or migration.
+    match &cli.command {
+        Commands::VerifyCertificate { file } => {
+            commands::report::run_verify_certificate(file)?;
+            return Ok(());
+        }
+        Commands::VerifyVc { jwt, issuer_hex } => {
+            commands::report::run_verify_vc(jwt, issuer_hex.as_deref())?;
+            return Ok(());
+        }
+        _ => {} // fall through to DB setup
+    }
+
     let configured_url = config::database_url()?;
-    let (database_url, _embedded_pg) = db_setup::ensure_postgres_ready(&configured_url).await?;
-    let pool = PgPoolOptions::new()
-        .connect(&database_url)
-        .await?;
 
-    sqlx::query_scalar::<_, i32>("SELECT 1")
-        .fetch_one(&pool)
-        .await?;
-    println!("Database connected.");
+    // ── Database setup: dispatch by URL scheme ────────────────────────────
+    //
+    // The CLI supports both PostgreSQL and SQLite.  A single `DatabasePool`
+    // is constructed below (one branch per backend) and all subsequent logic
+    // — chain verification, genesis, shutdown wiring, and command dispatch —
+    // runs exactly once against that pool, eliminating the previous fork.
+    //
+    //   postgres://...  → PgPool + Postgres migrations + full command set
+    //   sqlite:...      → SqlitePool (zero infrastructure, limited commands)
 
-    sqlx::migrate!("./migrations").run(&pool).await?;
+    let is_sqlite = is_sqlite_url(&configured_url);
 
-    let verify_full = match &cli.command {
-        Commands::Serve { verify_full, .. } => *verify_full,
-        Commands::Audit { verify_full, .. } => *verify_full,
-        Commands::Replay { .. } | Commands::Report { .. } | Commands::VerifySession { .. }
-        | Commands::Orchestrate { .. } | Commands::DiffAudit { .. } | Commands::RedTeam { .. }
-        | Commands::ProveAudit { .. } | Commands::AnchorSession { .. }
-        | Commands::VerifyCertificate { .. } => false,
-    };
-    if let Some((latest_seq, _)) = ledger::get_latest(&pool).await? {
-        let from = if verify_full { 0 } else { (latest_seq - 999).max(0) };
-        let to = latest_seq;
-        if !ledger::verify_chain(&pool, from, to).await? {
-            eprintln!("Ledger chain verification failed: tampering detected.");
-            std::process::exit(1);
+    // ── Guard: reject commands that require PostgreSQL when using SQLite ───
+    if is_sqlite {
+        match &cli.command {
+            Commands::Orchestrate { .. }
+            | Commands::DiffAudit { .. }
+            | Commands::RedTeam { .. }
+            | Commands::Audit { .. }
+            | Commands::ProveAudit { .. }
+            | Commands::AnchorSession { .. } => {
+                return Err("This command requires PostgreSQL. \
+                     SQLite mode does not support this command yet. \
+                     Set DATABASE_URL to a postgres:// URL and try again."
+                    .into());
+            }
+            _ => {}
         }
     }
 
-    let appended = ledger::ensure_genesis(&pool).await?;
-    if appended.sequence == 0 {
-        println!("Genesis block created.");
-    } else {
-        println!("Genesis already present; latest sequence = {}.", appended.sequence);
-    }
+    // ── Backend construction ──────────────────────────────────────────────
+    //
+    // For PostgreSQL: spin up embedded PG if needed, run migrations, seed
+    // the OBSERVER_TOKEN, then wrap in DatabasePool::Postgres.
+    // For SQLite: open (or create) the on-disk file, run SQLite migrations,
+    // then wrap in DatabasePool::Sqlite.
+    let _embedded_pg: Option<db_setup::EmbeddedDb>;
+    let backend: ectoledger::pool::DatabasePool;
 
-    let metrics = std::sync::Arc::new(ecto_ledger::metrics::Metrics::default());
-    match cli.command {
-        Commands::Serve { .. } => {
-            let listener = TcpListener::bind("0.0.0.0:3000").await?;
-            println!("Observer dashboard: http://localhost:3000");
-            tokio::select! {
-                r = axum::serve(
-                    listener,
-                    server::router(pool.clone(), metrics)
-                        .into_make_service_with_connect_info::<SocketAddr>(),
-                ) => { r?; }
-                _ = tokio::signal::ctrl_c() => {
-                    println!("Shutdown signal received.");
+    if is_sqlite {
+        _embedded_pg = None;
+        let db_path = sqlite_path_from_url(&configured_url);
+        backend = ectoledger::pool::create_sqlite_pool(&db_path.unwrap_or_else(|| {
+            db_setup::app_data_dir()
+                .join("ectoledger")
+                .join("ledger.db")
+        }))
+        .await?;
+
+        // Seed the current session's OBSERVER_TOKEN as an admin entry in api_tokens
+        // so that Bearer-token auth works out of the box with SQLite (including the
+        // in-memory database used by integration tests).
+        {
+            use sha2::{Digest, Sha256 as Sha2};
+            let legacy_token = config::observer_token();
+            let token_hash = hex::encode(Sha2::digest(legacy_token.as_bytes()));
+            match backend
+                .insert_token(
+                    &token_hash,
+                    "admin",
+                    Some("observer_token (bootstrapped)"),
+                    None,
+                )
+                .await
+            {
+                Ok(_) => {
+                    tracing::info!("OBSERVER_TOKEN registered as admin in api_tokens (SQLite).")
                 }
+                Err(e) => tracing::warn!("Failed to seed OBSERVER_TOKEN into api_tokens: {e}"),
             }
         }
+    } else {
+        let result = db_setup::ensure_postgres_ready(&configured_url).await?;
+        let database_url = result.0;
+        _embedded_pg = Some(result.1);
+
+        // Tune pool size to prevent connection exhaustion during multi-agent runs.
+        // Defaults to 2×CPU (min 5, max 50); override with DATABASE_POOL_SIZE env var.
+        let pool_size: u32 = config::database_pool_size();
+        let pg = PgPoolOptions::new()
+            .max_connections(pool_size)
+            .min_connections(1)
+            .idle_timeout(std::time::Duration::from_secs(600))
+            .acquire_timeout(std::time::Duration::from_secs(30))
+            .connect(&database_url)
+            .await?;
+
+        sqlx::query_scalar::<_, i32>("SELECT 1")
+            .fetch_one(&pg)
+            .await?;
+        tracing::info!("Database connected (PostgreSQL).");
+
+        sqlx::migrate!("./migrations").run(&pg).await?;
+
+        // Seed the current session's OBSERVER_TOKEN as an admin entry in api_tokens.
+        // Uses ON CONFLICT so the insert is idempotent: re-using the same token
+        // across restarts is a no-op.
+        {
+            use sha2::{Digest, Sha256 as Sha2};
+            let legacy_token = config::observer_token();
+            let token_hash = hex::encode(Sha2::digest(legacy_token.as_bytes()));
+            match sqlx::query(
+                "INSERT INTO api_tokens (token_hash, role, label) \
+                 VALUES ($1, 'admin', 'observer_token (bootstrapped)') \
+                 ON CONFLICT (token_hash) DO NOTHING",
+            )
+            .bind(&token_hash)
+            .execute(&pg)
+            .await
+            {
+                Ok(_) => tracing::info!("OBSERVER_TOKEN registered as admin in api_tokens."),
+                Err(e) => tracing::warn!("Failed to seed OBSERVER_TOKEN into api_tokens: {e}"),
+            }
+        }
+
+        // ISSUE-19: Load EVM_PRIVATE_KEY into secure memory and scrub from environment.
+        // On Linux the full process environment is readable via /proc/<pid>/environ by any
+        // process with the same UID, and is logged by some container runtimes.
+        if let Some(_evm_key) = secrets::load_env_secret("EVM_PRIVATE_KEY") {
+            tracing::info!(
+                "EVM_PRIVATE_KEY loaded into secure memory and removed from process environment. \
+                 The key will be zeroized when no longer needed."
+            );
+        }
+
+        backend = ectoledger::pool::DatabasePool::Postgres(pg);
+    }
+
+    // ── Shared startup: chain verification ───────────────────────────────
+    let verify_full = match &cli.command {
+        Commands::Serve { verify_full, .. } | Commands::Audit { verify_full, .. } => *verify_full,
+        _ => false,
+    };
+    if let Some((latest_seq, _)) = backend.get_latest().await? {
+        let from = if verify_full {
+            0
+        } else {
+            (latest_seq - 999).max(0)
+        };
+        let to = latest_seq;
+        let chain_ok = match &backend {
+            ectoledger::pool::DatabasePool::Postgres(p) => {
+                ledger::verify_chain(p, from, to).await?
+            }
+            ectoledger::pool::DatabasePool::Sqlite(p) => {
+                ledger::sqlite::verify_chain_sqlite(p, from, to).await?
+            }
+        };
+        if !chain_ok {
+            return Err("Ledger chain verification failed: tampering detected.".into());
+        }
+    }
+
+    // ── Shared startup: genesis ───────────────────────────────────────────
+    let appended = backend.ensure_genesis().await?;
+    if appended.sequence == 0 {
+        tracing::info!("Genesis block created.");
+    } else {
+        tracing::info!(
+            "Genesis already present; latest sequence = {}.",
+            appended.sequence
+        );
+    }
+
+    let metrics = std::sync::Arc::new(ectoledger::metrics::Metrics::default());
+
+    // ── Platform sandbox: apply seccomp-BPF AFTER database setup ───────────
+    //
+    // The Linux seccomp filter is installed here (after DB setup) rather than
+    // at process start, because embedded PostgreSQL (pg_embed) spawns child
+    // processes via fork()+exec() that inherit the filter via PR_SET_NO_NEW_PRIVS.
+    // PostgreSQL requires System V IPC (shmget, semget, etc.) which are NOT in
+    // the allowlist.  Deferring the filter until after DB setup avoids this.
+    //
+    // The filter still protects all command execution (serve, audit, agent loop)
+    // which is where untrusted input is processed.
+    #[cfg(all(target_os = "linux", feature = "sandbox"))]
+    {
+        if let Err(e) = sandbox::apply_main_process_seccomp() {
+            tracing::error!("Linux seccomp filter failed to apply: {}", e);
+            return Err("Aborting: main-process seccomp sandbox could not be applied.".into());
+        }
+    }
+
+    // ── Graceful shutdown: wire Ctrl-C to the cancellation token ─────────
+    let cancel = CancellationToken::new();
+    {
+        let shutdown_cancel = cancel.clone();
+        tokio::spawn(async move {
+            if tokio::signal::ctrl_c().await.is_ok() {
+                tracing::info!("SIGINT received — initiating graceful shutdown");
+                shutdown_cancel.cancel();
+            }
+        });
+    }
+
+    // ── Command dispatch (single block for both backends) ─────────────────
+    match cli.command {
+        Commands::Serve { .. } => match backend {
+            ectoledger::pool::DatabasePool::Postgres(pg) => {
+                commands::serve::run(pg, metrics, cancel).await?;
+            }
+            other => {
+                commands::serve::run_with_pool(other, metrics, cancel).await?;
+            }
+        },
         Commands::Audit {
             prompt,
             policy,
             no_guard,
             no_guard_confirmed,
             interactive,
+            key_password_fd,
+            auto_anchor_interval,
+            auto_anchor_chain,
             ..
         } => {
-            if no_guard && !no_guard_confirmed {
-                eprintln!("⚠️  WARNING: You specified --no-guard. The Guard provides a separate process and model to validate actions.");
-                eprintln!("   Running without the Guard reduces security. If you really want to proceed, run with:");
-                eprintln!("   cargo run -- audit \"<your goal>\" --no-guard --no-guard-confirmed");
-                std::process::exit(1);
-            }
-
-            let client = reqwest::Client::builder()
-                .timeout(std::time::Duration::from_secs(60))
-                .build()?;
-            let llm_backend = llm::backend_from_env(&client)?;
-            llm_backend.ensure_ready(&client).await?;
-
-            let (policy_engine, policy_hash) = if let Some(ref policy_path) = policy {
-                let content = std::fs::read(policy_path).map_err(|e| {
-                    eprintln!("Failed to read policy file: {}", e);
-                    e
-                })?;
-                let hash = ecto_ledger::policy::policy_hash_bytes(&content);
-                let engine = ecto_ledger::policy::load_policy_engine(policy_path)
-                    .map_err(|e| {
-                        eprintln!("Failed to load policy: {}", e);
-                        std::io::Error::new(std::io::ErrorKind::InvalidData, e.to_string())
-                    })?;
-                (Some(engine), Some(hash))
-            } else {
-                (None, None)
-            };
-
-            let (session, session_signing_key) = ledger::create_session(
-                &pool,
-                &prompt,
-                llm_backend.backend_name(),
-                llm_backend.model_name(),
-                policy_hash.as_deref(),
-            )
-            .await?;
-            metrics.inc_sessions_created();
-            let session_id = session.id;
-
-            // Persist the signing key so a crash doesn't invalidate the audit trail.
-            let key_dir = config::session_key_dir();
-            let signing_password = ecto_ledger::signing::prompt_or_env_password(
-                "Set a password to protect this session's signing key (leave blank to skip): ",
-            );
-            if let Some(ref pw) = signing_password {
-                if let Err(e) = ecto_ledger::signing::save_session_key(
-                    &key_dir,
-                    session_id,
-                    &session_signing_key,
-                    pw,
-                ) {
-                    eprintln!("Warning: could not persist signing key: {}. Key will be lost on crash.", e);
-                }
-            }
-
-            let session_signing_key = std::sync::Arc::new(session_signing_key);
-
-            let goal_thought = if let Some(ref h) = policy_hash {
-                format!("Audit goal: {}. Policy hash: {}", prompt, h)
-            } else {
-                format!("Audit goal: {}", prompt)
-            };
-            ledger::append_event(
-                &pool,
-                EventPayload::Thought {
-                    content: goal_thought,
+            // SQLite is guarded above; safe to unwrap the Postgres pool.
+            let pg = backend.as_pg().expect("Audit requires PostgreSQL").clone();
+            commands::audit::run(
+                pg,
+                metrics,
+                commands::audit::AuditArgs {
+                    prompt,
+                    policy,
+                    no_guard,
+                    no_guard_confirmed,
+                    interactive,
+                    key_password_fd,
+                    auto_anchor_interval,
+                    auto_anchor_chain,
                 },
-                Some(session_id),
-                Some(prompt.as_str()),
-                Some(session_signing_key.as_ref()),
             )
             .await?;
-            metrics.inc_events_appended();
-
-            println!(
-                "LLM ready ({} / {}). Starting cognitive loop.",
-                llm_backend.backend_name(),
-                llm_backend.model_name()
-            );
-
-            // Load ephemeral cloud credentials if AGENT_CLOUD_CREDS_FILE is set.
-            let cloud_creds = ecto_ledger::cloud_creds::load_cloud_creds()
-                .map(std::sync::Arc::new);
-            if let Some(ref c) = cloud_creds {
-                println!("Cloud credentials loaded: {} (provider: {})", c.name, c.provider);
-            }
-
-            // Create a shared ApprovalState so the Observer REST API and the agent loop
-            // can exchange approval gate decisions without polling a broken stub.
-            let approval_state = std::sync::Arc::new(ecto_ledger::approvals::ApprovalState::new());
-
-            let pool_observer = pool.clone();
-            let metrics_observer = metrics.clone();
-            let approval_state_server = std::sync::Arc::clone(&approval_state);
-            tokio::spawn(async move {
-                let listener = TcpListener::bind("0.0.0.0:3000").await.expect("bind 0.0.0.0:3000");
-                println!("Observer dashboard: http://localhost:3000");
-                axum::serve(
-                    listener,
-                    server::router_with_approval_state(pool_observer, metrics_observer, approval_state_server)
-                        .into_make_service_with_connect_info::<SocketAddr>(),
-                )
-                .await
-                .expect("axum serve");
-            });
-
-            let workspace = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
-            let allowed_paths = vec![workspace];
-            let allowed_domains: Vec<String> = std::env::var("AGENT_ALLOWED_DOMAINS")
-                .ok()
-                .map(|s| s.split(',').map(String::from).collect())
-                .unwrap_or_default();
-            let tripwire = Tripwire::new(
-                allowed_paths,
-                allowed_domains,
-                tripwire::default_banned_command_patterns(),
-            );
-
-            let guard: Option<Box<dyn GuardExecutor>> = if no_guard && no_guard_confirmed {
-                tracing::warn!("Running without Guard (--no-guard --no-guard-confirmed).");
-                None
-            } else {
-                if let Err(e) = config::ensure_guard_config() {
-                    eprintln!("Configuration error: {}", e);
-                    std::process::exit(1);
-                }
-                match GuardProcess::spawn() {
-                    Ok(g) => Some(Box::new(g)),
-                    Err(e) => {
-                        eprintln!("Guard process failed to start: {}", e);
-                        std::process::exit(1);
-                    }
-                }
-            };
-
-            // Spawn the webhook egress worker if WEBHOOK_URL is configured.
-            let egress_tx = config::webhook_config()
-                .map(ecto_ledger::webhook::spawn_egress_worker);
-
-            let agent_config = AgentLoopConfig {
-                llm: llm_backend,
-                tripwire: &tripwire,
-                max_steps: Some(config::max_steps()),
-                session_id: Some(session_id),
-                session_goal: prompt.clone(),
-                guard,
-                policy: policy_engine.as_ref(),
-                session_signing_key: Some(session_signing_key),
-                metrics: Some(metrics),
-                egress_tx,
-                cloud_creds,
-                interactive,
-                approval_state: Some(approval_state),
-            };
-            let aborted = tokio::select! {
-                result = agent::run_cognitive_loop(&pool, &client, agent_config) => {
-                    match &result {
-                        Ok(()) => {
-                            let _ = ledger::finish_session(&pool, session_id, "completed").await;
-                            println!("Cognitive loop finished.");
-                        }
-                        Err(AgentError::Append(AppendError::GoalMismatch)) => {
-                            let _ = ledger::append_event(
-                                &pool,
-                                EventPayload::Thought {
-                                    content: "Security: session goal mismatch (possible redirect); aborting.".to_string(),
-                                },
-                                Some(session_id),
-                                None,
-                                None,
-                            ).await;
-                            let _ = ledger::finish_session(&pool, session_id, "aborted").await;
-                            eprintln!("Session aborted: goal mismatch.");
-                            std::process::exit(1);
-                        }
-                        Err(AgentError::Append(AppendError::UnverifiedEvidence(msg))) => {
-                            let _ = ledger::append_event(
-                                &pool,
-                                EventPayload::Thought {
-                                    content: format!("Findings verification failed: {}; commit rejected.", msg),
-                                },
-                                Some(session_id),
-                                None,
-                                None,
-                            ).await;
-                            let _ = ledger::finish_session(&pool, session_id, "failed").await;
-                            eprintln!("Session failed: {}", msg);
-                            std::process::exit(1);
-                        }
-                        Err(_) => {
-                            let _ = ledger::finish_session(&pool, session_id, "failed").await;
-                            result?;
-                        }
-                    }
-                    false
-                }
-                _ = tokio::signal::ctrl_c() => {
-                    true
-                }
-            };
-            if aborted {
-                if let Some((seq, _)) = ledger::get_latest(&pool).await? {
-                    let _ = ecto_ledger::snapshot::snapshot_at_sequence(&pool, seq).await;
-                }
-                let _ = ledger::finish_session(&pool, session_id, "aborted").await;
-                println!("Shutdown signal received; session aborted.");
-            }
         }
         Commands::Replay {
             session,
             to_step,
             inject_observation,
+        } => match &backend {
+            ectoledger::pool::DatabasePool::Postgres(pg) => {
+                commands::report::run_replay(pg, session, to_step, inject_observation).await?;
+            }
+            ectoledger::pool::DatabasePool::Sqlite(sq) => {
+                commands::report::run_replay_sqlite(sq, session, to_step, inject_observation)
+                    .await?;
+            }
+        },
+        Commands::VerifySession { session } => match &backend {
+            ectoledger::pool::DatabasePool::Postgres(pg) => {
+                commands::report::run_verify_session(pg, session).await?;
+            }
+            ectoledger::pool::DatabasePool::Sqlite(sq) => {
+                commands::report::run_verify_session_sqlite(sq, session).await?;
+            }
+        },
+        Commands::Orchestrate {
+            goal,
+            policy,
+            max_steps,
         } => {
-            let events = ledger::get_events_by_session(&pool, session).await?;
-            let limit = to_step.map(|n| n as usize).unwrap_or(events.len());
-            let inject_map: std::collections::HashMap<i64, String> = inject_observation
-                .iter()
-                .filter_map(|s| {
-                    let s = s.trim();
-                    let rest = s.strip_prefix("seq=")?;
-                    let (seq, payload) = rest.split_once(':')?;
-                    let seq = seq.trim().parse::<i64>().ok()?;
-                    Some((seq, payload.to_string()))
-                })
-                .collect();
-            for (i, ev) in events.into_iter().take(limit).enumerate() {
-                let step = i + 1;
-                let payload_display = if let Some(injected) = inject_map.get(&ev.sequence) {
-                    if let EventPayload::Observation { .. } = &ev.payload {
-                        serde_json::to_string_pretty(&EventPayload::Observation {
-                            content: format!("[INJECTED] {}", injected),
-                        })
-                        .unwrap_or_default()
-                    } else {
-                        serde_json::to_string_pretty(&ev.payload).unwrap_or_default()
-                    }
-                } else {
-                    serde_json::to_string_pretty(&ev.payload).unwrap_or_default()
-                };
-                let (label, color_fn): (&str, fn(&str) -> colored::ColoredString) = match &ev.payload {
-                    EventPayload::Genesis { .. } => ("genesis", |s: &str| s.green()),
-                    EventPayload::Thought { .. } => ("thought", |s: &str| s.blue()),
-                    EventPayload::Action { .. } => ("action", |s: &str| s.yellow()),
-                    EventPayload::Observation { .. } => ("observation", |s: &str| s.magenta()),
-                    EventPayload::ApprovalRequired { .. } | EventPayload::ApprovalDecision { .. } => {
-                        ("approval", |s: &str| s.cyan())
-                    }
-                    EventPayload::CrossLedgerSeal { .. } => ("cross_ledger_seal", |s: &str| s.white()),
-                    EventPayload::Anchor { .. } => ("anchor", |s: &str| s.white()),
-                };
-                println!("{}", color_fn(&format!("[step {}] {} #{}", step, label, ev.sequence)));
-                println!("{}", payload_display);
-                println!();
-            }
-        }
-        Commands::VerifySession { session } => {
-            let (verified, err) = ledger::verify_session_signatures(&pool, session).await?;
-            if let Some(e) = err {
-                eprintln!("Verification failed: {} ({} signatures verified)", e, verified);
-                std::process::exit(1);
-            }
-            println!("Verified {} event signatures for session {}.", verified, session);
-        }
-        Commands::Orchestrate { goal, policy, max_steps } => {
-            use ecto_ledger::orchestrator::{OrchestratorConfig, run_orchestration};
-            let client = reqwest::Client::builder()
-                .timeout(std::time::Duration::from_secs(60))
-                .build()?;
-            let orch_config = OrchestratorConfig {
-                goal: goal.clone(),
+            // SQLite is guarded above; safe to unwrap the Postgres pool.
+            let pg = backend
+                .as_pg()
+                .expect("Orchestrate requires PostgreSQL")
+                .clone();
+            commands::orchestrate::run_orchestrate(
+                &ectoledger::pool::DatabasePool::Postgres(pg),
+                goal,
                 policy,
-                max_steps_per_agent: max_steps,
-            };
-            println!("Starting orchestrated audit for goal: {}", goal);
-            match run_orchestration(&pool, &client, orch_config).await {
-                Ok(result) => {
-                    println!("\nOrchestration complete.");
-                    println!("  Recon    session: {}", result.recon_session_id);
-                    println!("  Analysis session: {}", result.analysis_session_id);
-                    println!("  Verify   session: {}", result.verify_session_id);
-                    println!("  Cross-ledger seal: {}", result.seal_hash);
-                    println!("\nGenerate per-session certificates with:");
-                    println!("  cargo run -- report --format certificate --output audit-recon.elc {}", result.recon_session_id);
-                    println!("  cargo run -- report --format certificate --output audit-analysis.elc {}", result.analysis_session_id);
-                    println!("  cargo run -- report --format certificate --output audit-verify.elc {}", result.verify_session_id);
-                }
-                Err(e) => {
-                    eprintln!("Orchestration failed: {}", e);
-                    std::process::exit(1);
-                }
-            }
+                max_steps,
+            )
+            .await?;
         }
-        Commands::DiffAudit { baseline, current, output } => {
-            let rep_a = ecto_ledger::report::build_report(&pool, baseline).await?;
-            let rep_b = ecto_ledger::report::build_report(&pool, current).await?;
-            let out = format!(
-                "Baseline session {} (ledger hash: {}, findings: {})\nCurrent session {} (ledger hash: {}, findings: {})\n",
-                baseline, rep_a.ledger_hash, rep_a.findings.len(),
-                current, rep_b.ledger_hash, rep_b.findings.len(),
-            );
-            if let Some(path) = output {
-                std::fs::write(&path, &out).map_err(|e| { eprintln!("Write failed: {}", e); e })?;
-                println!("Diff summary written to {}", path.display());
-            } else {
-                print!("{}", out);
-            }
+        Commands::DiffAudit {
+            baseline,
+            current,
+            output,
+        } => {
+            let pg = backend
+                .as_pg()
+                .expect("DiffAudit requires PostgreSQL")
+                .clone();
+            commands::orchestrate::run_diff_audit(&pg, baseline, current, output).await?;
         }
-        Commands::RedTeam { target_session, attack_budget, output } => {
-            let config = ecto_ledger::red_team::RedTeamConfig {
-                target_session,
-                attack_budget,
-            };
-            let report = ecto_ledger::red_team::run_red_team(&pool, config)
-                .await
-                .map_err(|e| {
-                    eprintln!("Red-team error: {}", e);
-                    std::io::Error::new(std::io::ErrorKind::Other, e.to_string())
-                })?;
-
-            println!("{}", report);
-
-            if let Some(path) = output {
-                let json = serde_json::to_string_pretty(&report)
-                    .expect("report serialization failed");
-                std::fs::write(&path, &json).map_err(|e| {
-                    eprintln!("Failed to write report: {}", e);
-                    e
-                })?;
-                println!("Report written to {}", path.display());
-            }
-
-            // Exit with code 1 if any payload passed all defense layers.
-            if report.passed_all > 0 {
-                eprintln!(
-                    "\n⚠  {} injection(s) passed all defense layers — review required.",
-                    report.passed_all
-                );
-                std::process::exit(1);
-            }
+        Commands::RedTeam {
+            target_session,
+            attack_budget,
+            output,
+        } => {
+            let pg = backend
+                .as_pg()
+                .expect("RedTeam requires PostgreSQL")
+                .clone();
+            commands::orchestrate::run_red_team(&pg, target_session, attack_budget, output).await?;
         }
-        Commands::ProveAudit { session, policy, output, no_ots } => {
-            prove_audit_command(&pool, session, policy, output, no_ots).await?;
+        Commands::ProveAudit {
+            session,
+            policy,
+            output,
+            no_ots,
+        } => {
+            let pg = backend
+                .as_pg()
+                .expect("ProveAudit requires PostgreSQL")
+                .clone();
+            commands::prove::run(&pg, session, policy, output, no_ots).await?;
         }
-        Commands::AnchorSession { session } => {
-            use ecto_ledger::ots;
-            use ecto_ledger::schema::EventPayload;
-
-            println!("Anchoring session {} to OpenTimestamps…", session);
-
-            // Get the ledger tip hash for this session.
-            let events = ecto_ledger::ledger::get_events_by_session(&pool, session).await
-                .map_err(|e| format!("Failed to load session events: {}", e))?;
-            if events.is_empty() {
-                eprintln!("Session {} has no events.", session);
-                std::process::exit(1);
-            }
-            let tip = &events.last().unwrap().content_hash;
-            println!("Ledger tip hash: {}", tip);
-
-            match ots::submit_ots_stamp(tip).await {
-                Ok(stamp_bytes) => {
-                    let proof_hex = hex::encode(&stamp_bytes);
-                    println!("OTS stamp received ({} bytes). Status: pending Bitcoin confirmation.", stamp_bytes.len());
-
-                    // Append an Anchor event to the session ledger.
-                    let anchor_payload = EventPayload::Anchor {
-                        ledger_tip_hash: tip.clone(),
-                        ots_proof_hex: proof_hex.clone(),
-                        bitcoin_block_height: None,
-                    };
-                    match ecto_ledger::ledger::append_event(&pool, anchor_payload, Some(session), None, None).await {
-                        Ok(e) => println!("Anchor event appended at sequence {}.", e.sequence),
-                        Err(e) => eprintln!("Warning: failed to append Anchor event: {}", e),
-                    }
-                    println!("OTS proof (hex): {}", &proof_hex[..proof_hex.len().min(64)], );
-                    println!("Run `ots upgrade` with the stamp file to confirm the Bitcoin block height.");
-                }
-                Err(e) => {
-                    eprintln!("OTS submission failed: {}", e);
-                    std::process::exit(1);
-                }
-            }
+        Commands::AnchorSession { session, chain } => {
+            let pg = backend
+                .as_pg()
+                .expect("AnchorSession requires PostgreSQL")
+                .clone();
+            commands::anchor::run(&pg, session, chain).await?;
         }
         Commands::Report {
             session,
             format,
             output,
             no_ots,
-        } => {
-            if format.to_lowercase() == "certificate" {
-                // Build an Ecto Ledger Audit Certificate (.elc).
-                let out_path = output.clone().unwrap_or_else(|| {
-                    std::path::PathBuf::from(format!("audit-{}.elc", session))
-                });
-                println!("Building Ecto Ledger Audit Certificate for session {}…", session);
-                let cert = ecto_ledger::certificate::build_certificate(
-                    &pool,
-                    session,
-                    None, // signing_key: requires session key loaded from disk (use VerifySession first)
-                    !no_ots,
-                )
-                .await
-                .map_err(|e| format!("certificate build failed: {}", e))?;
-                ecto_ledger::certificate::write_certificate_file(&cert, &out_path)
-                    .map_err(|e| format!("write certificate failed: {}", e))?;
-                println!("Certificate written to {}", out_path.display());
-                println!("Verify with: verify-cert {}", out_path.display());
-            } else {
-                let report = ecto_ledger::report::build_report(&pool, session).await?;
-                let out = match format.to_lowercase().as_str() {
-                    "sarif" => serde_json::to_string_pretty(
-                        &ecto_ledger::report::report_to_sarif(&report, session),
-                    )
-                    .unwrap_or_default(),
-                    "html" => ecto_ledger::report::report_to_html(&report, session),
-                    "github_actions" => {
-                        ecto_ledger::report::report_to_github_actions(&report)
-                    }
-                    "gitlab_codequality" => serde_json::to_string_pretty(
-                        &ecto_ledger::report::report_to_gitlab_codequality(&report, session),
-                    )
-                    .unwrap_or_default(),
-                    _ => serde_json::to_string_pretty(&report).unwrap_or_default(),
-                };
-                if let Some(path) = output {
-                    std::fs::write(&path, &out).map_err(|e| {
-                        eprintln!("Write failed: {}", e);
-                        e
-                    })?;
-                    println!("Report written to {}", path.display());
-                } else {
-                    println!("{}", out);
-                }
-
-                // Fail the pipeline when any finding is high or critical severity.
-                let has_high_or_critical = report
-                    .findings
-                    .iter()
-                    .any(|f| matches!(f.severity.as_str(), "high" | "critical"));
-                if has_high_or_critical {
-                    eprintln!("Ecto Ledger: High or Critical findings detected — failing pipeline.");
-                    std::process::exit(1);
-                }
+        } => match &backend {
+            ectoledger::pool::DatabasePool::Postgres(pg) => {
+                commands::report::run_report(pg, session, format, output, no_ots).await?;
             }
-        }
-
-        Commands::VerifyCertificate { file } => {
-            use ecto_ledger::certificate::{canonical_json_for_signing, read_certificate_file};
-            use ecto_ledger::merkle;
-            use sha2::{Digest, Sha256 as Sha256Hasher};
-            use ed25519_dalek::{Signature as Ed25519Sig, Verifier, VerifyingKey};
-
-            let cert = read_certificate_file(&file)
-                .map_err(|e| format!("Could not read certificate: {}", e))?;
-            println!("Verifying Ecto Ledger Audit Certificate");
-            println!("  Session: {}", cert.session_id);
-            println!("  Events : {}", cert.event_count);
-            println!();
-
-            let mut all_ok = true;
-
-            // 1. Signature
-            if let (Some(sig_hex), Some(pk_hex)) = (&cert.signature, &cert.session_public_key) {
-                let canonical = canonical_json_for_signing(&cert)
-                    .map_err(|e| format!("canonical JSON error: {}", e))?;
-                let pk_bytes = hex::decode(pk_hex).map_err(|e| format!("invalid pk hex: {}", e))?;
-                let ok = pk_bytes
-                    .as_slice()
-                    .try_into()
-                    .ok()
-                    .and_then(|b: &[u8; 32]| VerifyingKey::from_bytes(b).ok())
-                    .and_then(|vk| {
-                        hex::decode(sig_hex).ok().and_then(|sb| {
-                            sb.as_slice().try_into().ok().map(|s: Ed25519Sig| {
-                                vk.verify(canonical.as_bytes(), &s).is_ok()
-                            })
-                        })
-                    })
-                    .unwrap_or(false);
-                if ok {
-                    println!("✓  Signature valid (ed25519)");
-                } else {
-                    println!("✗  Signature INVALID");
-                    all_ok = false;
-                }
-            } else {
-                println!("⚠  No signature in certificate");
+            ectoledger::pool::DatabasePool::Sqlite(sq) => {
+                commands::report::run_report_sqlite(sq, session, format, output, no_ots).await?;
             }
-
-            // 2. Chain consistency + tip hash
-            let tip_ok = cert.events.last().map(|e| e.content_hash == cert.ledger_tip_hash).unwrap_or(true);
-            if tip_ok && cert.events.len() as u64 == cert.event_count {
-                println!("✓  Hash chain intact ({} events)", cert.events.len());
-            } else {
-                println!("✗  Hash chain INVALID");
-                all_ok = false;
-            }
-
-            // 3. Merkle proofs
-            let content_hashes: Vec<&str> = cert.events.iter().map(|e| e.content_hash.as_str()).collect();
-            let tree = merkle::build_merkle_tree(&content_hashes);
-            let computed_root = merkle::root(&tree);
-            if computed_root != cert.merkle_root {
-                println!("✗  Merkle root INVALID");
-                all_ok = false;
-            } else {
-                let seq_to_hash: std::collections::HashMap<i64, &str> = cert.events.iter().map(|e| (e.sequence, e.content_hash.as_str())).collect();
-                let mut proof_ok = true;
-                for finding in &cert.findings {
-                    for (&seq, mp) in finding.evidence_sequence.iter().zip(&finding.merkle_proofs) {
-                        if let Some(h) = seq_to_hash.get(&seq) {
-                            if !merkle::verify_proof(&cert.merkle_root, h, mp) {
-                                proof_ok = false;
-                            }
-                        }
-                    }
-                }
-                if proof_ok {
-                    println!("✓  Merkle proofs valid ({} findings)", cert.findings.len());
-                } else {
-                    println!("✗  Merkle proofs INVALID");
-                    all_ok = false;
-                }
-            }
-
-            // 4. Goal hash
-            let computed_gh = hex::encode(Sha256Hasher::digest(cert.goal.as_bytes()));
-            if computed_gh == cert.goal_hash {
-                println!("✓  Goal hash matches declared goal");
-            } else {
-                println!("✗  Goal hash INVALID");
-                all_ok = false;
-            }
-
-            // 5. OTS (informational)
-            if cert.ots_proof_hex.is_some() {
-                println!("⚠  OTS proof present (manual verification required for Bitcoin confirmation)");
-            } else {
-                println!("⚠  No OTS proof");
-            }
-
-            println!();
-            if all_ok {
-                println!("CERTIFICATE VALID  — session {}", cert.session_id);
-            } else {
-                eprintln!("CERTIFICATE INVALID — one or more checks failed.");
-                std::process::exit(1);
-            }
-        }
+        },
+        // VerifyCertificate and VerifyVc are handled above (early return, no DB).
+        Commands::VerifyCertificate { .. } | Commands::VerifyVc { .. } => unreachable!(),
     }
-
-    Ok(())
-}
-
-// ── prove-audit implementation ─────────────────────────────────────────────────
-
-/// Dispatches to the feature-gated SP1 proof implementation.
-///
-/// When compiled **without** `--features zk`, prints an informative message and exits 1.
-/// When compiled **with** `--features zk`, generates a real SP1 RISC-V proof over the
-/// full ledger session, embeds it in an Ecto Ledger Audit Certificate, and writes the .elc file.
-async fn prove_audit_command(
-    pool: &sqlx::PgPool,
-    session: Uuid,
-    policy_path: Option<std::path::PathBuf>,
-    output: Option<std::path::PathBuf>,
-    no_ots: bool,
-) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    #[cfg(not(feature = "zk"))]
-    {
-        let _ = (pool, session, policy_path, output, no_ots); // suppress unused warnings
-        eprintln!("prove-audit: the `zk` feature is not enabled.");
-        eprintln!();
-        eprintln!("Recompile with ZK support:");
-        eprintln!("  cargo run --features zk -- prove-audit <session>");
-        eprintln!();
-        eprintln!("For verifiable audit provenance without ZK, use the Ecto Ledger Audit Certificate:");
-        eprintln!("  cargo run -- report --format certificate --output audit.elc <session>");
-        std::process::exit(1) // `-> !` — diverges here; satisfies any return type
-    }
-
-    #[cfg(feature = "zk")]
-    prove_audit_zk(pool, session, policy_path, output, no_ots).await
-}
-
-#[cfg(feature = "zk")]
-async fn prove_audit_zk(
-    pool: &sqlx::PgPool,
-    session: Uuid,
-    policy_path: Option<std::path::PathBuf>,
-    output: Option<std::path::PathBuf>,
-    no_ots: bool,
-) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    use ecto_ledger::certificate::{build_certificate, embed_zk_proof, write_certificate_file};
-    use ecto_ledger_core::hash::GENESIS_PREVIOUS_HASH;
-    use ecto_ledger_core::merkle;
-    use ecto_ledger_core::schema::{ChainEvent, GuestInput};
-    use sp1_sdk::{include_elf, CpuProver, Prover, SP1ProofWithPublicValues, SP1Stdin};
-
-    // The guest ELF is compiled and embedded by crates/host/build.rs when --features zk.
-    // sp1-build v6 exports SP1_ELF_{binary_name}; include_elf! wraps it as Elf::Static.
-    let elf = include_elf!("ecto-ledger-guest");
-
-    println!("prove-audit: loading session {} from database…", session);
-
-    // 1. Fetch all events.
-    let events = ecto_ledger::ledger::get_events_by_session(pool, session)
-        .await
-        .map_err(|e| format!("Failed to load session events: {}", e))?;
-
-    if events.is_empty() {
-        eprintln!("prove-audit: session {} has no events.", session);
-        std::process::exit(1);
-    }
-
-    println!("prove-audit: {} events loaded.", events.len());
-
-    // 2. Build GuestInput: convert LedgerEventRow → ChainEvent.
-    //    The guest re-derives content_hash from (previous_hash, sequence, payload_json),
-    //    so we pass the raw chain inputs, not the DB-stored hash.
-    let chain_events: Vec<ChainEvent> = events.iter().map(|e| {
-        let previous_hash = if e.sequence == 0 {
-            GENESIS_PREVIOUS_HASH.to_string()
-        } else {
-            e.previous_hash.clone()
-        };
-        let payload_json = serde_json::to_string(&e.payload)
-            .unwrap_or_else(|_| "{}".to_string());
-        ChainEvent {
-            sequence: e.sequence,
-            previous_hash,
-            payload_json,
-        }
-    }).collect();
-
-    // 3. Derive genesis_hash, tip_hash, and Merkle root from the DB events.
-    let genesis_hash = events.first().map(|e| e.content_hash.clone()).unwrap();
-    let tip_hash    = events.last().map(|e| e.content_hash.clone()).unwrap();
-    let content_hash_refs: Vec<&str> = events.iter().map(|e| e.content_hash.as_str()).collect();
-    let tree = merkle::build_merkle_tree(&content_hash_refs);
-    let merkle_root = merkle::root(&tree);
-
-    // 4. Collect policy patterns from the policy file (if provided).
-    let policy_patterns: Vec<String> = if let Some(ref path) = policy_path {
-        match ecto_ledger::policy::load_policy_engine(path) {
-            Ok(engine) => engine
-                .policy()
-                .observation_rules
-                .iter()
-                .map(|r| r.pattern.clone())
-                .chain(
-                    engine
-                        .policy()
-                        .command_rules
-                        .iter()
-                        .map(|r| r.arg_pattern.clone()),
-                )
-                .collect(),
-            Err(e) => {
-                eprintln!("prove-audit: failed to load policy file: {}. Proceeding with no patterns.", e);
-                vec![]
-            }
-        }
-    } else {
-        vec![]
-    };
-
-    let guest_input = GuestInput {
-        genesis_hash,
-        tip_hash,
-        merkle_root,
-        events: chain_events,
-        policy_patterns,
-    };
-
-    // 5. Serialize input with bincode (no JSON inside the guest).
-    let input_bytes = bincode::serialize(&guest_input)
-        .map_err(|e| format!("bincode serialize failed: {}", e))?;
-
-    println!("prove-audit: guest input serialized ({} bytes). generating SP1 proof…", input_bytes.len());
-    println!("prove-audit: this may take several minutes depending on event count and hardware.");
-
-    // 6. Run the SP1 prover (v6: async CpuProver API).
-    let client = CpuProver::new().await;
-    let pk = client
-        .setup(elf)
-        .await
-        .map_err(|e| format!("SP1 setup failed: {}", e))?;
-
-    let mut stdin = SP1Stdin::new();
-    stdin.write_vec(input_bytes);
-
-    // CpuProveBuilder implements IntoFuture — await it directly (run() is private).
-    let proof: SP1ProofWithPublicValues = client
-        .prove(&pk, stdin)
-        .await
-        .map_err(|e| format!("SP1 proof generation failed: {}", e))?;
-
-    println!("prove-audit: proof generated successfully ({} bytes).", proof.bytes().len());
-
-    // 7. Build certificate and embed the proof.
-    println!("prove-audit: building Ecto Ledger Audit Certificate…");
-    let mut cert = build_certificate(pool, session, None, !no_ots)
-        .await
-        .map_err(|e| format!("certificate build failed: {}", e))?;
-
-    embed_zk_proof(&mut cert, &proof.bytes());
-
-    // 8. Write the .elc certificate file.
-    let out_path = output.unwrap_or_else(|| {
-        std::path::PathBuf::from(format!("audit-{}.elc", session))
-    });
-    write_certificate_file(&cert, &out_path)
-        .map_err(|e| format!("write certificate failed: {}", e))?;
-
-    println!("prove-audit: certificate written to {}", out_path.display());
-    println!();
-    println!("Verify the audit certificate:");
-    println!("  cargo run -- verify-certificate {}", out_path.display());
-    println!();
-    println!("The embedded SP1 proof can be verified independently with sp1_sdk::CpuProver::verify.");
 
     Ok(())
 }

@@ -1,0 +1,14 @@
+# Exclude compiled test files from the published package
+dist/*.test.js
+dist/*.test.cjs
+dist/*.test.d.ts
+dist/*.test.js.map
+dist/*.test.d.ts.map
+dist/cjs/*.test.cjs
+
+# Source files
+src/
+
+# Config
+tsconfig.json
+esbuild.mjs

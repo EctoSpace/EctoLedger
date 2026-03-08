@@ -1,0 +1,70 @@
+# Ecto Ledger — Docker Demo (pre-built image)
+#
+# Usage:
+#   docker compose -f docker-compose.demo.yml up
+#
+# Then open http://localhost:3000 in your browser.
+# Press Ctrl+C to stop.  Run `docker compose -f docker-compose.demo.yml down -v` to clean up.
+#
+# To build from source instead of pulling the pre-built image:
+#   docker compose -f docker-compose.demo.yml -f docker-compose.build.yml up --build
+
+services:
+  # ── PostgreSQL ─────────────────────────────────────────────────────
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: ectoledger
+      POSTGRES_PASSWORD: ectoledger
+      POSTGRES_DB: ectoledger
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ectoledger -d ectoledger"]
+      interval: 2s
+      timeout: 5s
+      retries: 15
+
+  # ── Ollama LLM ────────────────────────────────────────────────────
+  ollama:
+    image: ollama/ollama:latest
+    volumes:
+      - ollama_models:/root/.ollama
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:11434/api/tags >/dev/null"]
+      interval: 3s
+      timeout: 5s
+      retries: 30
+
+  # ── Model pull (runs once then exits) ─────────────────────────────
+  ollama-pull:
+    image: curlimages/curl:latest
+    depends_on:
+      ollama:
+        condition: service_healthy
+    restart: "no"
+    entrypoint: >
+      sh -c 'curl -sf http://ollama:11434/api/pull -d "{\"name\":\"qwen2.5:0.5b\"}" && echo "Model ready."'
+
+  # ── Ecto Ledger (pre-built from GHCR) ─────────────────────────────
+  ectoledger:
+    image: ghcr.io/ectospace/ectoledger:latest
+    depends_on:
+      postgres:
+        condition: service_healthy
+      ollama-pull:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: postgres://ectoledger:ectoledger@postgres:5432/ectoledger
+      LLM_BACKEND: ollama
+      OLLAMA_BASE_URL: http://ollama:11434
+      OLLAMA_MODEL: qwen2.5:0.5b
+      GUARD_REQUIRED: "false"
+      ECTO_DEV_MODE: "true"
+      RUST_LOG: info
+    ports:
+      - "3000:3000"
+
+volumes:
+  pgdata:
+  ollama_models:

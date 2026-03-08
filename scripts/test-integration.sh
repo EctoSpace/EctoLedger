@@ -14,23 +14,40 @@
 
 set -euo pipefail
 
+# Check for Docker or Podman before attempting to use docker compose
+DOCKER_CMD="docker"
+if ! command -v docker >/dev/null 2>&1; then
+    if command -v podman >/dev/null 2>&1; then
+        DOCKER_CMD="podman"
+    else
+        echo "ERROR: Neither Docker nor Podman found. Install Docker Desktop or Podman to run integration tests." >&2
+        echo "  macOS: brew install --cask docker" >&2
+        echo "  Linux: https://docs.docker.com/engine/install/" >&2
+        exit 1
+    fi
+fi
+if ! $DOCKER_CMD compose version &>/dev/null 2>&1; then
+  echo "ERROR: '$DOCKER_CMD compose' (V2) is required. Install the compose plugin or Docker Desktop." >&2
+  exit 1
+fi
+
 COMPOSE_FILE="$(cd "$(dirname "$0")/.." && pwd)/docker-compose.test.yml"
-DB_URL="postgres://ecto_ledger:ecto_ledger@localhost:5433/ecto_ledger_test"
+DB_URL="postgres://ectoledger:ectoledger@localhost:5433/ectoledger_test"
 
 cleanup() {
     echo ""
     echo "Tearing down test containers..."
-    docker compose -f "$COMPOSE_FILE" down --remove-orphans --volumes 2>/dev/null || true
+    $DOCKER_CMD compose -f "$COMPOSE_FILE" down --remove-orphans --volumes 2>/dev/null || true
 }
 trap cleanup EXIT INT TERM
 
 echo "Starting test database..."
-docker compose -f "$COMPOSE_FILE" up -d --wait
+$DOCKER_CMD compose -f "$COMPOSE_FILE" up -d --wait
 
 echo "Waiting for Postgres to be ready..."
 RETRIES=30
-until docker compose -f "$COMPOSE_FILE" exec -T postgres \
-    pg_isready -U ecto_ledger -d ecto_ledger_test -q 2>/dev/null; do
+until $DOCKER_CMD compose -f "$COMPOSE_FILE" exec -T postgres \
+    pg_isready -U ectoledger -d ectoledger_test -q 2>/dev/null; do
     RETRIES=$((RETRIES - 1))
     if [ "$RETRIES" -le 0 ]; then
         echo "ERROR: Postgres did not become ready in time." >&2

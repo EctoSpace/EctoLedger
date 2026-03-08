@@ -189,11 +189,18 @@ pub struct PluginDefinition {
     pub binary: String,
     /// Optional description shown in diagnostics.
     pub description: Option<String>,
+    /// Expected SHA-256 hash of the plugin binary (hex-encoded, lowercase).
+    /// When set, the executor verifies the binary's hash before spawning it.
+    /// (TM-5b hardening: prevents binary replacement / supply-chain attacks.)
+    pub sha256: Option<String>,
     /// Regexes applied to the full argument string. Only these patterns are permitted.
     /// An empty list means all arguments are allowed.
     #[serde(default)]
     pub arg_patterns: Vec<String>,
     /// Host environment variables forwarded into the child process for this binary only.
+    /// **Deny-by-default**: only variables explicitly listed here are forwarded;
+    /// all others are blocked. Names matching sensitive patterns (SECRET, KEY, etc.)
+    /// are always blocked regardless of this list (TM-5c hardening).
     #[serde(default)]
     pub env_passthrough: Vec<String>,
 }
@@ -228,17 +235,92 @@ pub enum ObservationOutcome {
 
 pub struct PolicyEngine {
     policy: AuditPolicy,
+    /// Pre-compiled regexes for command_rules, indexed in parallel with `policy.command_rules`.
+    compiled_command_rules: Vec<Option<Regex>>,
+    /// Pre-compiled regexes for observation_rules, indexed in parallel with `policy.observation_rules`.
+    compiled_observation_rules: Vec<Option<Regex>>,
+    /// Pre-compiled regexes for plugin arg_patterns, keyed by (plugin_index, pattern_index).
+    compiled_plugin_patterns: Vec<Vec<Option<Regex>>>,
 }
 
 impl PolicyEngine {
-    pub fn new(policy: AuditPolicy) -> Self {
-        Self { policy }
+    /// Creates a new `PolicyEngine`, pre-compiling all regex patterns in the policy.
+    ///
+    /// Returns `Err` if any regex pattern is invalid — this prevents silent
+    /// bypasses caused by typos in `deny` rules.
+    pub fn new(policy: AuditPolicy) -> Result<Self, PolicyViolation> {
+        let mut errors: Vec<String> = Vec::new();
+        let compiled_command_rules: Vec<Option<Regex>> = policy
+            .command_rules
+            .iter()
+            .map(|rule| match Regex::new(&rule.arg_pattern) {
+                Ok(r) => Some(r),
+                Err(e) => {
+                    errors.push(format!("command rule regex '{}': {}", rule.arg_pattern, e));
+                    None
+                }
+            })
+            .collect();
+        let compiled_observation_rules: Vec<Option<Regex>> = policy
+            .observation_rules
+            .iter()
+            .map(|rule| match Regex::new(&rule.pattern) {
+                Ok(r) => Some(r),
+                Err(e) => {
+                    errors.push(format!("observation rule regex '{}': {}", rule.pattern, e));
+                    None
+                }
+            })
+            .collect();
+        let compiled_plugin_patterns: Vec<Vec<Option<Regex>>> = policy
+            .plugins
+            .iter()
+            .map(|plugin| {
+                plugin
+                    .arg_patterns
+                    .iter()
+                    .map(|pattern| match Regex::new(pattern) {
+                        Ok(r) => Some(r),
+                        Err(e) => {
+                            errors.push(format!("plugin arg_pattern '{}': {}", pattern, e));
+                            None
+                        }
+                    })
+                    .collect()
+            })
+            .collect();
+        if !errors.is_empty() {
+            return Err(PolicyViolation(format!(
+                "policy contains invalid regex pattern(s): {}",
+                errors.join("; ")
+            )));
+        }
+        Ok(Self {
+            policy,
+            compiled_command_rules,
+            compiled_observation_rules,
+            compiled_plugin_patterns,
+        })
     }
 
     /// Validates a proposed intent against the policy.
     /// Returns `Err(PolicyViolation)` if the intent is forbidden.
     /// Also runs `command_rules` for `run_command` actions.
-    pub fn validate_intent(&self, intent: &ProposedIntent, _step: u32) -> Result<(), PolicyViolation> {
+    pub fn validate_intent(
+        &self,
+        intent: &ProposedIntent,
+        step: u32,
+    ) -> Result<(), PolicyViolation> {
+        // 0. Step limit enforcement.
+        if let Some(max) = self.policy.max_steps
+            && step >= max
+        {
+            return Err(PolicyViolation(format!(
+                "step {} exceeds policy max_steps ({})",
+                step, max
+            )));
+        }
+
         let action = intent.action.as_str();
 
         // 1. Forbidden actions list.
@@ -263,7 +345,13 @@ impl PolicyEngine {
                 if let Some(ref path_pattern) = aa.path_pattern {
                     let prefix = path_pattern.trim_end_matches("/**").trim_end_matches('*');
                     if let Some(p) = intent.params_path() {
-                        if !p.starts_with(prefix) {
+                        // Reject path traversal attempts before prefix check.
+                        if p.contains("..") {
+                            return Err(PolicyViolation(
+                                "path traversal ('..') detected in intent params".into(),
+                            ));
+                        }
+                        if !std::path::Path::new(p).starts_with(std::path::Path::new(prefix)) {
                             continue;
                         }
                     } else {
@@ -292,51 +380,51 @@ impl PolicyEngine {
         }
 
         // 3. Command rules (only for run_command).
-        if action == "run_command" {
-            if let Some(cmd_str) = intent.params_command() {
-                let mut parts = cmd_str.splitn(2, char::is_whitespace);
-                let program = parts.next().unwrap_or("").trim();
-                let args = parts.next().unwrap_or("").trim();
+        if action == "run_command"
+            && let Some(cmd_str) = intent.params_command()
+        {
+            let mut parts = cmd_str.splitn(2, char::is_whitespace);
+            let program = parts.next().unwrap_or("").trim();
+            let args = parts.next().unwrap_or("").trim();
 
-                // 3a. Explicit command_rules take precedence.
-                for rule in &self.policy.command_rules {
-                    if rule.program != program {
-                        continue;
+            // 3a. Explicit command_rules take precedence.
+            for (i, rule) in self.policy.command_rules.iter().enumerate() {
+                if rule.program != program {
+                    continue;
+                }
+                let re = match self.compiled_command_rules.get(i).and_then(|r| r.as_ref()) {
+                    Some(r) => r,
+                    None => continue, // regex failed to compile at load time
+                };
+                if !re.is_match(args) {
+                    continue;
+                }
+                // Pattern matched.
+                match rule.decision {
+                    CommandDecision::Allow => return Ok(()),
+                    CommandDecision::Deny => {
+                        let reason = rule
+                            .reason
+                            .as_deref()
+                            .unwrap_or("blocked by command_rules policy");
+                        return Err(PolicyViolation(format!(
+                            "command '{}' denied: {}",
+                            cmd_str, reason
+                        )));
                     }
-                    let re = match Regex::new(&rule.arg_pattern) {
-                        Ok(r) => r,
-                        Err(e) => {
-                            tracing::warn!("Invalid command rule regex '{}': {}", rule.arg_pattern, e);
-                            continue;
-                        }
-                    };
-                    if !re.is_match(args) {
-                        continue;
-                    }
-                    // Pattern matched.
-                    match rule.decision {
-                        CommandDecision::Allow => return Ok(()),
-                        CommandDecision::Deny => {
-                            let reason = rule.reason.as_deref().unwrap_or("blocked by command_rules policy");
-                            return Err(PolicyViolation(format!(
-                                "command '{}' denied: {}",
-                                cmd_str, reason
-                            )));
-                        }
-                        CommandDecision::RequireApproval => {
-                            // Signal via PolicyViolation with a special prefix that callers can
-                            // detect. The agent loop treats this the same as an ApprovalGate trigger.
-                            return Err(PolicyViolation(format!(
-                                "REQUIRE_APPROVAL: command '{}' requires human approval before execution",
-                                cmd_str
-                            )));
-                        }
+                    CommandDecision::RequireApproval => {
+                        // Signal via PolicyViolation with a special prefix that callers can
+                        // detect. The agent loop treats this the same as an ApprovalGate trigger.
+                        return Err(PolicyViolation(format!(
+                            "REQUIRE_APPROVAL: command '{}' requires human approval before execution",
+                            cmd_str
+                        )));
                     }
                 }
-
-                // 3b. Plugin arg_patterns validation for registered plugin binaries.
-                self.validate_plugin_args(program, args)?;
             }
+
+            // 3b. Plugin arg_patterns validation for registered plugin binaries.
+            self.validate_plugin_args(program, args)?;
         }
 
         Ok(())
@@ -348,13 +436,14 @@ impl PolicyEngine {
         let mut working = content.to_string();
         let mut flagged_labels: Vec<String> = Vec::new();
 
-        for rule in &self.policy.observation_rules {
-            let re = match Regex::new(&rule.pattern) {
-                Ok(r) => r,
-                Err(e) => {
-                    tracing::warn!("Invalid observation rule regex '{}': {}", rule.pattern, e);
-                    continue;
-                }
+        for (i, rule) in self.policy.observation_rules.iter().enumerate() {
+            let re = match self
+                .compiled_observation_rules
+                .get(i)
+                .and_then(|r| r.as_ref())
+            {
+                Some(r) => r,
+                None => continue, // regex failed to compile at load time
             };
             if !re.is_match(&working) {
                 continue;
@@ -389,7 +478,10 @@ impl PolicyEngine {
 
     /// Checks whether a proposed intent triggers any approval gate rules.
     /// Returns `Some(ApprovalGateRule)` if approval is required, otherwise `None`.
-    pub fn check_approval_gates<'a>(&'a self, intent: &ProposedIntent) -> Option<&'a ApprovalGateRule> {
+    pub fn check_approval_gates<'a>(
+        &'a self,
+        intent: &ProposedIntent,
+    ) -> Option<&'a ApprovalGateRule> {
         for gate in &self.policy.approval_gates {
             if !gate.require_approval {
                 continue;
@@ -409,44 +501,166 @@ impl PolicyEngine {
         &self.policy
     }
 
-    /// Returns plugin binary names registered in this policy.
-    /// Used by the executor to extend its allowlist without hardcoding tool names.
+    /// Binaries that must NEVER be added to the executor allowlist via plugin
+    /// definitions, regardless of what a policy file declares.
+    const BLOCKED_PLUGIN_BINARIES: &'static [&'static str] = &[
+        "bash",
+        "sh",
+        "zsh",
+        "fish",
+        "csh",
+        "dash",
+        "ksh",
+        "tcsh",
+        "python",
+        "python3",
+        "ruby",
+        "perl",
+        "node",
+        "php",
+        "nc",
+        "ncat",
+        "socat",
+        "telnet",
+        "chmod",
+        "chown",
+        "rm",
+        "dd",
+        "mkfs",
+        "sudo",
+        "su",
+        "doas",
+        // Shell escape vectors
+        "env",
+        "xargs",
+        "script",
+        "expect",
+        "awk",
+        "gawk",
+        "mawk",
+        "nawk",
+        "find",
+        "tee",
+        // Windows / cross-platform shells
+        "pwsh",
+        "powershell",
+        "cmd",
+    ];
+
+    /// Returns plugin binary names registered in this policy, filtered through
+    /// a blocklist of dangerous binaries (shells, interpreters, destructive utils).
     pub fn effective_allowed_programs(&self) -> Vec<String> {
         self.policy
             .plugins
             .iter()
+            .filter(|p| {
+                let lower = p.binary.to_lowercase();
+                let base = std::path::Path::new(&lower)
+                    .file_name()
+                    .and_then(|f| f.to_str())
+                    .unwrap_or(&lower);
+                if Self::BLOCKED_PLUGIN_BINARIES.contains(&base) {
+                    tracing::warn!(
+                        "Plugin '{}' declares blocked binary '{}' — not added to allowlist",
+                        p.name,
+                        p.binary,
+                    );
+                    false
+                } else {
+                    true
+                }
+            })
             .map(|p| p.binary.clone())
             .collect()
     }
 
+    /// Environment variable name patterns that must never be passed through to
+    /// plugin child processes.
+    const BLOCKED_ENV_PATTERNS: &'static [&'static str] = &[
+        "SECRET",
+        "KEY",
+        "TOKEN",
+        "PASSWORD",
+        "CREDENTIAL",
+        "PRIVATE",
+        "DATABASE_URL",
+        "DSN",
+        "MONGO_URI",
+        "REDIS_URL",
+        "AUTH",
+        "PASSPHRASE",
+        "ENCRYPTION",
+        "SIGNING",
+        "SESSION",
+    ];
+
     /// Returns the `env_passthrough` list for the plugin whose `binary` matches `program`,
-    /// or an empty vec if no plugin matches. Used by the executor to forward host env vars.
+    /// filtered to exclude sensitive environment variable names.
+    ///
+    /// **Deny-by-default (TM-5c)**: only variables explicitly listed in the plugin's
+    /// `env_passthrough` are forwarded. Any variable whose name contains a sensitive
+    /// substring (SECRET, KEY, TOKEN, etc.) is always blocked even if explicitly listed.
     pub fn plugin_env_passthrough_for(&self, program: &str) -> Vec<String> {
         let lower = program.to_lowercase();
         self.policy
             .plugins
             .iter()
             .find(|p| p.binary.to_lowercase() == lower)
-            .map(|p| p.env_passthrough.clone())
+            .map(|p| {
+                // Deny-by-default: the returned list contains ONLY variables
+                // that are (a) explicitly named in env_passthrough AND (b) do
+                // not match any BLOCKED_ENV_PATTERNS.
+                p.env_passthrough
+                    .iter()
+                    .filter(|var| {
+                        let upper = var.to_uppercase();
+                        let blocked = Self::BLOCKED_ENV_PATTERNS
+                            .iter()
+                            .any(|pat| upper.contains(pat));
+                        if blocked {
+                            tracing::warn!(
+                                "Plugin '{}' env_passthrough '{}' blocked (sensitive name)",
+                                program,
+                                var,
+                            );
+                        }
+                        !blocked
+                    })
+                    .cloned()
+                    .collect()
+            })
             .unwrap_or_default()
+    }
+
+    /// Look up the `PluginDefinition` for a given binary name.
+    pub fn plugin_for(&self, program: &str) -> Option<&PluginDefinition> {
+        let lower = program.to_lowercase();
+        self.policy
+            .plugins
+            .iter()
+            .find(|p| p.binary.to_lowercase() == lower)
     }
 
     /// Validates argument string for a plugin binary.
     /// Returns `Err` if `arg_patterns` is non-empty and no pattern matches.
     pub fn validate_plugin_args(&self, program: &str, args: &str) -> Result<(), PolicyViolation> {
         let lower = program.to_lowercase();
-        let Some(plugin) = self.policy.plugins.iter().find(|p| p.binary.to_lowercase() == lower) else {
+        let plugin_idx = self
+            .policy
+            .plugins
+            .iter()
+            .position(|p| p.binary.to_lowercase() == lower);
+        let Some(idx) = plugin_idx else {
             return Ok(()); // not a plugin binary
         };
+        let plugin = &self.policy.plugins[idx];
         if plugin.arg_patterns.is_empty() {
             return Ok(()); // no restriction
         }
-        for pattern in &plugin.arg_patterns {
-            match Regex::new(pattern) {
-                Ok(re) if re.is_match(args) => return Ok(()),
-                Ok(_) => {}
-                Err(e) => {
-                    tracing::warn!("Invalid plugin arg_pattern '{}': {}", pattern, e);
+        if let Some(compiled) = self.compiled_plugin_patterns.get(idx) {
+            for re in compiled.iter().flatten() {
+                if re.is_match(args) {
+                    return Ok(());
                 }
             }
         }
@@ -481,14 +695,22 @@ fn eval_clause(clause: &str, intent: &ProposedIntent) -> bool {
         return intent.action == expected;
     }
     if let Some(rest) = clause.strip_prefix("command_contains(") {
-        let needle = rest.trim_end_matches(')').trim().trim_matches('\'').trim_matches('"');
+        let needle = rest
+            .trim_end_matches(')')
+            .trim()
+            .trim_matches('\'')
+            .trim_matches('"');
         if let Some(cmd) = intent.params_command() {
             return cmd.contains(needle);
         }
         return false;
     }
     if let Some(rest) = clause.strip_prefix("path_extension_matches(") {
-        let pattern = rest.trim_end_matches(')').trim().trim_matches('\'').trim_matches('"');
+        let pattern = rest
+            .trim_end_matches(')')
+            .trim()
+            .trim_matches('\'')
+            .trim_matches('"');
         if let Some(path_str) = intent.params_path() {
             let path = std::path::Path::new(path_str);
             // If the pattern looks like a regex (contains |, (, or [), compile and match.
@@ -497,7 +719,7 @@ fn eval_clause(clause: &str, intent: &ProposedIntent) -> bool {
                     Ok(re) => re.is_match(path_str),
                     Err(e) => {
                         tracing::warn!("Invalid path_extension_matches regex '{}': {}", pattern, e);
-                        false
+                        true // fail-closed: require approval when policy regex is broken
                     }
                 };
             }
@@ -510,39 +732,48 @@ fn eval_clause(clause: &str, intent: &ProposedIntent) -> bool {
         return false;
     }
     if let Some(rest) = clause.strip_prefix("url_host_in_cidr(") {
-        let cidr_str = rest.trim_end_matches(')').trim().trim_matches('\'').trim_matches('"');
-        if let Some(url_str) = intent.params_url() {
-            if let Ok(parsed) = url::Url::parse(url_str) {
-                if let Some(host) = parsed.host_str() {
-                    if let Ok(ip) = host.parse::<std::net::IpAddr>() {
-                        if let Ok(network) = cidr_str.parse::<ipnetwork::IpNetwork>() {
-                            return network.contains(ip);
-                        } else {
-                            tracing::warn!("Invalid CIDR in url_host_in_cidr: '{}'", cidr_str);
-                        }
-                    }
-                    // Host is a hostname, not an IP — cannot match a CIDR.
-                }
+        let cidr_str = rest
+            .trim_end_matches(')')
+            .trim()
+            .trim_matches('\'')
+            .trim_matches('"');
+        if let Some(url_str) = intent.params_url()
+            && let Ok(parsed) = url::Url::parse(url_str)
+            && let Some(host) = parsed.host_str()
+            && let Ok(ip) = host.parse::<std::net::IpAddr>()
+        {
+            if let Ok(network) = cidr_str.parse::<ipnetwork::IpNetwork>() {
+                return network.contains(ip);
+            } else {
+                tracing::warn!("Invalid CIDR in url_host_in_cidr: '{}'", cidr_str);
             }
         }
         return false;
     }
     if let Some(rest) = clause.strip_prefix("command_matches_regex(") {
-        let pattern = rest.trim_end_matches(')').trim().trim_matches('\'').trim_matches('"');
+        let pattern = rest
+            .trim_end_matches(')')
+            .trim()
+            .trim_matches('\'')
+            .trim_matches('"');
         if let Some(cmd) = intent.params_command() {
             return match Regex::new(pattern) {
                 Ok(re) => re.is_match(cmd),
                 Err(e) => {
                     tracing::warn!("Invalid command_matches_regex pattern '{}': {}", pattern, e);
-                    false
+                    true // fail-closed: require approval when policy regex is broken
                 }
             };
         }
         return false;
     }
-    // Unknown predicate: treat as false to avoid silent pass-through.
-    tracing::warn!("Unknown policy trigger clause: '{}'", clause);
-    false
+    // Unknown predicate: fail-closed to prevent silent bypass of approval gates.
+    // A typo like 'acton == ...' must trigger the gate, not silently skip it.
+    tracing::error!(
+        "Unknown policy trigger clause: '{}' — failing closed (approval required)",
+        clause
+    );
+    true
 }
 
 // ── Utility ────────────────────────────────────────────────────────────────────

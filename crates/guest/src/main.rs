@@ -17,9 +17,9 @@
 #![no_main]
 sp1_zkvm::entrypoint!(main);
 
-use ecto_ledger_core::hash::{compute_content_hash, GENESIS_PREVIOUS_HASH};
-use ecto_ledger_core::merkle;
-use ecto_ledger_core::schema::{GuestInput, GuestOutput};
+use ectoledger_core::hash::{compute_content_hash, GENESIS_PREVIOUS_HASH};
+use ectoledger_core::merkle;
+use ectoledger_core::schema::{GuestInput, GuestOutput};
 use regex_lite::Regex;
 
 pub fn main() {
@@ -63,10 +63,14 @@ pub fn main() {
 
     for (i, event) in input.events.iter().enumerate() {
         // Re-derive the content hash from the three chain inputs.
+        // The guest operates over a pre-validated chain snapshot; session_id
+        // binding is enforced at append-time, so we pass None here.
         let content_hash = compute_content_hash(
             &event.previous_hash,
             event.sequence,
             &event.payload_json,
+            None,
+            None,
         );
         computed_content_hashes.push(content_hash.clone());
 
@@ -119,8 +123,10 @@ pub fn main() {
     // Build the Merkle tree from the COMPUTED content hashes (not from any DB values).
     // This proves the tree is derived from the same chain we just verified.
     let hash_refs: Vec<&str> = computed_content_hashes.iter().map(|s| s.as_str()).collect();
-    let tree = merkle::build_merkle_tree(&hash_refs);
-    let actual_root = merkle::root(&tree);
+    let tree = merkle::build_merkle_tree(&hash_refs)
+        .unwrap_or_else(|e| panic!("guest: failed to build Merkle tree: {e}"));
+    let actual_root = merkle::root(&tree)
+        .unwrap_or_else(|e| panic!("guest: failed to get Merkle root: {e}"));
 
     assert_eq!(
         actual_root,

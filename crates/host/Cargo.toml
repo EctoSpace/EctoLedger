@@ -1,20 +1,20 @@
 [package]
-name = "ecto-ledger"
+name = "ectoledger"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true
 description = "State-first, cryptographically verified agent framework for automated security auditing"
-license-file = "../../LICENSE"
+license.workspace = true
 build = "build.rs"
-# default binary so `cargo run -p ecto-ledger` doesn't need `--bin`
-default-run = "ecto-ledger"
+# default binary so `cargo run -p ectoledger` doesn't need `--bin`
+default-run = "ectoledger"
 
 [lib]
-name = "ecto_ledger"
+name = "ectoledger"
 path = "src/lib.rs"
 
 [[bin]]
-name = "ecto-ledger"
+name = "ectoledger"
 path = "src/main.rs"
 
 [[bin]]
@@ -26,12 +26,15 @@ name = "verify-cert"
 path = "src/bin/verify_cert.rs"
 
 [dependencies]
-ecto-ledger-core = { path = "../core" }
+ectoledger_core    = { path = "../core" }
+ectoledger-sandbox = { workspace = true }
+ectoledger-llm     = { workspace = true }
+ectoledger-compliance = { workspace = true }
 
 pg-embed           = { version = "0.7", default-features = false, features = ["rt_tokio"] }
 tokio              = { version = "1", features = ["rt-multi-thread", "macros", "time", "sync", "fs", "process"] }
-sqlx               = { version = "0.8", features = ["runtime-tokio", "postgres", "chrono", "uuid", "json", "migrate"] }
-reqwest            = { version = "0.13", features = ["json"] }
+sqlx               = { version = "0.8", features = ["runtime-tokio", "postgres", "sqlite", "chrono", "uuid", "json", "migrate"] }
+reqwest            = { version = "0.13", features = ["json", "blocking"] }
 serde              = { workspace = true }
 serde_json         = { workspace = true }
 sha2               = { workspace = true }
@@ -45,8 +48,10 @@ tracing            = { workspace = true }
 ed25519-dalek      = { workspace = true }
 regex-lite         = { workspace = true }
 dotenvy            = "0.15"
+ledger-api         = { path = "../ledger-api" }
+thiserror          = "1"
 axum               = { version = "0.8", features = ["json"] }
-tower-http         = { version = "0.6", features = ["fs"] }
+tower-http         = { version = "0.6", features = ["fs", "cors"] }
 tokio-stream       = { version = "0.1", features = ["time"] }
 async-stream       = "0.3"
 futures-util       = "0.3"
@@ -64,18 +69,49 @@ base64             = "0.22"
 argon2             = "0.5"
 aes-gcm            = "0.10"
 rpassword          = "7"
+tempfile           = "3"
+subtle             = "2"
+which              = "7"
+bs58               = "0.5"
+tokio-util         = { version = "0.7", features = ["rt"] }
+x25519-dalek       = { version = "2", features = ["static_secrets"], optional = true }
+chacha20poly1305   = { version = "0.10", optional = true }
+hkdf               = { version = "0.12", optional = true }
+zeroize            = "1"
+
+# --- Optional remote enclave attestation deps (feature-gated) ---
+coset              = { version = "0.3", optional = true }
+ciborium           = { version = "0.2", optional = true }
 
 # --- Optional ZK dependencies (feature-gated) ---
 sp1-sdk   = { version = "6.0.1", optional = true }
 bincode   = { version = "1", optional = true }
 
+# --- Optional EVM anchoring dependencies (feature-gated) ---
+k256      = { version = "0.13", optional = true, features = ["ecdsa"] }
+sha3      = { version = "0.10", optional = true }
+
+# --- Optional ECDSA P-256 VC signing (feature-gated) ---
+p256      = { version = "0.13", optional = true, features = ["ecdsa"] }
+
+# --- Optional BLAKE3 hash algorithm (TM-6b, feature-gated) ---
+blake3    = { version = "1", optional = true }
+
+# --- Optional OS keychain integration (TM-3g, feature-gated) ---
+keyring   = { version = "3", optional = true }
+
 [target.'cfg(target_os = "linux")'.dependencies]
 landlock    = { version = "0.4", optional = true }
 seccompiler = { version = "0.4", optional = true }
 
+[target.'cfg(target_os = "macos")'.dependencies]
+applevisor = { version = "1.0", optional = true }
+applevisor-sys = { version = "1.0", optional = true }
+
 [target.'cfg(target_os = "windows")'.dependencies]
 windows = { version = "0.58", features = [
     "Win32_System_JobObjects",
+    "Win32_System_Memory",
     "Win32_System_Threading",
     "Win32_Foundation",
     "Win32_Security",
@@ -89,11 +125,45 @@ sp1-build = { version = "6.0.1", optional = true }
 
 [dev-dependencies]
 tokio-test = "0.4"
-tempfile = "3"
 serial_test = "3"
 
 [features]
-default     = ["sandbox"]
+# `sandbox` enables Linux-specific Landlock LSM + seccomp-BPF syscall filtering.
+#           On non-Linux targets this feature flag is a no-op: macOS Seatbelt and
+#           Windows Job Object sandboxing are always compiled in unconditionally
+#           (they have no optional dependencies). If OS-level isolation is
+#           unavailable at runtime, the sandbox gracefully falls back to advisory
+#           tripwires so that no platform-specific dependency breaks the build
+#           on another platform.
+# `evm`     enables EVM chain anchoring (k256 ECDSA + Keccak256 hashing).
+default     = ["sandbox", "evm"]
+# Embed Windows icon / version-info resource into this crate's binaries.
+# Disabled by default so that downstream crates with their own resource
+# (e.g. ectoledger-gui via tauri_build) do not conflict at link time.
+embed-resource = []
+enclave     = ["dep:x25519-dalek", "dep:chacha20poly1305", "dep:hkdf"]
+sandbox-apple-enclave = ["enclave", "dep:applevisor", "dep:applevisor-sys"]
 sandbox = ["dep:landlock", "dep:seccompiler"]
+# Hardware-level microVM isolation using Firecracker (Linux + KVM required).
+# Requires a working Firecracker binary, a Linux kernel image, and a rootfs image.
+# Enable with: cargo build --features sandbox-firecracker
+sandbox-firecracker = []
 integration = []
 zk          = ["dep:sp1-sdk", "dep:bincode", "dep:sp1-build"]
+evm         = ["dep:k256", "dep:sha3"]
+# ECDSA P-256 VC signing scheme alongside the default Ed25519 (EdDSA) scheme.
+vc-ecdsa    = ["dep:p256"]
+enclave-remote = ["enclave", "dep:coset", "dep:ciborium"]
+# SQLCipher at-rest encryption for the SQLite backend (TM-1d).
+# Requires linking against a SQLCipher-enabled SQLite library. When enabled,
+# set ECTOLEDGER_SQLCIPHER_KEY to the database encryption passphrase.
+sqlcipher   = []
+# BLAKE3 as an alternative/stronger hash algorithm (TM-6b).
+# When enabled, new events use BLAKE3 instead of SHA-256; verification
+# falls back to SHA-256 for events created before the migration.
+hash-blake3 = ["dep:blake3"]
+# OS keychain integration for signing-key storage (TM-3g).
+# When enabled, the Ed25519 signing key can be stored in the platform
+# keychain (macOS Keychain, Windows Credential Manager, Linux Secret Service)
+# instead of an encrypted file on disk.
+keychain    = ["dep:keyring"]

@@ -1,12 +1,13 @@
 mod common;
 
 use common::{assert_chain_valid, reset_ledger, spawn_test_pool};
-use ecto_ledger::ledger;
-use ecto_ledger::schema::EventPayload;
+use ectoledger::ledger;
+use ectoledger::schema::EventPayload;
+use serial_test::serial;
 
-#[tokio::test(flavor = "multi_thread")]
+#[tokio::test]
+#[serial]
 #[cfg_attr(not(feature = "integration"), ignore)] // run with: cargo test --features integration
-#[serial_test::serial]
 async fn genesis_valid() {
     let (pool, _db) = spawn_test_pool().await;
     reset_ledger(&pool).await;
@@ -15,9 +16,9 @@ async fn genesis_valid() {
     assert_chain_valid(&pool, 0, 0).await;
 }
 
-#[tokio::test(flavor = "multi_thread")]
+#[tokio::test]
+#[serial]
 #[cfg_attr(not(feature = "integration"), ignore)] // run with: cargo test --features integration
-#[serial_test::serial]
 async fn chain_of_10_valid() {
     let (pool, _db) = spawn_test_pool().await;
     reset_ledger(&pool).await;
@@ -38,9 +39,9 @@ async fn chain_of_10_valid() {
     assert_chain_valid(&pool, 0, 10).await;
 }
 
-#[tokio::test(flavor = "multi_thread")]
+#[tokio::test]
+#[serial]
 #[cfg_attr(not(feature = "integration"), ignore)] // run with: cargo test --features integration
-#[serial_test::serial]
 async fn tampered_hash_detected() {
     let (pool, _db) = spawn_test_pool().await;
     reset_ledger(&pool).await;
@@ -56,18 +57,19 @@ async fn tampered_hash_detected() {
     )
     .await
     .expect("append");
-    // Temporarily disable the immutability trigger so we can simulate tampering
-    sqlx::query("ALTER TABLE agent_events DISABLE TRIGGER agent_events_immutable")
+    // Tamper: change content_hash of the last event.
+    // The append-only trigger blocks UPDATE in normal operation (by design), so we
+    // temporarily disable it for this test to simulate an out-of-band tampering
+    // scenario (e.g., a compromised DB admin) that verify_chain must detect.
+    sqlx::query("ALTER TABLE agent_events DISABLE TRIGGER ALL")
         .execute(&pool)
         .await
         .expect("disable trigger");
-    // Tamper: change content_hash of the last event
     sqlx::query("UPDATE agent_events SET content_hash = 'tampered' WHERE sequence = 1")
         .execute(&pool)
         .await
         .expect("update");
-    // Re-enable the immutability trigger
-    sqlx::query("ALTER TABLE agent_events ENABLE TRIGGER agent_events_immutable")
+    sqlx::query("ALTER TABLE agent_events ENABLE TRIGGER ALL")
         .execute(&pool)
         .await
         .expect("enable trigger");

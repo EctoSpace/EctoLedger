@@ -22,13 +22,22 @@ pub struct EventSummary {
 fn event_type_label(payload: &crate::schema::EventPayload) -> String {
     match payload {
         crate::schema::EventPayload::Genesis { .. } => "genesis".to_string(),
+        crate::schema::EventPayload::PromptInput { .. } => "prompt_input".to_string(),
         crate::schema::EventPayload::Thought { .. } => "thought".to_string(),
+        crate::schema::EventPayload::SchemaError { .. } => "schema_error".to_string(),
+        crate::schema::EventPayload::CircuitBreaker { .. } => "circuit_breaker".to_string(),
         crate::schema::EventPayload::Action { .. } => "action".to_string(),
         crate::schema::EventPayload::Observation { .. } => "observation".to_string(),
         crate::schema::EventPayload::ApprovalRequired { .. } => "approval_required".to_string(),
         crate::schema::EventPayload::ApprovalDecision { .. } => "approval_decision".to_string(),
         crate::schema::EventPayload::CrossLedgerSeal { .. } => "cross_ledger_seal".to_string(),
         crate::schema::EventPayload::Anchor { .. } => "anchor".to_string(),
+        crate::schema::EventPayload::KeyRotation { .. } => "key_rotation".to_string(),
+        crate::schema::EventPayload::VerifiableCredential { .. } => {
+            "verifiable_credential".to_string()
+        }
+        crate::schema::EventPayload::KeyRevocation { .. } => "key_revocation".to_string(),
+        crate::schema::EventPayload::ChatMessage { .. } => "chat_message".to_string(),
     }
 }
 
@@ -67,7 +76,11 @@ mod tests {
             sequence: 1,
             previous_hash: String::new(),
             content_hash: "abc".to_string(),
-            payload: crate::schema::EventPayload::Genesis { message: "hi".into() },
+            payload: crate::schema::EventPayload::Genesis {
+                message: "hi".into(),
+                nonce: None,
+                session_public_key: None,
+            },
             created_at: chrono::Utc::now(),
         }];
         let payload = build_snapshot_payload(&events, 1);
@@ -143,7 +156,9 @@ pub async fn snapshot_at_sequence(
     pool: &PgPool,
     sequence: i64,
 ) -> Result<SnapshotRow, SnapshotError> {
-    let events = get_events(pool, 0, sequence).await.map_err(SnapshotError::Db)?;
+    let events = get_events(pool, 0, sequence)
+        .await
+        .map_err(SnapshotError::Db)?;
     let payload = build_snapshot_payload(&events, sequence);
     let state_hash = compute_state_hash(&payload).map_err(SnapshotError::Serialize)?;
     save_snapshot(pool, sequence, &state_hash, &payload)
@@ -151,19 +166,10 @@ pub async fn snapshot_at_sequence(
         .map_err(SnapshotError::Db)
 }
 
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum SnapshotError {
-    Db(sqlx::Error),
-    Serialize(serde_json::Error),
+    #[error("db: {0}")]
+    Db(#[from] sqlx::Error),
+    #[error("serialize: {0}")]
+    Serialize(#[from] serde_json::Error),
 }
-
-impl std::fmt::Display for SnapshotError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            SnapshotError::Db(e) => write!(f, "db: {}", e),
-            SnapshotError::Serialize(e) => write!(f, "serialize: {}", e),
-        }
-    }
-}
-
-impl std::error::Error for SnapshotError {}

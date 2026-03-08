@@ -1,61 +1,10 @@
-mod ollama;
-mod openai;
-mod anthropic;
+// Re-export everything from the standalone ectoledger-llm crate so that
+// existing `crate::llm::*` paths resolve without changes across the host.
+pub use ectoledger_llm::*;
 
-pub use ollama::OllamaBackend;
-pub use openai::OpenAiBackend;
-pub use anthropic::AnthropicBackend;
-
-use async_trait::async_trait;
-use crate::intent::ProposedIntent;
 use crate::schema::{EventPayload, RestoredState};
-
-pub const DEFAULT_SYSTEM_PROMPT: &str = r#"You are a security-audit agent. Your response must be exactly one JSON object with no surrounding text.
-
-Goal: Achieve the user's current goal (stated at the start of the user message).
-
-Allowed actions and params:
-- run_command: params.command (string) — run a single shell command
-- read_file: params.path (string) — read a file path
-- http_get: params.url (string) — fetch a URL
-- complete: no params or empty params — finish the audit
-
-Security rules:
-- Propose only actions necessary for the stated goal.
-- Do not run destructive or off-goal commands.
-
-Anti-loop rule:
-- Do not repeat the same action with the same parameters. If an action did not advance the goal, try a different action or complete with your findings.
-
-Output format (JSON only):
-{"action": "<action>", "params": {...}}
-You MUST include "justification" and "reasoning" strings. The "justification" must be at least 5 characters long.
-When you complete, include in params an optional \"findings\" array. Each finding must have \"severity\", \"title\", \"evidence\", \"recommendation\", and for high/critical must include \"evidence_sequence\" (array of ledger sequence numbers of observations that support this finding) and \"evidence_quotes\" (array of exact substrings from those observations).
-
-Example for step 1 (reading a file):
-{\"action\": \"read_file\", \"params\": {\"path\": \"server_config.txt\"}, \"reasoning\": \"Reading config to inspect settings.\"}"#;
-
-/// Few-shot examples injected during the first steps to anchor weaker models
-/// and prevent them from producing off-format or looping output.
-pub fn few_shot_examples() -> &'static str {
-    r#"
---- FEW-SHOT EXAMPLES (follow this exact format) ---
-
-Example 1 — reading a file:
-User: "Current goal: Audit server_config.txt\n\nRecent events:\n  [genesis] initialized"
-Assistant: {"action":"read_file","params":{"path":"server_config.txt"},"justification":"Need to inspect server configuration for audit findings.","reasoning":"The goal is to audit server_config.txt, so reading it is the first logical step."}
-
-Example 2 — running a command:
-User: "Current goal: Check open ports\n\nRecent events:\n  [observation] file contents: ..."
-Assistant: {"action":"run_command","params":{"command":"ss -tlnp"},"justification":"Listing TCP listening ports to identify exposed services.","reasoning":"After reading config, enumerating listening ports confirms which services are active."}
-
-Example 3 — completing the audit:
-User: "Current goal: Audit server_config.txt\n\nRecent events:\n  [observation] port 22 open"
-Assistant: {"action":"complete","params":{"findings":[{"severity":"medium","title":"SSH exposed","evidence":"port 22 open","recommendation":"Restrict SSH access via firewall rules."}]},"justification":"All planned checks done.","reasoning":"Sufficient evidence gathered to produce findings."}
-
---- END EXAMPLES ---
-"#
-}
+use async_trait::async_trait;
+use serde_json::json;
 
 pub fn state_to_prompt(state: &RestoredState, max_events: usize) -> String {
     let mut out = String::new();
@@ -68,17 +17,36 @@ pub fn state_to_prompt(state: &RestoredState, max_events: usize) -> String {
         }
     }
     out.push_str("\nRecent events:\n");
-    let start = state
-        .replayed_events
-        .len()
-        .saturating_sub(max_events);
+    let start = state.replayed_events.len().saturating_sub(max_events);
     for ev in state.replayed_events.iter().skip(start) {
         match &ev.payload {
-            EventPayload::Genesis { message } => {
+            EventPayload::Genesis { message, .. } => {
                 out.push_str(&format!("  [genesis] {}\n", message));
+            }
+            EventPayload::PromptInput { content } => {
+                out.push_str(&format!("  [prompt] {}\n", content));
             }
             EventPayload::Thought { content } => {
                 out.push_str(&format!("  [thought] {}\n", content));
+            }
+            EventPayload::SchemaError {
+                message,
+                attempt,
+                max_attempts,
+            } => {
+                out.push_str(&format!(
+                    "  [schema_error] ({}/{}) {}\n",
+                    attempt, max_attempts, message
+                ));
+            }
+            EventPayload::CircuitBreaker {
+                reason,
+                consecutive_failures,
+            } => {
+                out.push_str(&format!(
+                    "  [circuit_breaker] ({} failures) {}\n",
+                    consecutive_failures, reason
+                ));
             }
             EventPayload::Action { name, params } => {
                 out.push_str(&format!("  [action] {} {:?}\n", name, params));
@@ -99,10 +67,44 @@ pub fn state_to_prompt(state: &RestoredState, max_events: usize) -> String {
                 out.push_str("  [approval]\n");
             }
             EventPayload::CrossLedgerSeal { seal_hash, .. } => {
-                out.push_str(&format!("  [cross_ledger_seal] {}\n", &seal_hash[..16.min(seal_hash.len())]));
+                out.push_str(&format!(
+                    "  [cross_ledger_seal] {}\n",
+                    &seal_hash[..16.min(seal_hash.len())]
+                ));
             }
-            EventPayload::Anchor { ledger_tip_hash, .. } => {
-                out.push_str(&format!("  [anchor] tip {}\n", &ledger_tip_hash[..16.min(ledger_tip_hash.len())]));
+            EventPayload::Anchor {
+                ledger_tip_hash, ..
+            } => {
+                out.push_str(&format!(
+                    "  [anchor] tip {}\n",
+                    &ledger_tip_hash[..16.min(ledger_tip_hash.len())]
+                ));
+            }
+            EventPayload::KeyRotation {
+                new_public_key,
+                rotation_index,
+            } => {
+                out.push_str(&format!(
+                    "  [key_rotation] index {} new_key {}\n",
+                    rotation_index,
+                    &new_public_key[..16.min(new_public_key.len())]
+                ));
+            }
+            EventPayload::KeyRevocation {
+                revoked_public_key,
+                reason,
+            } => {
+                out.push_str(&format!(
+                    "  [key_revocation] key {} reason: {}\n",
+                    &revoked_public_key[..16.min(revoked_public_key.len())],
+                    reason
+                ));
+            }
+            EventPayload::VerifiableCredential { .. } => {
+                out.push_str("  [verifiable_credential]\n");
+            }
+            EventPayload::ChatMessage { role, content, .. } => {
+                out.push_str(&format!("  [chat:{}] {}\n", role, content));
             }
         }
     }
@@ -110,38 +112,44 @@ pub fn state_to_prompt(state: &RestoredState, max_events: usize) -> String {
     out
 }
 
-pub fn strip_markdown_fences(s: &str) -> &str {
-    let s = s.trim();
-    if !s.starts_with("```") {
-        return s;
+// ── Local mock backend (for deterministic integration tests) ─────────────────
+
+struct MockBackend;
+
+#[async_trait]
+impl LlmBackend for MockBackend {
+    async fn propose(
+        &self,
+        _system: &str,
+        _user: &str,
+    ) -> Result<ectoledger_core::intent::ProposedIntent, LlmError> {
+        Ok(ectoledger_core::intent::ProposedIntent {
+            action: "complete".to_string(),
+            params: json!({ "findings": [] }),
+            justification: "Mock backend deterministic completion".to_string(),
+            reasoning: "No external LLM available in this environment.".to_string(),
+        })
     }
-    let after_open = s.trim_start_matches('`');
-    let after_lang = after_open
-        .trim_start_matches("json")
-        .trim_start_matches("JSON")
-        .trim_start_matches('\n')
-        .trim_start_matches('\r');
-    match after_lang.rfind("```") {
-        Some(end) => after_lang[..end].trim(),
-        None => after_lang.trim(),
+
+    async fn raw_call(&self, _system: &str, user: &str) -> Result<String, LlmError> {
+        Ok(format!("mock: {}", user))
+    }
+
+    fn backend_name(&self) -> &str {
+        "mock"
+    }
+
+    fn model_name(&self) -> &str {
+        "mock-v1"
     }
 }
 
-#[async_trait]
-pub trait LlmBackend: Send + Sync {
-    async fn propose(&self, system: &str, user: &str) -> Result<ProposedIntent, LlmError>;
-    async fn raw_call(&self, system: &str, user: &str) -> Result<String, LlmError>;
-    fn backend_name(&self) -> &str;
-    fn model_name(&self) -> &str;
-    async fn ensure_ready(&self, client: &reqwest::Client) -> Result<(), LlmError> {
-        let _ = client;
-        Ok(())
-    }
-}
+// ── Factory functions (depend on host crate's config module) ──────────────────
 
 pub fn backend_from_env(client: &reqwest::Client) -> Result<Box<dyn LlmBackend>, LlmError> {
     let name = crate::config::llm_backend();
     match name.as_str() {
+        "mock" => Ok(Box::new(MockBackend)),
         "ollama" => Ok(Box::new(OllamaBackend::from_env(client))),
         "openai" => Ok(Box::new(OpenAiBackend::from_env(client))),
         "anthropic" => Ok(Box::new(AnthropicBackend::from_env(client))),
@@ -154,11 +162,11 @@ pub fn backend_from_env(client: &reqwest::Client) -> Result<Box<dyn LlmBackend>,
 /// Reads `GUARD_LLM_BACKEND` (default: same as `LLM_BACKEND`) and
 /// `GUARD_LLM_MODEL` to allow the guard to run on a separate, isolated model.
 pub fn guard_backend_from_env(client: &reqwest::Client) -> Result<Box<dyn LlmBackend>, LlmError> {
-    let name = crate::config::guard_llm_backend()
-        .unwrap_or_else(crate::config::llm_backend);
+    let name = crate::config::guard_llm_backend().unwrap_or_else(crate::config::llm_backend);
     let guard_model = crate::config::guard_llm_model();
 
     match name.as_str() {
+        "mock" => Ok(Box::new(MockBackend)),
         "ollama" => {
             let mut backend = OllamaBackend::from_env(client);
             if let Some(model) = guard_model {
@@ -183,28 +191,3 @@ pub fn guard_backend_from_env(client: &reqwest::Client) -> Result<Box<dyn LlmBac
         _ => Err(LlmError::UnsupportedBackend(name)),
     }
 }
-
-#[derive(Debug)]
-pub enum LlmError {
-    Http(reqwest::Error),
-    HttpStatus(u16, String),
-    EmptyResponse,
-    InvalidJson(serde_json::Error),
-    UnsupportedBackend(String),
-    Setup(String),
-}
-
-impl std::fmt::Display for LlmError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            LlmError::Http(e) => write!(f, "http: {}", e),
-            LlmError::HttpStatus(code, body) => write!(f, "http status {}: {}", code, body),
-            LlmError::EmptyResponse => write!(f, "empty response"),
-            LlmError::InvalidJson(e) => write!(f, "invalid json: {}", e),
-            LlmError::UnsupportedBackend(name) => write!(f, "unsupported LLM backend: {}", name),
-            LlmError::Setup(msg) => write!(f, "setup: {}", msg),
-        }
-    }
-}
-
-impl std::error::Error for LlmError {}

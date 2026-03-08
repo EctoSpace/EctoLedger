@@ -20,33 +20,33 @@ pub struct Metrics {
 impl Metrics {
     pub fn prometheus_text(&self) -> String {
         format!(
-            "# HELP ecto_ledger_events_appended_total Total events appended to the ledger.\n\
-             # TYPE ecto_ledger_events_appended_total counter\n\
-             ecto_ledger_events_appended_total {}\n\
-             # HELP ecto_ledger_tripwire_rejections_total Total tripwire rejections.\n\
-             # TYPE ecto_ledger_tripwire_rejections_total counter\n\
-             ecto_ledger_tripwire_rejections_total {}\n\
-             # HELP ecto_ledger_guard_denials_total Total guard denials.\n\
-             # TYPE ecto_ledger_guard_denials_total counter\n\
-             ecto_ledger_guard_denials_total {}\n\
-             # HELP ecto_ledger_sessions_created_total Total sessions created.\n\
-             # TYPE ecto_ledger_sessions_created_total counter\n\
-             ecto_ledger_sessions_created_total {}\n\
-             # HELP ecto_ledger_snapshots_created_total Total snapshots created.\n\
-             # TYPE ecto_ledger_snapshots_created_total counter\n\
-             ecto_ledger_snapshots_created_total {}\n\
-             # HELP ecto_ledger_token_count_total Approximate token count consumed (chars/4).\n\
-             # TYPE ecto_ledger_token_count_total counter\n\
-             ecto_ledger_token_count_total {}\n\
-             # HELP ecto_ledger_scanner_detections_total Output scanner detections.\n\
-             # TYPE ecto_ledger_scanner_detections_total counter\n\
-             ecto_ledger_scanner_detections_total {}\n\
-             # HELP ecto_ledger_guard_detections_total Guard DENY decisions.\n\
-             # TYPE ecto_ledger_guard_detections_total counter\n\
-             ecto_ledger_guard_detections_total {}\n\
-             # HELP ecto_ledger_tripwire_detections_total Tripwire rule violations.\n\
-             # TYPE ecto_ledger_tripwire_detections_total counter\n\
-             ecto_ledger_tripwire_detections_total {}\n",
+            "# HELP ectoledger_events_appended_total Total events appended to the ledger.\n\
+             # TYPE ectoledger_events_appended_total counter\n\
+             ectoledger_events_appended_total {}\n\
+             # HELP ectoledger_tripwire_rejections_total Total tripwire rejections.\n\
+             # TYPE ectoledger_tripwire_rejections_total counter\n\
+             ectoledger_tripwire_rejections_total {}\n\
+             # HELP ectoledger_guard_denials_total Total guard denials.\n\
+             # TYPE ectoledger_guard_denials_total counter\n\
+             ectoledger_guard_denials_total {}\n\
+             # HELP ectoledger_sessions_created_total Total sessions created.\n\
+             # TYPE ectoledger_sessions_created_total counter\n\
+             ectoledger_sessions_created_total {}\n\
+             # HELP ectoledger_snapshots_created_total Total snapshots created.\n\
+             # TYPE ectoledger_snapshots_created_total counter\n\
+             ectoledger_snapshots_created_total {}\n\
+             # HELP ectoledger_token_count_total Approximate token count consumed (chars/4).\n\
+             # TYPE ectoledger_token_count_total counter\n\
+             ectoledger_token_count_total {}\n\
+             # HELP ectoledger_scanner_detections_total Output scanner detections.\n\
+             # TYPE ectoledger_scanner_detections_total counter\n\
+             ectoledger_scanner_detections_total {}\n\
+             # HELP ectoledger_guard_detections_total Guard DENY decisions.\n\
+             # TYPE ectoledger_guard_detections_total counter\n\
+             ectoledger_guard_detections_total {}\n\
+             # HELP ectoledger_tripwire_detections_total Tripwire rule violations.\n\
+             # TYPE ectoledger_tripwire_detections_total counter\n\
+             ectoledger_tripwire_detections_total {}\n",
             self.events_appended.load(Ordering::Relaxed),
             self.tripwire_rejections.load(Ordering::Relaxed),
             self.guard_denials.load(Ordering::Relaxed),

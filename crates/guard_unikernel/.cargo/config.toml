@@ -1,0 +1,9 @@
+[build]
+target = "aarch64-unknown-none"
+
+[target.aarch64-unknown-none]
+rustflags = [
+    "-C", "link-arg=-Tcrates/guard_unikernel/link.ld",
+    "-C", "relocation-model=static",
+    "-C", "target-feature=+strict-align"
+]

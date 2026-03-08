@@ -1,0 +1,13 @@
+# Build override — compile Ecto Ledger from source instead of pulling from GHCR.
+#
+# Usage:
+#   docker compose -f docker-compose.demo.yml -f docker-compose.build.yml up --build
+#
+# First build takes ~5-10 min (Rust compile). Subsequent builds use Docker layer cache.
+
+services:
+  ectoledger:
+    image: ectoledger:local
+    build:
+      context: .
+      dockerfile: Dockerfile

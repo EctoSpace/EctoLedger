@@ -22,12 +22,8 @@ use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::{
-    intent::ProposedIntent,
-    ledger::get_events_by_session,
-    llm::backend_from_env,
-    output_scanner::scan_observation,
-    schema::EventPayload,
-    tripwire::Tripwire,
+    intent::ProposedIntent, ledger::get_events_by_session, llm::backend_from_env,
+    output_scanner::scan_observation, schema::EventPayload, tripwire::Tripwire,
 };
 
 // ---------------------------------------------------------------------------
@@ -77,8 +73,8 @@ impl fmt::Display for RedTeamReport {
         writeln!(f)?;
         writeln!(
             f,
-            "{:<6}  {:<8}  {:<8}  {:<8}  {}",
-            "Seq", "Scanner", "Tripwire", "Passed", "Payload preview"
+            "{:<6}  {:<8}  {:<8}  {:<8}  Payload preview",
+            "Seq", "Scanner", "Tripwire", "Passed"
         )?;
         writeln!(f, "{}", "-".repeat(80))?;
         for r in &self.injections {
@@ -100,35 +96,14 @@ impl fmt::Display for RedTeamReport {
 // Implementation
 // ---------------------------------------------------------------------------
 
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum RedTeamError {
-    Db(sqlx::Error),
-    Llm(crate::llm::LlmError),
+    #[error("Database error: {0}")]
+    Db(#[from] sqlx::Error),
+    #[error("LLM error: {0}")]
+    Llm(#[from] crate::llm::LlmError),
+    #[error("Target session has no observations")]
     NoObservations,
-}
-
-impl fmt::Display for RedTeamError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            RedTeamError::Db(e) => write!(f, "Database error: {}", e),
-            RedTeamError::Llm(e) => write!(f, "LLM error: {}", e),
-            RedTeamError::NoObservations => write!(f, "Target session has no observations"),
-        }
-    }
-}
-
-impl std::error::Error for RedTeamError {}
-
-impl From<sqlx::Error> for RedTeamError {
-    fn from(e: sqlx::Error) -> Self {
-        RedTeamError::Db(e)
-    }
-}
-
-impl From<crate::llm::LlmError> for RedTeamError {
-    fn from(e: crate::llm::LlmError) -> Self {
-        RedTeamError::Llm(e)
-    }
 }
 
 /// Run the red-team agent against `config.target_session`.
@@ -192,7 +167,10 @@ pub async fn run_red_team(
     );
 
     // 3. Call the adversarial LLM.
-    let client = reqwest::Client::new();
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(60))
+        .build()
+        .unwrap_or_else(|_| reqwest::Client::new());
     let llm = backend_from_env(&client)?;
     let raw_response = llm.raw_call(system_prompt, &user_prompt).await?;
 
@@ -215,8 +193,9 @@ pub async fn run_red_team(
         vec![std::path::PathBuf::from("/")], // Allow all paths.
         vec![],                              // No domain restrictions.
         vec![],                              // No banned commands.
-    )
-    .with_require_https(false);
+        0,                                   // No justification requirement for red-team.
+        false,                               // Allow HTTP for testing.
+    );
 
     // 6. Test each candidate.
     let mut injections: Vec<InjectionResult> = Vec::new();
@@ -291,16 +270,13 @@ fn parse_candidates(raw: &str) -> Vec<serde_json::Value> {
         Ok(serde_json::Value::Array(arr)) => arr,
         _ => {
             // Try to find the first [...] block in the output.
-            if let Some(start) = stripped.find('[') {
-                if let Some(end) = stripped.rfind(']') {
-                    if end > start {
-                        if let Ok(serde_json::Value::Array(arr)) =
-                            serde_json::from_str(&stripped[start..=end])
-                        {
-                            return arr;
-                        }
-                    }
-                }
+            if let Some(start) = stripped.find('[')
+                && let Some(end) = stripped.rfind(']')
+                && end > start
+                && let Ok(serde_json::Value::Array(arr)) =
+                    serde_json::from_str(&stripped[start..=end])
+            {
+                return arr;
             }
             tracing::warn!("Red-team LLM response could not be parsed as JSON array");
             vec![]

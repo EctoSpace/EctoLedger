@@ -1,0 +1,40 @@
+{
+  "name": "ectoledger-gui",
+  "version": "0.6.2",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 1420",
+    "build": "vite build",
+    "icon:generate": "node scripts/generate-icons.mjs",
+    "preview": "vite preview",
+    "tauri": "tauri",
+    "check": "svelte-check --tsconfig ./tsconfig.json"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2",
+    "@tauri-apps/plugin-dialog": "^2.6.0",
+    "@tauri-apps/plugin-fs": "^2.4.5",
+    "@tauri-apps/plugin-shell": "^2",
+    "bits-ui": "^2.16.2",
+    "clsx": "^2.1.1",
+    "tailwind-merge": "^3.5.0",
+    "tailwind-variants": "^3.2.2"
+  },
+  "devDependencies": {
+    "@fontsource-variable/inter": "^5.2.8",
+    "@fontsource-variable/jetbrains-mono": "^5.2.8",
+    "@sveltejs/vite-plugin-svelte": "^5",
+    "@tailwindcss/vite": "^4.2.1",
+    "@tauri-apps/cli": "^2",
+    "@tsconfig/svelte": "^5.0.8",
+    "@types/node": "^25.3.0",
+    "shadcn-svelte": "^1.1.1",
+    "sharp": "^0.33.5",
+    "svelte": "^5",
+    "svelte-check": "^4",
+    "tailwindcss": "^4.2.1",
+    "typescript": "^5",
+    "vite": "^6"
+  }
+}

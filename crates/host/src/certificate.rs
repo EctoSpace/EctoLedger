@@ -16,9 +16,10 @@
 // Ed25519 signing bytes are computed. This prevents either field from affecting its own
 // verification and ensures the signature covers exactly the audit evidence, nothing else.
 
+use crate::enclave::runtime::EnclaveLevel;
 use crate::hash::sha256_hex;
 use crate::ledger;
-use crate::merkle::{self, MerkleProof};
+use crate::merkle::{self, MerkleError, MerkleProof};
 use crate::ots::{self, OtsError};
 use crate::schema::{AuditFinding, LedgerEventRow, SessionRow};
 use crate::signing;
@@ -27,6 +28,21 @@ use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use std::collections::BTreeMap;
 use uuid::Uuid;
+
+/// Enclave Attestation Pillar embedded in the `.elc` certificate.
+///
+/// Records which confidentiality tier was active during the session and
+/// the measurement hash of the enclave binary (or remote attestation report).
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct EnclaveAttestationPillar {
+    /// Confidentiality tier (software_hardened / apple_hypervisor / remote_hardware_enclave).
+    pub level: EnclaveLevel,
+    /// SHA-256 hash of the enclave measurement.
+    pub measurement_hash: String,
+    /// Raw attestation blob (hex-encoded).  Present only for hardware enclaves.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub raw_attestation_hex: Option<String>,
+}
 
 /// One entry in the event chain embedded in the certificate.
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -84,6 +100,11 @@ pub struct EctoLedgerCertificate {
     /// `null` if `prove-audit` was not run for this session.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub zk_proof: Option<serde_json::Value>,
+    /// Enclave Attestation Pillar — records which confidentiality tier was active
+    /// and the enclave binary measurement.  Included in the Ed25519 signing payload
+    /// so that enclave evidence is tamper-evident.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub enclave_attestation: Option<EnclaveAttestationPillar>,
     /// Ed25519 signature over the canonical JSON of all other fields (hex).
     /// To verify: remove this field AND `zk_proof`, re-serialize as canonical JSON,
     /// verify against `session_public_key`.
@@ -92,30 +113,23 @@ pub struct EctoLedgerCertificate {
 }
 
 /// Error type for certificate operations.
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum CertificateError {
-    Db(sqlx::Error),
+    #[error("database: {0}")]
+    Db(#[from] sqlx::Error),
+    #[error("session not found")]
     SessionNotFound,
+    #[error("session has no events")]
     NoEvents,
-    Serialize(serde_json::Error),
-    Ots(OtsError),
-    Io(std::io::Error),
+    #[error("serialize: {0}")]
+    Serialize(#[from] serde_json::Error),
+    #[error("ots: {0}")]
+    Ots(#[from] OtsError),
+    #[error("io: {0}")]
+    Io(#[from] std::io::Error),
+    #[error("merkle: {0}")]
+    Merkle(#[from] MerkleError),
 }
-
-impl std::fmt::Display for CertificateError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            CertificateError::Db(e) => write!(f, "database: {}", e),
-            CertificateError::SessionNotFound => write!(f, "session not found"),
-            CertificateError::NoEvents => write!(f, "session has no events"),
-            CertificateError::Serialize(e) => write!(f, "serialize: {}", e),
-            CertificateError::Ots(e) => write!(f, "ots: {}", e),
-            CertificateError::Io(e) => write!(f, "io: {}", e),
-        }
-    }
-}
-
-impl std::error::Error for CertificateError {}
 
 // ── Canonical JSON serialization ───────────────────────────────────────────────
 
@@ -127,7 +141,9 @@ impl std::error::Error for CertificateError {}
 ///   2. Attaching or modifying a ZK proof never invalidates or changes the Ed25519 signature.
 ///
 /// Verifiers must reproduce this stripping before checking the signature.
-pub fn canonical_json_for_signing(cert: &EctoLedgerCertificate) -> Result<String, serde_json::Error> {
+pub fn canonical_json_for_signing(
+    cert: &EctoLedgerCertificate,
+) -> Result<String, serde_json::Error> {
     // Convert to serde_json::Value, remove both the signature and zk_proof fields, then
     // re-serialize via a BTreeMap to guarantee alphabetically sorted keys.
     let mut val = serde_json::to_value(cert)?;
@@ -163,6 +179,18 @@ pub fn embed_zk_proof(cert: &mut EctoLedgerCertificate, proof_bytes: &[u8]) {
 
 // ── Main builder ───────────────────────────────────────────────────────────────
 
+/// Convert an [`EnclaveAttestation`] captured during a session into its
+/// certificate pillar representation.
+fn attestation_to_pillar(
+    att: &crate::enclave::runtime::EnclaveAttestation,
+) -> EnclaveAttestationPillar {
+    EnclaveAttestationPillar {
+        level: att.level,
+        measurement_hash: att.measurement_hash.clone(),
+        raw_attestation_hex: att.raw_attestation.as_ref().map(hex::encode),
+    }
+}
+
 /// Build a complete `EctoLedgerCertificate` for the given session.
 ///
 /// Steps:
@@ -176,6 +204,7 @@ pub async fn build_certificate(
     session_id: Uuid,
     signing_key: Option<&SigningKey>,
     submit_ots: bool,
+    enclave_attestation: Option<&crate::enclave::runtime::EnclaveAttestation>,
 ) -> Result<EctoLedgerCertificate, CertificateError> {
     // 1. Load session metadata.
     let sessions = ledger::list_sessions(pool)
@@ -186,6 +215,16 @@ pub async fn build_certificate(
         .find(|s| s.id == session_id)
         .ok_or(CertificateError::SessionNotFound)?;
 
+    // Resolve enclave attestation: prefer explicit param, fall back to DB column.
+    let resolved_attestation: Option<crate::enclave::runtime::EnclaveAttestation> =
+        if let Some(att) = enclave_attestation {
+            Some(att.clone())
+        } else if let Some(ref json) = session.enclave_attestation_json {
+            serde_json::from_str(json).ok()
+        } else {
+            None
+        };
+
     // 2. Load all events for this session.
     let events: Vec<LedgerEventRow> = ledger::get_events_by_session(pool, session_id)
         .await
@@ -195,12 +234,16 @@ pub async fn build_certificate(
         return Err(CertificateError::NoEvents);
     }
 
-    let ledger_tip_hash = events.last().unwrap().content_hash.clone();
+    let ledger_tip_hash = events
+        .last()
+        .ok_or(CertificateError::NoEvents)?
+        .content_hash
+        .clone();
 
     // 3. Build Merkle tree over content_hashes in sequence order.
     let content_hashes: Vec<&str> = events.iter().map(|e| e.content_hash.as_str()).collect();
-    let tree = merkle::build_merkle_tree(&content_hashes);
-    let merkle_root = merkle::root(&tree);
+    let tree = merkle::build_merkle_tree(&content_hashes).map_err(CertificateError::Merkle)?;
+    let merkle_root = merkle::root(&tree).map_err(CertificateError::Merkle)?;
 
     // Build a lookup from content_hash → leaf_index for proof generation.
     let hash_to_leaf: std::collections::HashMap<&str, usize> = content_hashes
@@ -217,7 +260,10 @@ pub async fn build_certificate(
         match ots::submit_ots_stamp(&ledger_tip_hash).await {
             Ok(bytes) => Some(hex::encode(bytes)),
             Err(e) => {
-                tracing::warn!("OTS submission failed (certificate will have null ots_proof_hex): {}", e);
+                tracing::warn!(
+                    "OTS submission failed (certificate will have null ots_proof_hex): {}",
+                    e
+                );
                 None
             }
         }
@@ -255,6 +301,7 @@ pub async fn build_certificate(
         findings,
         ots_proof_hex,
         zk_proof: None,
+        enclave_attestation: resolved_attestation.as_ref().map(attestation_to_pillar),
         signature: None,
     };
 
@@ -284,12 +331,11 @@ fn extract_findings_with_proofs(
         .iter()
         .rev()
         .find_map(|e| {
-            if let crate::schema::EventPayload::Action { name, params } = &e.payload {
-                if name == "complete" {
-                    if let Some(f) = params.get("findings") {
-                        return serde_json::from_value::<Vec<AuditFinding>>(f.clone()).ok();
-                    }
-                }
+            if let crate::schema::EventPayload::Action { name, params } = &e.payload
+                && name == "complete"
+                && let Some(f) = params.get("findings")
+            {
+                return serde_json::from_value::<Vec<AuditFinding>>(f.clone()).ok();
             }
             None
         })
@@ -304,7 +350,7 @@ fn extract_findings_with_proofs(
                 .filter_map(|seq| {
                     let hash = seq_to_hash.get(seq)?;
                     let leaf_idx = *hash_to_leaf.get(hash)?;
-                    Some(merkle::proof(tree, leaf_idx))
+                    merkle::proof(tree, leaf_idx).ok()
                 })
                 .collect();
 
