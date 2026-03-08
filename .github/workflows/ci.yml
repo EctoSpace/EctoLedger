@@ -8,7 +8,7 @@
 #   security-audit  – cargo-audit for known CVEs (ubuntu)
 #   test            – cargo test on all 3 OS
 #   enclave-unit    – IPC + remote-attestation unit tests (ubuntu-only)
-#   enclave-apple-hv – Apple Hypervisor boot (macOS, continue-on-error)
+#   enclave-apple-hv – Apple Hypervisor boot (macOS only)
 #   gui             – Svelte type-check + Vite build (ubuntu-only)
 #   sdk-python      – Python SDK pytest (ubuntu-only)
 #   sdk-typescript  – TypeScript SDK vitest (ubuntu-only)
