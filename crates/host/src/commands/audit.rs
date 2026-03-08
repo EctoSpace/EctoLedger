@@ -264,6 +264,11 @@ pub async fn run(
     // ── Webhook egress worker ─────────────────────────────────────────────────
     let (egress_sender, egress_handle) =
         crate::webhook::spawn_egress_worker(config::webhook_config(), pool.clone());
+    
+    // Keep the original sender for explicit cleanup; pass a clone into the
+    // agent config so the channel is guaranteed to close even if the cognitive
+    // loop future is cancelled mid-flight.
+    let egress_tx_cleanup = egress_sender.clone();
     let egress_tx = Some(egress_sender);
 
     // ── Agent configuration ───────────────────────────────────────────────────
@@ -395,8 +400,10 @@ pub async fn run(
     };
 
     // ── Post-audit cleanup ────────────────────────────────────────────────────
-    // The egress_tx sender was moved into agent_config and is dropped when the
-    // cognitive loop exits.  Await the worker handle to surface silent panics.
+    // Drop our copy of the egress sender so the egress worker can observe
+    // channel closure and shut down, even if the cognitive loop future was
+    // cancelled before it had a chance to drop its copy.
+    drop(egress_tx_cleanup);
     if let Err(e) = egress_handle.await {
         tracing::error!("Webhook egress worker panicked: {e}");
     }

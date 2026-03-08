@@ -133,7 +133,14 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: ectoledger-gui-${{ matrix.platform }}
-          path: gui/src-tauri/target/release/bundle/
+          path: |
+            gui/src-tauri/target/release/bundle/**/*.dmg
+            gui/src-tauri/target/release/bundle/**/*.AppImage
+            gui/src-tauri/target/release/bundle/**/*.deb
+            gui/src-tauri/target/release/bundle/**/*.rpm
+            gui/src-tauri/target/release/bundle/**/*.msi
+            gui/src-tauri/target/release/bundle/**/*.exe
+            gui/src-tauri/target/release/bundle/**/*.nsis.zip
           retention-days: 1
 
   release:
