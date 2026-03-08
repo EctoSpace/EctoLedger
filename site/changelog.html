@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Changelog | EctoLedger</title>
+  <title>Changelog | Ecto Ledger</title>
   <meta name="description" content="EctoLedger release history: v0.1 foundation, v0.5 platform maturity, v0.6 enterprise features." />
   <link rel="icon" href="images/ectoSpace-Logo.webp" type="image/webp" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -61,7 +61,7 @@
     <header class="fixed left-1/2 top-4 z-50 w-[min(1140px,94vw)] -translate-x-1/2">
       <div class="glass flex h-16 items-center justify-between rounded-2xl px-4 sm:px-6">
         <a href="index.html" class="flex items-center gap-2">
-          <img src="images/ectoSpace-Logo.webp" alt="EctoSpace" class="h-9 w-auto max-w-[140px] object-contain" />
+          <img src="images/ectoSpace-Logo-noBg.webp" alt="EctoSpace" class="h-9 w-auto max-w-[140px] object-contain" />
         </a>
         <nav class="hidden items-center gap-7 text-sm text-zinc-300 md:flex">
           <a href="index.html" class="transition-colors hover:text-white">Home</a>
@@ -69,13 +69,33 @@
           <a href="changelog.html#v06" class="transition-colors hover:text-white">Changelog</a>
           <a href="demo.html" class="transition-colors hover:text-white">Demo</a>
         </nav>
-        <a
-          href="https://github.com/EctoSpace/EctoLedger"
-          class="rounded-full border border-white/20 px-4 py-2 text-xs font-semibold uppercase tracking-[0.15em] text-white transition hover:border-brand-300/60 hover:bg-brand-500/15"
-        >
-          View GitHub
-        </a>
+        <div class="flex items-center gap-2">
+          <a
+            href="https://github.com/EctoSpace/EctoLedger"
+            class="rounded-full border border-white/20 px-4 py-2 text-xs font-semibold uppercase tracking-[0.15em] text-white transition hover:border-brand-300/60 hover:bg-brand-500/15"
+          >
+            View GitHub
+          </a>
+          <button id="nav-toggle" class="md:hidden flex h-9 w-9 items-center justify-center rounded-xl border border-white/15 text-zinc-300 hover:text-white transition" aria-label="Open navigation">
+            <svg id="icon-open" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+            <svg id="icon-close" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
       </div>
+      <nav id="mobile-nav" class="glass mt-2 hidden rounded-2xl px-5 py-4 md:hidden">
+        <div class="flex flex-col gap-1 text-sm text-zinc-300">
+          <a href="index.html" class="rounded-lg px-3 py-2 transition-colors hover:bg-white/[0.06] hover:text-white">Home</a>
+          <a href="index.html#features" class="rounded-lg px-3 py-2 transition-colors hover:bg-white/[0.06] hover:text-white">Features</a>
+          <a href="#v01" class="rounded-lg px-3 py-2 transition-colors hover:bg-white/[0.06] hover:text-white">v0.1</a>
+          <a href="#v05" class="rounded-lg px-3 py-2 transition-colors hover:bg-white/[0.06] hover:text-white">v0.5</a>
+          <a href="#v06" class="rounded-lg px-3 py-2 transition-colors hover:bg-white/[0.06] hover:text-white">v0.6</a>
+          <a href="demo.html" class="rounded-lg px-3 py-2 transition-colors hover:bg-white/[0.06] hover:text-white">Demo</a>
+        </div>
+      </nav>
     </header>
 
     <main>
@@ -121,7 +141,7 @@
               <span class="font-mono text-sm text-zinc-400">Platform maturity</span>
             </div>
             <p class="mt-4 text-sm text-zinc-300">
-              v0.5 turned EctoLedger into a full security and compliance platform: 3-layer semantic guard, Merkle proofs, Ed25519 signing, audit certificates, orchestration, and policy DSL.
+              v0.5 turned Ecto Ledger into a full security and compliance platform: 3-layer semantic guard, Merkle proofs, Ed25519 signing, audit certificates, orchestration, and policy DSL.
             </p>
             <h3 class="mt-6 font-display text-lg text-white">Features implemented</h3>
             <ul class="mt-3 space-y-2 text-sm text-zinc-300">
@@ -183,9 +203,9 @@
       <div class="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
         <div class="glass flex flex-col items-center justify-between gap-4 rounded-2xl px-6 py-5 text-sm text-zinc-400 md:flex-row">
           <div class="flex items-center gap-2">
-            <img src="images/ectoSpace-Logo.webp" alt="EctoSpace" class="h-7 w-auto max-w-[100px] object-contain" />
+            <img src="images/ectoledger-logo.png" alt="EctoSpace" class="h-7 w-auto max-w-[100px] object-contain" />
             <span class="text-zinc-500">·</span>
-            <span>EctoLedger Changelog</span>
+            <span>Ecto Ledger Changelog</span>
           </div>
           <div class="flex flex-wrap items-center justify-center gap-5">
             <a href="https://github.com/EctoSpace/EctoLedger/releases" class="transition-colors hover:text-white">Releases</a>
@@ -199,6 +219,23 @@
   </div>
 
   <script>
+    // Mobile nav toggle
+    document.getElementById('nav-toggle').addEventListener('click', function () {
+      var nav = document.getElementById('mobile-nav');
+      var iconOpen = document.getElementById('icon-open');
+      var iconClose = document.getElementById('icon-close');
+      nav.classList.toggle('hidden');
+      iconOpen.classList.toggle('hidden');
+      iconClose.classList.toggle('hidden');
+    });
+    document.querySelectorAll('#mobile-nav a').forEach(function (link) {
+      link.addEventListener('click', function () {
+        document.getElementById('mobile-nav').classList.add('hidden');
+        document.getElementById('icon-open').classList.remove('hidden');
+        document.getElementById('icon-close').classList.add('hidden');
+      });
+    });
+
     const observer = new IntersectionObserver(
       (entries) => { entries.forEach((e) => { if (e.isIntersecting) e.target.classList.add("show"); }); },
       { rootMargin: "0px 0px -70px 0px", threshold: 0 }
