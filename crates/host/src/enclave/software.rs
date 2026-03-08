@@ -113,18 +113,10 @@ impl EnclaveRuntime for SoftwareEnclaveRuntime {
     }
 
     fn destroy(&mut self) -> Result<(), String> {
-        // Zeroize the buffer.
-        #[cfg(feature = "enclave")]
+        // Zeroize the buffer (zeroize is an unconditional dependency).
         {
             use zeroize::Zeroize;
             self.buffer.zeroize();
-        }
-        #[cfg(not(feature = "enclave"))]
-        {
-            // Manual zero-fill when zeroize is not available.
-            for b in self.buffer.iter_mut() {
-                unsafe { std::ptr::write_volatile(b, 0) };
-            }
         }
 
         // Unlock.

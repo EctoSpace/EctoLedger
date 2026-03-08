@@ -112,7 +112,7 @@ pub async fn run_report(
             .clone()
             .unwrap_or_else(|| std::path::PathBuf::from(format!("audit-{}.elc", session)));
         println!(
-            "Building Ecto Ledger Audit Certificate for session {}…",
+            "Building Ecto Ledger Audit Certificate for session {}...",
             session
         );
         let cert = crate::certificate::build_certificate(

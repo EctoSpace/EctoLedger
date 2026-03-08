@@ -48,7 +48,7 @@ async fn prove_audit_zk(
 
     let elf = include_elf!("ectoledger-guest");
 
-    println!("prove-audit: loading session {} from database…", session);
+    println!("prove-audit: loading session {} from database...", session);
 
     let events = crate::ledger::get_events_by_session(pool, session)
         .await
@@ -129,15 +129,14 @@ async fn prove_audit_zk(
         bincode::serialize(&guest_input).map_err(|e| format!("bincode serialize failed: {}", e))?;
 
     println!(
-        "prove-audit: guest input serialized ({} bytes). generating SP1 proof…",
+        "prove-audit: guest input serialized ({} bytes). generating SP1 proof...",
         input_bytes.len()
     );
     println!("prove-audit: this may take several minutes depending on event count and hardware.");
 
-    let client = CpuProver::new().await;
+    let client = CpuProver::new();
     let pk = client
         .setup(elf)
-        .await
         .map_err(|e| format!("SP1 setup failed: {}", e))?;
 
     let mut stdin = SP1Stdin::new();
@@ -145,7 +144,6 @@ async fn prove_audit_zk(
 
     let proof: SP1ProofWithPublicValues = client
         .prove(&pk, stdin)
-        .await
         .map_err(|e| format!("SP1 proof generation failed: {}", e))?;
 
     println!(
@@ -153,7 +151,7 @@ async fn prove_audit_zk(
         proof.bytes().len()
     );
 
-    println!("prove-audit: building Ecto Ledger Audit Certificate…");
+    println!("prove-audit: building Ecto Ledger Audit Certificate...");
     let mut cert = build_certificate(pool, session, None, !no_ots, None)
         .await
         .map_err(|e| format!("certificate build failed: {}", e))?;

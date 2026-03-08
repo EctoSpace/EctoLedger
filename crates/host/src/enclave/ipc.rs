@@ -105,7 +105,12 @@ impl SharedMemoryChannel {
         let guest_pubkey = PublicKey::from(guest_key_bytes);
         let shared_secret = self.secret.diffie_hellman(&guest_pubkey);
 
-        // HKDF-SHA256: extract + expand in one step (single hash for simplicity).
+        // Non-standard single-hash KDF: SHA-256(label || shared_secret).
+        // This is NOT HKDF — it omits the salt/extract/expand phases.
+        // Acceptable here because the X25519 shared secret already has
+        // high min-entropy, but callers should not rely on this for
+        // multi-key derivation.  Consider migrating to the `hkdf` crate
+        // if additional derived keys are needed in the future.
         let mut hasher = Sha256::new();
         hasher.update(b"ectoledger-enclave-ipc-v1");
         hasher.update(shared_secret.as_bytes());

@@ -57,7 +57,7 @@ pub enum EctoLedgerError {
 
     /// OS-level sandbox error.
     #[error(transparent)]
-    Sandbox(#[from] crate::sandbox::SandboxError),
+    Sandbox(#[from] ectoledger_sandbox::SandboxError),
 
     /// Guard micro-VM process error.
     #[error(transparent)]

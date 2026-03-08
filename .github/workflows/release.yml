@@ -157,7 +157,7 @@ jobs:
       - name: Generate SHA256SUMS
         run: |
           cd artifacts
-          find . -type f -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS
+          find . -type f -not -name SHA256SUMS -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS
           cat SHA256SUMS
 
       - name: Create GitHub Release and upload assets
