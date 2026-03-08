@@ -4,6 +4,10 @@ on:
   push:
     tags: ["v*"]
   workflow_dispatch:
+    inputs:
+      tag:
+        description: "Git tag to release (must start with 'v')"
+        required: true
 
 env:
   CARGO_TERM_COLOR: always

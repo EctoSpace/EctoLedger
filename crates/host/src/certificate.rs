@@ -187,8 +187,9 @@ pub fn embed_zk_proof(cert: &mut EctoLedgerCertificate, proof_bytes: &[u8]) {
 /// 3. Extract any findings from the final `Action{complete}` event and compute per-finding proofs.
 /// 4. Optionally submit the ledger tip to OTS (can be disabled via `submit_ots: false`).
 /// 5. Sign the canonical JSON with the provided `signing_key`.
-///
-/// Convert an [`EnclaveAttestation`] captured during a session into its certificate pillar representation.
+
+/// Convert an [`EnclaveAttestation`] captured during a session into its
+/// certificate pillar representation.
 fn attestation_to_pillar(
     att: &crate::enclave::runtime::EnclaveAttestation,
 ) -> EnclaveAttestationPillar {
