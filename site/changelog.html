@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Changelog | EctoLedger</title>
+  <meta name="description" content="EctoLedger release history: v0.1 foundation, v0.5 platform maturity, v0.6 enterprise features." />
+  <link rel="icon" href="images/ectoSpace-Logo.webp" type="image/webp" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+    rel="stylesheet"
+  />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            display: ["Sora", "system-ui", "sans-serif"],
+            sans: ["Space Grotesk", "system-ui", "sans-serif"],
+            mono: ["JetBrains Mono", "monospace"],
+          },
+          colors: {
+            brand: { 300: "#bca8ff", 400: "#9d79ff", 500: "#8356ff", 600: "#6837f6" },
+            aqua: { 300: "#73e3ff", 400: "#35d6ff" },
+            mint: { 300: "#6df7d1", 400: "#34e5bd" },
+            ink: { 950: "#05060a", 900: "#0b0d14" },
+          },
+          keyframes: {
+            fadeUp: { "0%": { opacity: "0", transform: "translateY(24px)" }, "100%": { opacity: "1", transform: "translateY(0)" } },
+          },
+          animation: { "fade-up": "fadeUp 0.72s cubic-bezier(0.22, 1, 0.36, 1) forwards" },
+        },
+      },
+    };
+  </script>
+  <style>
+    body {
+      background:
+        radial-gradient(860px 520px at 12% -2%, rgba(131, 86, 255, 0.2), transparent 62%),
+        radial-gradient(980px 520px at 88% -8%, rgba(53, 214, 255, 0.16), transparent 62%),
+        radial-gradient(820px 420px at 50% 108%, rgba(52, 229, 189, 0.13), transparent 68%),
+        #05060a;
+      color: #f7f8ff;
+    }
+    .glass {
+      background: rgba(16, 20, 32, 0.58);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      box-shadow: 0 1px 0 rgba(255, 255, 255, 0.05) inset, 0 18px 56px rgba(2, 4, 10, 0.5);
+    }
+    .reveal { opacity: 0; transform: translateY(22px); transition: opacity 0.72s cubic-bezier(0.22, 1, 0.36, 1), transform 0.72s cubic-bezier(0.22, 1, 0.36, 1); }
+    .reveal.show { opacity: 1; transform: translateY(0); }
+  </style>
+</head>
+<body class="font-sans antialiased selection:bg-brand-500/35 selection:text-white">
+  <div class="relative z-10">
+    <header class="fixed left-1/2 top-4 z-50 w-[min(1140px,94vw)] -translate-x-1/2">
+      <div class="glass flex h-16 items-center justify-between rounded-2xl px-4 sm:px-6">
+        <a href="index.html" class="flex items-center gap-2">
+          <img src="images/ectoSpace-Logo.webp" alt="EctoSpace" class="h-9 w-auto max-w-[140px] object-contain" />
+        </a>
+        <nav class="hidden items-center gap-7 text-sm text-zinc-300 md:flex">
+          <a href="index.html" class="transition-colors hover:text-white">Home</a>
+          <a href="index.html#features" class="transition-colors hover:text-white">Features</a>
+          <a href="changelog.html#v06" class="transition-colors hover:text-white">Changelog</a>
+          <a href="demo.html" class="transition-colors hover:text-white">Demo</a>
+        </nav>
+        <a
+          href="https://github.com/EctoSpace/EctoLedger"
+          class="rounded-full border border-white/20 px-4 py-2 text-xs font-semibold uppercase tracking-[0.15em] text-white transition hover:border-brand-300/60 hover:bg-brand-500/15"
+        >
+          View GitHub
+        </a>
+      </div>
+    </header>
+
+    <main>
+      <section class="pt-36 sm:pt-44 pb-12">
+        <div class="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 text-center">
+          <p class="reveal font-mono text-xs uppercase tracking-[0.22em] text-brand-300">Release history</p>
+          <h1 class="reveal mt-4 font-display text-4xl tracking-tight sm:text-5xl lg:text-6xl">Changelog</h1>
+          <p class="reveal mt-4 text-zinc-300">
+            Major milestones: foundation in v0.1, full platform in v0.5, and enterprise-ready features in v0.6.
+          </p>
+        </div>
+      </section>
+
+      <section id="v01" class="pb-16 sm:pb-20">
+        <div class="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
+          <div class="reveal glass rounded-3xl p-6 sm:p-8 border-l-4 border-mint-400/60">
+            <div class="flex flex-wrap items-baseline gap-3">
+              <h2 class="font-display text-2xl sm:text-3xl tracking-tight text-white">v0.1</h2>
+              <span class="font-mono text-sm text-zinc-400">Foundation release</span>
+            </div>
+            <p class="mt-4 text-sm text-zinc-300">
+              The initial release established the core architecture: an append-only ledger, a verify-then-commit cognitive loop, and the primitives for cryptographic accountability.
+            </p>
+            <h3 class="mt-6 font-display text-lg text-white">Features implemented</h3>
+            <ul class="mt-3 space-y-2 text-sm text-zinc-300">
+              <li><strong class="text-white">Append-only event ledger</strong> — PostgreSQL-backed event log with SHA-256 hash chaining; genesis block and session-scoped state.</li>
+              <li><strong class="text-white">Cognitive loop</strong> — Perceive → Propose → Verify → Commit → Execute pipeline with a primary LLM (Ollama/OpenAI/Anthropic).</li>
+              <li><strong class="text-white">Goal anchoring</strong> — Session goal hashed at creation (<code class="font-mono text-xs rounded bg-white/10 px-1">goal_hash</code>); verified on every <code class="font-mono text-xs rounded bg-white/10 px-1">append_event</code>.</li>
+              <li><strong class="text-white">Basic Tripwire</strong> — Path normalization, domain allowlisting, and command blocklist to constrain tool execution.</li>
+              <li><strong class="text-white">CLI entrypoints</strong> — <code class="font-mono text-xs rounded bg-white/10 px-1">serve</code> (Observer dashboard), <code class="font-mono text-xs rounded bg-white/10 px-1">audit "&lt;goal&gt;"</code>, and <code class="font-mono text-xs rounded bg-white/10 px-1">report</code> for session export.</li>
+              <li><strong class="text-white">Observer dashboard</strong> — Web UI for real-time event stream and session visibility (SSE, content redaction for sensitive data).</li>
+              <li><strong class="text-white">Self-deploying Postgres</strong> — Optional Docker-backed default database; migrations and genesis block on first run.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section id="v05" class="pb-16 sm:pb-20">
+        <div class="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
+          <div class="reveal glass rounded-3xl p-6 sm:p-8 border-l-4 border-brand-400/60">
+            <div class="flex flex-wrap items-baseline gap-3">
+              <h2 class="font-display text-2xl sm:text-3xl tracking-tight text-white">v0.5</h2>
+              <span class="font-mono text-sm text-zinc-400">Platform maturity</span>
+            </div>
+            <p class="mt-4 text-sm text-zinc-300">
+              v0.5 turned EctoLedger into a full security and compliance platform: 3-layer semantic guard, Merkle proofs, Ed25519 signing, audit certificates, orchestration, and policy DSL.
+            </p>
+            <h3 class="mt-6 font-display text-lg text-white">Features implemented</h3>
+            <ul class="mt-3 space-y-2 text-sm text-zinc-300">
+              <li><strong class="text-white">3-layer semantic guard</strong> — Ledger goal anchoring; dual-LLM guard process (separate <code class="font-mono text-xs rounded bg-white/10 px-1">guard-worker</code> binary) returning ALLOW/DENY; hybrid output scanner (regex + structural JSON/AST + base64 decode) for injection and goal-hijack detection.</li>
+              <li><strong class="text-white">Tripwire expansion</strong> — Strict path canonicalization, symlink-escape detection, justification length checks, HTTPS enforcement, and configurable allowlists/blocklists.</li>
+              <li><strong class="text-white">Ed25519 intent signing</strong> — Per-session keypair; every event’s <code class="font-mono text-xs rounded bg-white/10 px-1">content_hash</code> signed for tamper-resistance.</li>
+              <li><strong class="text-white">Merkle tree state verification</strong> — Binary Merkle tree over event content hashes; inclusion proofs for findings (O(log n) verification).</li>
+              <li><strong class="text-white">Ecto Ledger Audit Certificate (.elc)</strong> — Self-contained, five-pillar verifiable record: Ed25519 signature, SHA-256 chain, Merkle proofs, OpenTimestamps/Bitcoin anchor, goal hash integrity. Standalone <code class="font-mono text-xs rounded bg-white/10 px-1">verify-cert</code> binary for auditors.</li>
+              <li><strong class="text-white">Policy DSL (TOML)</strong> — Allowed/forbidden actions, conditional command rules, observation content rules (redact/flag/abort), approval gate triggers. Policy hash stored in session.</li>
+              <li><strong class="text-white">Approval gates</strong> — Policy-driven human-in-the-loop; <code class="font-mono text-xs rounded bg-white/10 px-1">POST /api/approvals</code> and optional <code class="font-mono text-xs rounded bg-white/10 px-1">--interactive</code> stdin flow.</li>
+              <li><strong class="text-white">Orchestrate</strong> — Multi-agent Recon → Analysis → Verify with per-role policy and <code class="font-mono text-xs rounded bg-white/10 px-1">CrossLedgerSeal</code> binding sessions.</li>
+              <li><strong class="text-white">Report formats</strong> — SARIF 2.1, HTML, GitHub Actions annotations, GitLab Code Quality JSON, and certificate (.elc) export.</li>
+              <li><strong class="text-white">OpenTimestamps / Bitcoin anchoring</strong> — <code class="font-mono text-xs rounded bg-white/10 px-1">anchor-session</code> submits ledger tip to OTS for temporal non-repudiation.</li>
+              <li><strong class="text-white">Replay and diff-audit</strong> — Replay sessions (with optional observation injection); diff two sessions for baseline vs current.</li>
+              <li><strong class="text-white">Red-team</strong> — Adversarial agent that tests injection payloads against scanner and Tripwire; CI-ready exit code.</li>
+              <li><strong class="text-white">Industry policy packs</strong> — SOC 2, PCI-DSS v4.0, OWASP Top 10 2021 in <code class="font-mono text-xs rounded bg-white/10 px-1">crates/host/policies/</code>.</li>
+              <li><strong class="text-white">Cloud credential injection</strong> — Ephemeral AWS/GCP/Azure/k8s credentials from JSON file; injected only into matching CLI child processes.</li>
+              <li><strong class="text-white">Webhook / SIEM egress</strong> — Optional HTTP POST on flagged/abort outcomes (JSON, CEF, LEEF).</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section id="v06" class="pb-20 sm:pb-24">
+        <div class="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
+          <div class="reveal glass rounded-3xl p-6 sm:p-8 border-l-4 border-aqua-400/60">
+            <div class="flex flex-wrap items-baseline gap-3">
+              <h2 class="font-display text-2xl sm:text-3xl tracking-tight text-white">v0.6</h2>
+              <span class="font-mono text-sm text-zinc-400">Enterprise &amp; ecosystem</span>
+              <a href="https://github.com/EctoSpace/EctoLedger/tree/v0.6" class="text-sm text-aqua-300 hover:text-aqua-200">tree/v0.6</a>
+            </div>
+            <p class="mt-4 text-sm text-zinc-300">
+              v0.6 adds pluggable backends, desktop GUI, official SDKs, W3C credentials, ISO 42001, Firecracker sandbox, EVM anchoring, SP1 ZK proofs, and operational hardening.
+            </p>
+            <h3 class="mt-6 font-display text-lg text-white">New functionality</h3>
+            <ul class="mt-3 space-y-2 text-sm text-zinc-300">
+              <li><strong class="text-white">Pluggable ledger backends</strong> — <code class="font-mono text-xs rounded bg-white/10 px-1">LedgerBackend</code> trait; PostgreSQL (production) and SQLite (dev/CI) via <code class="font-mono text-xs rounded bg-white/10 px-1">DATABASE_URL</code>. SQLite supports serve, replay, report, verify-certificate, verify-vc; audit/orchestrate/diff-audit/red-team/prove-audit/anchor require Postgres.</li>
+              <li><strong class="text-white">Tauri 2 management GUI</strong> — Glassmorphic desktop app (macOS, Windows, Linux): Dashboard, Live Dashboard, Prometheus metrics, Sessions (event timeline, .elc export), Policies (TOML editor), Tripwire config, Tokens (RBAC), Webhooks, Observer panel, Testing (adversarial), DevHub, Setup Wizard, Settings.</li>
+              <li><strong class="text-white">Python &amp; TypeScript SDKs</strong> — Typed REST clients; Python includes LangChain LedgerTool and AutoGen LedgerHook. Zero external deps for TypeScript (native fetch).</li>
+              <li><strong class="text-white">Extended webhooks with HMAC</strong> — <code class="font-mono text-xs rounded bg-white/10 px-1">X-EctoLedger-Signature: sha256=&lt;hex&gt;</code> for receiver verification; GuardDenial and TripwireRejection events.</li>
+              <li><strong class="text-white">W3C Verifiable Credentials</strong> — VC-JWT issued on session completion; Ed25519-signed, <code class="font-mono text-xs rounded bg-white/10 px-1">did:key:</code> anchored. <code class="font-mono text-xs rounded bg-white/10 px-1">GET /api/sessions/{id}/vc</code> and <code class="font-mono text-xs rounded bg-white/10 px-1">/api/sessions/{id}/vc/verify</code>.</li>
+              <li><strong class="text-white">ISO 42001:2023</strong> — Machine-readable policy pack (14 controls) and compliance whitepaper in <code class="font-mono text-xs rounded bg-white/10 px-1">docs/iso42001.md</code>.</li>
+              <li><strong class="text-white">4-layer semantic guard</strong> — Policy engine → dual-LLM guard → strict schema JSON validation (<code class="font-mono text-xs rounded bg-white/10 px-1">StrictAgentOutput</code>, deny_unknown_fields) → Tripwire. Strict schema catches hijack keys (e.g. override_goal, system_prompt).</li>
+              <li><strong class="text-white">Firecracker microVM sandbox</strong> — Hardware execution isolation for <code class="font-mono text-xs rounded bg-white/10 px-1">run_command</code> (Linux). Scripts: <code class="font-mono text-xs rounded bg-white/10 px-1">setup-firecracker.sh</code>, <code class="font-mono text-xs rounded bg-white/10 px-1">provision-firecracker.sh</code>.</li>
+              <li><strong class="text-white">EVM chain anchoring</strong> — <code class="font-mono text-xs rounded bg-white/10 px-1">anchor-session --chain ethereum</code>; publish ledger tip to any EVM chain via deployed <code class="font-mono text-xs rounded bg-white/10 px-1">EctoLedgerAnchor</code> contract.</li>
+              <li><strong class="text-white">SP1 ZK proofs</strong> — <code class="font-mono text-xs rounded bg-white/10 px-1">prove-audit</code> (build with <code class="font-mono text-xs rounded bg-white/10 px-1">--features zk</code>) for provable policy compliance without exposing raw event payloads; proof embedded in .elc.</li>
+              <li><strong class="text-white">Automatic signing-key rotation</strong> — <code class="font-mono text-xs rounded bg-white/10 px-1">AGENT_KEY_ROTATION_STEPS</code>; KeyRotation events in ledger.</li>
+              <li><strong class="text-white">Dynamic orchestrator policy injection</strong> — <code class="font-mono text-xs rounded bg-white/10 px-1">ECTO_RECON_POLICY</code>, <code class="font-mono text-xs rounded bg-white/10 px-1">ECTO_ANALYSIS_POLICY</code>, <code class="font-mono text-xs rounded bg-white/10 px-1">ECTO_VERIFY_POLICY</code> env vars or shared <code class="font-mono text-xs rounded bg-white/10 px-1">--policy</code> file.</li>
+              <li><strong class="text-white">Configurable network binding</strong> — <code class="font-mono text-xs rounded bg-white/10 px-1">ECTO_BIND_HOST</code> / <code class="font-mono text-xs rounded bg-white/10 px-1">ECTO_BIND_PORT</code> for Observer.</li>
+              <li><strong class="text-white">Hardware-aware connection pooling</strong> — <code class="font-mono text-xs rounded bg-white/10 px-1">DATABASE_POOL_SIZE</code> defaults to 2×CPU (5–50).</li>
+              <li><strong class="text-white">Zero-config demo mode</strong> — Launcher <code class="font-mono text-xs rounded bg-white/10 px-1">--demo</code> with embedded Postgres, auto LLM detection, isolated demo DB. Docker demo via <code class="font-mono text-xs rounded bg-white/10 px-1">docker-compose.demo.yml</code>.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="pb-10">
+      <div class="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
+        <div class="glass flex flex-col items-center justify-between gap-4 rounded-2xl px-6 py-5 text-sm text-zinc-400 md:flex-row">
+          <div class="flex items-center gap-2">
+            <img src="images/ectoSpace-Logo.webp" alt="EctoSpace" class="h-7 w-auto max-w-[100px] object-contain" />
+            <span class="text-zinc-500">·</span>
+            <span>EctoLedger Changelog</span>
+          </div>
+          <div class="flex flex-wrap items-center justify-center gap-5">
+            <a href="https://github.com/EctoSpace/EctoLedger/releases" class="transition-colors hover:text-white">Releases</a>
+            <a href="https://github.com/EctoSpace/EctoLedger/tree/v0.6" class="transition-colors hover:text-white">v0.6</a>
+            <a href="index.html" class="transition-colors hover:text-white">Home</a>
+          </div>
+          <p>&copy; 2026 EctoSpace</p>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <script>
+    const observer = new IntersectionObserver(
+      (entries) => { entries.forEach((e) => { if (e.isIntersecting) e.target.classList.add("show"); }); },
+      { rootMargin: "0px 0px -70px 0px", threshold: 0 }
+    );
+    document.querySelectorAll(".reveal").forEach((el, i) => {
+      el.style.transitionDelay = `${Math.min(i * 45, 380)}ms`;
+      observer.observe(el);
+    });
+
+    document.querySelectorAll('a[href*="github.com"]').forEach(function (link) {
+      link.addEventListener("click", function (e) {
+        e.preventDefault();
+        var w = Math.min(1200, window.innerWidth - 40);
+        var h = Math.min(800, window.innerHeight - 40);
+        var x = Math.max(0, (window.screen.width - w) / 2);
+        var y = Math.max(0, (window.screen.height - h) / 2);
+        window.open(link.href, "ectoledger-github", "width=" + w + ",height=" + h + ",left=" + x + ",top=" + y + ",scrollbars=yes,resizable=yes,noopener,noreferrer");
+      });
+    });
+  </script>
+</body>
+</html>

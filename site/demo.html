@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EctoLedger Demo</title>
+  <meta name="description" content="Explore EctoLedger dashboard flows, screenshots, and runtime behavior." />
+  <link rel="icon" href="images/ectoSpace-Logo.webp" type="image/webp" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+    rel="stylesheet"
+  />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            display: ["Sora", "system-ui", "sans-serif"],
+            sans: ["Space Grotesk", "system-ui", "sans-serif"],
+            mono: ["JetBrains Mono", "monospace"],
+          },
+          colors: {
+            brand: {
+              300: "#bca8ff",
+              400: "#9d79ff",
+              500: "#8356ff",
+              600: "#6837f6",
+            },
+            aqua: {
+              300: "#73e3ff",
+              400: "#35d6ff",
+            },
+            mint: {
+              300: "#6df7d1",
+              400: "#34e5bd",
+            },
+            ink: {
+              950: "#05060a",
+              900: "#0b0d14",
+            },
+          },
+          keyframes: {
+            fadeUp: {
+              "0%": { opacity: "0", transform: "translateY(24px)" },
+              "100%": { opacity: "1", transform: "translateY(0)" },
+            },
+            pulseFloat: {
+              "0%,100%": { transform: "translateY(0)" },
+              "50%": { transform: "translateY(-7px)" },
+            },
+          },
+          animation: {
+            "fade-up": "fadeUp 0.72s cubic-bezier(0.22, 1, 0.36, 1) forwards",
+            "pulse-float": "pulseFloat 6s ease-in-out infinite",
+          },
+          boxShadow: {
+            glow:
+              "0 0 0 1px rgba(157,121,255,0.15), 0 18px 60px rgba(3,6,14,0.55), 0 0 100px rgba(53,214,255,0.12)",
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    body {
+      background:
+        radial-gradient(860px 520px at 12% -2%, rgba(131, 86, 255, 0.2), transparent 62%),
+        radial-gradient(980px 520px at 88% -8%, rgba(53, 214, 255, 0.16), transparent 62%),
+        radial-gradient(820px 420px at 50% 108%, rgba(52, 229, 189, 0.13), transparent 68%),
+        #05060a;
+      color: #f7f8ff;
+    }
+
+    .glass {
+      background: rgba(16, 20, 32, 0.58);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      box-shadow: 0 1px 0 rgba(255, 255, 255, 0.05) inset, 0 18px 56px rgba(2, 4, 10, 0.5);
+    }
+
+    .mesh-border {
+      position: relative;
+      isolation: isolate;
+    }
+
+    .mesh-border::before {
+      content: "";
+      position: absolute;
+      inset: -1px;
+      border-radius: inherit;
+      padding: 1px;
+      background: linear-gradient(
+        135deg,
+        rgba(157, 121, 255, 0.42),
+        rgba(53, 214, 255, 0.35),
+        rgba(52, 229, 189, 0.3)
+      );
+      -webkit-mask:
+        linear-gradient(#000 0 0) content-box,
+        linear-gradient(#000 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      pointer-events: none;
+    }
+
+    .reveal {
+      opacity: 0;
+      transform: translateY(22px);
+      transition: opacity 0.72s cubic-bezier(0.22, 1, 0.36, 1), transform 0.72s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .reveal.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .zoomable {
+      cursor: zoom-in;
+    }
+
+    .lightbox-open {
+      overflow: hidden;
+    }
+
+    .lightbox-backdrop {
+      background: rgba(4, 7, 16, 0.9);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+  </style>
+</head>
+<body class="font-sans antialiased selection:bg-brand-500/35 selection:text-white">
+  <header class="fixed left-1/2 top-4 z-50 w-[min(1140px,94vw)] -translate-x-1/2">
+    <div class="glass flex h-16 items-center justify-between rounded-2xl px-4 sm:px-6">
+      <a href="index.html" class="flex items-center gap-2">
+        <img src="images/ectoSpace-Logo-noBg.webp" alt="EctoSpace" class="h-9 w-auto max-w-[140px] object-contain" />
+      </a>
+      <nav class="hidden items-center gap-7 text-sm text-zinc-300 md:flex">
+        <a href="index.html" class="transition-colors hover:text-white">Home</a>
+        <a href="changelog.html" class="transition-colors hover:text-white">Changelog</a>
+        <a href="#prerequisites" class="transition-colors hover:text-white">Prerequisites</a>
+        <a href="#demo-ways" class="transition-colors hover:text-white">Demo mode</a>
+        <a href="#showcase" class="transition-colors hover:text-white">Showcase</a>
+        <a href="#screens" class="transition-colors hover:text-white">Screens</a>
+      </nav>
+      <a
+        href="https://github.com/EctoSpace/EctoLedger"
+        class="rounded-full border border-white/20 px-4 py-2 text-xs font-semibold uppercase tracking-[0.15em] text-white transition hover:border-brand-300/60 hover:bg-brand-500/15"
+      >
+        View GitHub
+      </a>
+    </div>
+  </header>
+
+  <main>
+    <section class="pt-36 sm:pt-44">
+      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div class="text-center">
+          <img src="images/ectoledger-logo.png" alt="EctoLedger" class="reveal mx-auto h-16 w-auto sm:h-20" />
+          <p class="reveal mt-6 font-mono text-xs uppercase tracking-[0.22em] text-brand-300">Live product experience</p>
+          <h1 class="reveal mx-auto mt-4 max-w-4xl font-display text-4xl leading-[1.05] tracking-tight sm:text-6xl">
+            Scan every dashboard signal with a production-grade visual audit trail
+          </h1>
+          <p class="reveal mx-auto mt-6 max-w-3xl text-lg leading-relaxed text-zinc-300">
+            EctoLedger by EctoSpace: cinematic surfaces, technical depth, and clean operational storytelling.
+          </p>
+        </div>
+
+        <section id="prerequisites" class="reveal mt-12 sm:mt-16">
+          <div class="glass rounded-3xl p-6 sm:p-8">
+            <p class="font-mono text-xs uppercase tracking-[0.22em] text-mint-300">Before you run demo</p>
+            <h2 class="mt-3 font-display text-2xl tracking-tight sm:text-3xl">Prerequisites</h2>
+            <p class="mt-4 text-sm text-zinc-300">
+              What you need depends on how you run the demo. At minimum, choose one path below.
+            </p>
+            <ul class="mt-4 space-y-2 text-sm text-zinc-300">
+              <li><strong class="text-white">Rust 1.94+</strong> — All native launcher and CLI demos (rustup recommended).</li>
+              <li><strong class="text-white">Docker</strong> — Only for the Docker demo (<code class="font-mono text-xs rounded bg-white/10 px-1">docker-compose.demo.yml</code>). Not required for <code class="font-mono text-xs rounded bg-white/10 px-1">--demo</code> launcher mode or SQLite.</li>
+              <li><strong class="text-white">LLM backend</strong> — At least one: Ollama (local), OpenAI, or Anthropic. For <code class="font-mono text-xs rounded bg-white/10 px-1">audit</code> and <code class="font-mono text-xs rounded bg-white/10 px-1">orchestrate</code> the primary LLM must be reachable; the Guard uses <code class="font-mono text-xs rounded bg-white/10 px-1">GUARD_LLM_BACKEND</code> / <code class="font-mono text-xs rounded bg-white/10 px-1">GUARD_LLM_MODEL</code> when <code class="font-mono text-xs rounded bg-white/10 px-1">GUARD_REQUIRED=true</code>.</li>
+              <li><strong class="text-white">Node.js 20+ and npm</strong> — Only if you build or run the Tauri 2 desktop GUI (<code class="font-mono text-xs rounded bg-white/10 px-1">gui/</code>). The Docker demo exposes the REST API and Observer only; no GUI.</li>
+            </ul>
+          </div>
+        </section>
+
+        <section id="demo-ways" class="reveal mt-8">
+          <div class="glass rounded-3xl p-6 sm:p-8">
+            <p class="font-mono text-xs uppercase tracking-[0.22em] text-aqua-300">How to use demo mode</p>
+            <h2 class="mt-3 font-display text-2xl tracking-tight sm:text-3xl">Different ways to run the demo</h2>
+            <p class="mt-4 text-sm text-zinc-300">
+              You can try EctoLedger with zero config (embedded Postgres, auto LLM detection) or use Docker for a fully containerized stack.
+            </p>
+
+            <div class="mt-6 space-y-6">
+              <div class="rounded-2xl border border-white/10 bg-white/[0.02] p-5">
+                <h3 class="font-display text-lg text-white">1. Launcher with <code class="font-mono text-sm rounded bg-white/10 px-1.5">--demo</code> (zero config)</h3>
+                <p class="mt-2 text-sm text-zinc-300">
+                  The native launcher starts an isolated embedded PostgreSQL instance on a separate port, auto-detects your LLM (OpenAI / Anthropic / Ollama), and sets <code class="font-mono text-xs rounded bg-white/10 px-1">ECTO_DEMO_MODE=true</code> so the backend uses a separate demo database. No manual DB or API key setup required.
+                </p>
+                <pre class="mt-4 p-4 rounded-xl bg-ink-950/80 font-mono text-xs text-zinc-200 overflow-x-auto"><code># macOS
+./ectoledger-mac --demo
+
+# Linux
+./ectoledger-linux --demo
+
+# Windows (PowerShell)
+.\ectoledger-win.ps1 -demo</code></pre>
+                <p class="mt-3 text-xs text-zinc-400">First run: pg-embed Postgres (~30 MB) and optionally Ollama + qwen2.5:0.5b (~500 MB) download once. Data lives in <code class="font-mono">~/.local/share/ectoledger/postgres-demo</code> (Linux) or <code class="font-mono">~/Library/Application Support/ectoledger/postgres-demo</code> (macOS). Use <code class="font-mono">--reset-db --demo</code> to wipe demo data.</p>
+              </div>
+
+              <div class="rounded-2xl border border-white/10 bg-white/[0.02] p-5">
+                <h3 class="font-display text-lg text-white">2. Launcher without <code class="font-mono text-sm rounded bg-white/10 px-1.5">--demo</code> (default stack)</h3>
+                <p class="mt-2 text-sm text-zinc-300">
+                  Run the normal stack: backend + Tauri GUI. Uses your configured <code class="font-mono text-xs rounded bg-white/10 px-1">DATABASE_URL</code> (or default Docker Postgres) and LLM. Good for development and real audits.
+                </p>
+                <pre class="mt-4 p-4 rounded-xl bg-ink-950/80 font-mono text-xs text-zinc-200 overflow-x-auto"><code>./ectoledger-mac    # or ectoledger-linux / ectoledger-win.ps1</code></pre>
+              </div>
+
+              <div class="rounded-2xl border border-white/10 bg-white/[0.02] p-5">
+                <h3 class="font-display text-lg text-white">3. Docker demo (no Rust or Node)</h3>
+                <p class="mt-2 text-sm text-zinc-300">
+                  One command pulls the pre-built image and starts PostgreSQL 17, Ollama, and EctoLedger. Open <strong>http://localhost:3000</strong> for the Observer dashboard. No Tauri GUI in Docker — use the launcher with <code class="font-mono text-xs rounded bg-white/10 px-1">--demo</code> for the full desktop experience.
+                </p>
+                <pre class="mt-4 p-4 rounded-xl bg-ink-950/80 font-mono text-xs text-zinc-200 overflow-x-auto"><code>docker compose -f docker-compose.demo.yml up</code></pre>
+                <p class="mt-3 text-xs text-zinc-400">To reset: <code class="font-mono">docker compose -f docker-compose.demo.yml down -v</code></p>
+              </div>
+
+              <div class="rounded-2xl border border-white/10 bg-white/[0.02] p-5">
+                <h3 class="font-display text-lg text-white">4. SQLite + <code class="font-mono text-sm rounded bg-white/10 px-1.5">serve</code> (no Docker)</h3>
+                <p class="mt-2 text-sm text-zinc-300">
+                  For a minimal local dashboard with no external database, set <code class="font-mono text-xs rounded bg-white/10 px-1">DATABASE_URL=sqlite://ledger.db</code> and run <code class="font-mono text-xs rounded bg-white/10 px-1">cargo run -- serve</code>. SQLite mode does not support <code class="font-mono text-xs rounded bg-white/10 px-1">audit</code>, <code class="font-mono text-xs rounded bg-white/10 px-1">orchestrate</code>, or <code class="font-mono text-xs rounded bg-white/10 px-1">anchor-session</code>; use it for viewing sessions and exporting reports from existing data.
+                </p>
+              </div>
+            </div>
+
+            <p class="mt-6 text-sm text-zinc-400">
+              Full details: <a href="https://github.com/EctoSpace/EctoLedger/tree/v0.6#-try-the-zero-config-demo" class="text-aqua-300 hover:text-aqua-200 underline">Zero-Config Demo</a> and <a href="https://github.com/EctoSpace/EctoLedger/tree/v0.6#-docker-demo" class="text-aqua-300 hover:text-aqua-200 underline">Docker Demo</a> on GitHub.
+            </p>
+          </div>
+        </section>
+
+        <div id="showcase" class="reveal mesh-border glass mt-12 rounded-[28px] p-3 shadow-glow sm:mt-16 sm:p-4">
+          <div class="overflow-hidden rounded-[22px] border border-white/10 bg-ink-900/80">
+            <img
+              src="marketing_assets/videos/gui_demo.gif"
+              alt="EctoLedger GUI demo"
+              class="zoomable w-full"
+              loading="eager"
+              data-lightbox-src="marketing_assets/videos/gui_demo.gif"
+              data-lightbox-type="image"
+            />
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="py-16 sm:py-24">
+      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div class="reveal mb-10 text-center">
+          <p class="font-mono text-xs uppercase tracking-[0.22em] text-aqua-300">Feature Clips</p>
+          <h2 class="mt-4 font-display text-3xl tracking-tight sm:text-5xl">Built for technical depth</h2>
+        </div>
+
+        <div class="grid gap-4 lg:grid-cols-2">
+          <article class="reveal glass rounded-3xl p-4 sm:p-5">
+            <img
+              src="marketing_assets/videos/ectoledger_demo.gif"
+              alt="EctoLedger demo gif"
+              class="zoomable w-full rounded-2xl border border-white/10"
+              loading="lazy"
+              data-lightbox-src="marketing_assets/videos/ectoledger_demo.gif"
+              data-lightbox-type="image"
+            />
+            <h3 class="mt-4 font-display text-xl">Runtime operations in motion</h3>
+            <p class="mt-2 text-sm text-zinc-300">Optimized GIF for quick scan and shareable overviews.</p>
+          </article>
+
+          <article class="reveal glass rounded-3xl p-4 sm:p-5">
+            <video
+              src="marketing_assets/videos/ectoledger_demo.mp4"
+              autoplay
+              muted
+              loop
+              playsinline
+              class="zoomable w-full rounded-2xl border border-white/10"
+              data-lightbox-src="marketing_assets/videos/ectoledger_demo.mp4"
+              data-lightbox-type="video"
+            ></video>
+            <h3 class="mt-4 font-display text-xl">Full-quality dashboard video</h3>
+            <p class="mt-2 text-sm text-zinc-300">MP4 source with higher fidelity and richer UI transitions.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="screens" class="pb-20 sm:pb-24">
+      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div class="reveal mb-10 text-center">
+          <p class="font-mono text-xs uppercase tracking-[0.22em] text-mint-300">Interface walkthrough</p>
+          <h2 class="mt-4 font-display text-3xl tracking-tight sm:text-5xl">Dashboard screens and control surfaces</h2>
+        </div>
+
+        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <article class="reveal glass rounded-2xl p-3">
+            <img src="marketing_assets/screenshots/gui_1_dashboard.png" alt="Dashboard screen" class="zoomable w-full rounded-xl border border-white/10" data-lightbox-src="marketing_assets/screenshots/gui_1_dashboard.png" data-lightbox-type="image" loading="lazy" />
+            <p class="px-1 pb-1 pt-3 text-sm text-zinc-300">Main command dashboard</p>
+          </article>
+          <article class="reveal glass rounded-2xl p-3">
+            <img src="marketing_assets/screenshots/gui_2_audit_history.png" alt="Audit history screen" class="zoomable w-full rounded-xl border border-white/10" data-lightbox-src="marketing_assets/screenshots/gui_2_audit_history.png" data-lightbox-type="image" loading="lazy" />
+            <p class="px-1 pb-1 pt-3 text-sm text-zinc-300">Session audit history</p>
+          </article>
+          <article class="reveal glass rounded-2xl p-3">
+            <img src="marketing_assets/screenshots/gui_3_tripwire.png" alt="Tripwire screen" class="zoomable w-full rounded-xl border border-white/10" data-lightbox-src="marketing_assets/screenshots/gui_3_tripwire.png" data-lightbox-type="image" loading="lazy" />
+            <p class="px-1 pb-1 pt-3 text-sm text-zinc-300">Tripwire controls</p>
+          </article>
+          <article class="reveal glass rounded-2xl p-3">
+            <img src="marketing_assets/screenshots/gui_4_policies.png" alt="Policies screen" class="zoomable w-full rounded-xl border border-white/10" data-lightbox-src="marketing_assets/screenshots/gui_4_policies.png" data-lightbox-type="image" loading="lazy" />
+            <p class="px-1 pb-1 pt-3 text-sm text-zinc-300">Policy editor</p>
+          </article>
+          <article class="reveal glass rounded-2xl p-3">
+            <img src="marketing_assets/screenshots/gui_5_metrics.png" alt="Metrics screen" class="zoomable w-full rounded-xl border border-white/10" data-lightbox-src="marketing_assets/screenshots/gui_5_metrics.png" data-lightbox-type="image" loading="lazy" />
+            <p class="px-1 pb-1 pt-3 text-sm text-zinc-300">Metrics and performance</p>
+          </article>
+          <article class="reveal glass rounded-2xl p-3">
+            <img src="marketing_assets/screenshots/gui_6_active_audit.png" alt="Active audit screen" class="zoomable w-full rounded-xl border border-white/10" data-lightbox-src="marketing_assets/screenshots/gui_6_active_audit.png" data-lightbox-type="image" loading="lazy" />
+            <p class="px-1 pb-1 pt-3 text-sm text-zinc-300">Live active audit trace</p>
+          </article>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="pb-10">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div class="glass flex flex-col items-center justify-between gap-4 rounded-2xl px-6 py-5 text-sm text-zinc-400 md:flex-row">
+        <div class="flex items-center gap-2">
+          <img src="images/ectoledger-logo.png" alt="EctoSpace" class="h-7 w-auto max-w-[100px] object-contain" />
+          <span class="text-zinc-500">·</span>
+          <span>EctoLedger</span>
+        </div>
+        <div class="flex items-center gap-5">
+          <a href="index.html" class="transition-colors hover:text-white">Home</a>
+          <a href="https://github.com/EctoSpace/EctoLedger" class="transition-colors hover:text-white">GitHub</a>
+        </div>
+        <p>&copy; 2026 EctoSpace</p>
+      </div>
+    </div>
+  </footer>
+
+  <div id="media-lightbox" class="lightbox-backdrop fixed inset-0 z-[120] hidden p-4 sm:p-8">
+    <div class="flex h-full w-full items-center justify-center">
+      <button
+        id="lightbox-close"
+        class="absolute right-4 top-4 rounded-full border border-white/20 bg-black/45 px-3 py-1.5 text-sm text-white transition hover:bg-black/70 sm:right-6 sm:top-6"
+        aria-label="Close fullscreen media"
+      >
+        Close
+      </button>
+      <div id="lightbox-content" class="max-h-[92vh] max-w-[95vw]"></div>
+    </div>
+  </div>
+
+  <script>
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          entry.target.classList.add("show");
+        });
+      },
+      { rootMargin: "0px 0px -70px 0px", threshold: 0 }
+    );
+
+    document.querySelectorAll(".reveal").forEach((node, index) => {
+      node.style.transitionDelay = `${Math.min(index * 40, 420)}ms`;
+      observer.observe(node);
+    });
+
+    const lightbox = document.getElementById("media-lightbox");
+    const lightboxContent = document.getElementById("lightbox-content");
+    const lightboxClose = document.getElementById("lightbox-close");
+
+    const openLightbox = (src, type) => {
+      lightboxContent.innerHTML = "";
+      let mediaNode;
+
+      if (type === "video") {
+        mediaNode = document.createElement("video");
+        mediaNode.src = src;
+        mediaNode.controls = true;
+        mediaNode.autoplay = true;
+        mediaNode.loop = true;
+      } else {
+        mediaNode = document.createElement("img");
+        mediaNode.src = src;
+        mediaNode.alt = "Fullscreen media";
+      }
+
+      mediaNode.className = "max-h-[90vh] max-w-[95vw] rounded-xl border border-white/15";
+      lightboxContent.appendChild(mediaNode);
+      lightbox.classList.remove("hidden");
+      document.body.classList.add("lightbox-open");
+    };
+
+    const closeLightbox = () => {
+      lightbox.classList.add("hidden");
+      lightboxContent.innerHTML = "";
+      document.body.classList.remove("lightbox-open");
+    };
+
+    document.querySelectorAll("[data-lightbox-src]").forEach((node) => {
+      node.addEventListener("click", () => {
+        openLightbox(node.dataset.lightboxSrc, node.dataset.lightboxType || "image");
+      });
+    });
+
+    lightboxClose.addEventListener("click", closeLightbox);
+    lightbox.addEventListener("click", (event) => {
+      if (event.target === lightbox) closeLightbox();
+    });
+
+    window.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && !lightbox.classList.contains("hidden")) {
+        closeLightbox();
+      }
+    });
+
+    document.querySelectorAll('a[href*="github.com"]').forEach(function (link) {
+      link.addEventListener("click", function (e) {
+        e.preventDefault();
+        var w = Math.min(1200, window.innerWidth - 40);
+        var h = Math.min(800, window.innerHeight - 40);
+        var x = Math.max(0, (window.screen.width - w) / 2);
+        var y = Math.max(0, (window.screen.height - h) / 2);
+        window.open(link.href, "ectoledger-github", "width=" + w + ",height=" + h + ",left=" + x + ",top=" + y + ",scrollbars=yes,resizable=yes,noopener,noreferrer");
+      });
+    });
+  </script>
+</body>
+</html>
