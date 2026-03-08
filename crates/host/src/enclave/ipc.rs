@@ -170,7 +170,7 @@ impl SharedMemoryChannel {
         len_bytes.copy_from_slice(&shared_page[OFF_RESP_LEN..OFF_RESP_LEN + 4]);
         let total_len = u32::from_le_bytes(len_bytes) as usize;
 
-        if total_len < 12 || total_len > 12 + MAX_CIPHERTEXT {
+        if !(12..=12 + MAX_CIPHERTEXT).contains(&total_len) {
             return Err(format!("Response length out of range: {total_len}"));
         }
 

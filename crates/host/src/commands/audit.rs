@@ -310,7 +310,7 @@ pub async fn run(
     // either task triggers cooperative cancellation of the other.
 
     let agent_pool = crate::pool::DatabasePool::Postgres(pool.clone());
-    let aborted = tokio::select! {
+    let (aborted, session_finished) = tokio::select! {
         result = agent::run_cognitive_loop(&agent_pool, &client, agent_config) => {
             match &result {
                 Ok(()) => {
@@ -414,14 +414,14 @@ pub async fn run(
         {
             tracing::warn!("Failed to snapshot on abort: {}", e);
         }
-        if !session_finished {
-            if let Err(e) = ledger::finish_session(&pool, session_id, "aborted").await {
-                tracing::warn!(
-                    "Failed to mark session {} as aborted on signal: {}",
-                    session_id,
-                    e
-                );
-            }
+        if !session_finished
+            && let Err(e) = ledger::finish_session(&pool, session_id, "aborted").await
+        {
+            tracing::warn!(
+                "Failed to mark session {} as aborted on signal: {}",
+                session_id,
+                e
+            );
         }
         tracing::info!("Shutdown signal received; session aborted.");
     }

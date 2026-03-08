@@ -179,15 +179,6 @@ pub fn embed_zk_proof(cert: &mut EctoLedgerCertificate, proof_bytes: &[u8]) {
 
 // ── Main builder ───────────────────────────────────────────────────────────────
 
-/// Build a complete `EctoLedgerCertificate` for the given session.
-///
-/// Steps:
-/// 1. Load the session and all its events from the DB.
-/// 2. Build a binary Merkle tree over event content_hashes (in sequence order).
-/// 3. Extract any findings from the final `Action{complete}` event and compute per-finding proofs.
-/// 4. Optionally submit the ledger tip to OTS (can be disabled via `submit_ots: false`).
-/// 5. Sign the canonical JSON with the provided `signing_key`.
-
 /// Convert an [`EnclaveAttestation`] captured during a session into its
 /// certificate pillar representation.
 fn attestation_to_pillar(
@@ -200,6 +191,14 @@ fn attestation_to_pillar(
     }
 }
 
+/// Build a complete `EctoLedgerCertificate` for the given session.
+///
+/// Steps:
+/// 1. Load the session and all its events from the DB.
+/// 2. Build a binary Merkle tree over event content_hashes (in sequence order).
+/// 3. Extract any findings from the final `Action{complete}` event and compute per-finding proofs.
+/// 4. Optionally submit the ledger tip to OTS (can be disabled via `submit_ots: false`).
+/// 5. Sign the canonical JSON with the provided `signing_key`.
 pub async fn build_certificate(
     pool: &PgPool,
     session_id: Uuid,
