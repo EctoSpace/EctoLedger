@@ -30,7 +30,9 @@ use chacha20poly1305::{
     aead::{Aead, KeyInit},
 };
 #[cfg(feature = "enclave")]
-use sha2::{Digest, Sha256};
+use hkdf::Hkdf;
+#[cfg(feature = "enclave")]
+use sha2::Sha256;
 #[cfg(feature = "enclave")]
 use x25519_dalek::{PublicKey, StaticSecret};
 
@@ -105,16 +107,12 @@ impl SharedMemoryChannel {
         let guest_pubkey = PublicKey::from(guest_key_bytes);
         let shared_secret = self.secret.diffie_hellman(&guest_pubkey);
 
-        // Non-standard single-hash KDF: SHA-256(label || shared_secret).
-        // This is NOT HKDF — it omits the salt/extract/expand phases.
-        // Acceptable here because the X25519 shared secret already has
-        // high min-entropy, but callers should not rely on this for
-        // multi-key derivation.  Consider migrating to the `hkdf` crate
-        // if additional derived keys are needed in the future.
-        let mut hasher = Sha256::new();
-        hasher.update(b"ectoledger-enclave-ipc-v1");
-        hasher.update(shared_secret.as_bytes());
-        let derived_key = hasher.finalize();
+        // HKDF-SHA256: derive a 32-byte ChaCha20-Poly1305 key from the
+        // X25519 shared secret using a domain-specific info label.
+        let hkdf = Hkdf::<Sha256>::new(None, shared_secret.as_bytes());
+        let mut derived_key = [0u8; 32];
+        hkdf.expand(b"ectoledger-enclave-ipc-v1", &mut derived_key)
+            .map_err(|_| "HKDF expand failed".to_string())?;
 
         let cipher = ChaCha20Poly1305::new_from_slice(&derived_key)
             .map_err(|e| format!("ChaCha20 key init: {e}"))?;

@@ -76,6 +76,7 @@ bs58               = "0.5"
 tokio-util         = { version = "0.7", features = ["rt"] }
 x25519-dalek       = { version = "2", features = ["static_secrets"], optional = true }
 chacha20poly1305   = { version = "0.10", optional = true }
+hkdf               = { version = "0.12", optional = true }
 zeroize            = "1"
 
 # --- Optional remote enclave attestation deps (feature-gated) ---
@@ -140,7 +141,7 @@ default     = ["sandbox", "evm"]
 # Disabled by default so that downstream crates with their own resource
 # (e.g. ectoledger-gui via tauri_build) do not conflict at link time.
 embed-resource = []
-enclave     = ["dep:x25519-dalek", "dep:chacha20poly1305"]
+enclave     = ["dep:x25519-dalek", "dep:chacha20poly1305", "dep:hkdf"]
 sandbox-apple-enclave = ["enclave", "dep:applevisor", "dep:applevisor-sys"]
 sandbox = ["dep:landlock", "dep:seccompiler"]
 # Hardware-level microVM isolation using Firecracker (Linux + KVM required).

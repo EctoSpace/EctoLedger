@@ -58,9 +58,10 @@ impl EnclaveRuntime for SoftwareEnclaveRuntime {
             if ret != 0 {
                 // mlock failure is not fatal — log but proceed.  On CI / sandboxed
                 // environments the rlimit may be too low.
+                let err = std::io::Error::last_os_error();
+                let errno = err.raw_os_error().unwrap_or(-1);
                 eprintln!(
-                    "[enclave/software] mlock failed (errno {}); proceeding without lock",
-                    ret
+                    "[enclave/software] mlock failed (errno {errno}: {err}); proceeding without lock"
                 );
             } else {
                 self.locked = true;

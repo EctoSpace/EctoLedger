@@ -14,5 +14,4 @@ CREATE TABLE IF NOT EXISTS pending_approvals (
 );
 
 CREATE INDEX IF NOT EXISTS idx_pending_approvals_session_decided
-    ON pending_approvals (session_id)
-    WHERE approved IS NOT NULL;
+    ON pending_approvals (session_id, gate_id, approved);

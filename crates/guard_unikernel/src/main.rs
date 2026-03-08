@@ -214,12 +214,13 @@ pub extern "C" fn main() -> ! {
     let host_pubkey = x25519_dalek::PublicKey::from(host_pubkey_bytes);
     let _shared_secret = guest_secret.diffie_hellman(&host_pubkey);
 
-    // Derive ChaCha20-Poly1305 key via SHA-256(label ‖ shared_secret).
-    use sha2::Digest;
-    let mut hasher = sha2::Sha256::new();
-    hasher.update(b"ectoledger-enclave-ipc-v1");
-    hasher.update(_shared_secret.as_bytes());
-    let derived_key_bytes = hasher.finalize();
+    // Derive ChaCha20-Poly1305 key via HKDF-SHA256(shared_secret).
+    use hkdf::Hkdf;
+    use sha2::Sha256;
+    let hkdf = Hkdf::<Sha256>::new(None, _shared_secret.as_bytes());
+    let mut derived_key_bytes = [0u8; 32];
+    hkdf.expand(b"ectoledger-enclave-ipc-v1", &mut derived_key_bytes)
+        .expect("HKDF expand failed");
 
     // Build the AEAD cipher once; reuse for the entire session.
     use chacha20poly1305::{aead::AeadInPlace, ChaCha20Poly1305, KeyInit, Nonce};

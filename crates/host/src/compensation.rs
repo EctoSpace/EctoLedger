@@ -186,11 +186,18 @@ fn tripwire_error_kind(e: &TripwireError) -> &'static str {
     }
 }
 
-/// Sanitise a template expansion value: keep only safe characters.
+/// Sanitise a template expansion value: keep only safe characters and
+/// reject directory-traversal sequences.
 fn sanitize_template_value(s: &str) -> String {
-    s.chars()
+    let mut sanitized: String = s
+        .chars()
         .filter(|c| c.is_alphanumeric() || matches!(c, '/' | '.' | '-' | '_' | ' '))
-        .collect()
+        .collect();
+    // Remove directory traversal sequences to prevent path escape.
+    while sanitized.contains("..") {
+        sanitized = sanitized.replace("..", "");
+    }
+    sanitized
 }
 
 /// Expand `{{params.key}}` placeholders in a string using values from the

@@ -21,5 +21,4 @@ CREATE TABLE IF NOT EXISTS pending_approvals (
 
 -- Index for the agent-side poll: "any decided approvals for my session?"
 CREATE INDEX IF NOT EXISTS idx_pending_approvals_session_decided
-    ON pending_approvals (session_id)
-    WHERE approved IS NOT NULL;
+    ON pending_approvals (session_id, gate_id, approved);

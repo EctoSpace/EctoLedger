@@ -78,11 +78,17 @@ pub async fn start_server(
     listener: tokio::net::TcpListener,
 ) -> Result<(), std::io::Error> {
     let cancel = tokio_util::sync::CancellationToken::new();
-    let (made_router, _task_tracker) = server::router(pool, metrics_handle, cancel);
+    let shutdown_token = cancel.clone();
+    tokio::spawn(async move {
+        let _ = tokio::signal::ctrl_c().await;
+        shutdown_token.cancel();
+    });
+    let (made_router, _task_tracker) = server::router(pool, metrics_handle, cancel.clone());
     axum::serve(
         listener,
         made_router.into_make_service_with_connect_info::<std::net::SocketAddr>(),
     )
+    .with_graceful_shutdown(cancel.cancelled_owned())
     .await
 }
 

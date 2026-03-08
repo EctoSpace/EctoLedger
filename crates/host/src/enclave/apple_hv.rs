@@ -183,7 +183,7 @@ impl EnclaveRuntime for AppleHvEnclaveRuntime {
         let level = match handshake_result {
             Ok(()) => EnclaveLevel::AppleHypervisor,
             Err(ref e) => {
-                eprintln!(
+                tracing::error!(
                     "[enclave/apple_hv] X25519 handshake failed: {e}. \
                      Downgrading attestation level to SoftwareHardened (IPC is unencrypted)."
                 );
@@ -260,13 +260,13 @@ pub fn test_enclave_boot() -> Result<(), String> {
         );
     }
 
-    // DEBUG: Check if we accidentally loaded an ELF header instead of raw assembly
+    // Check if we accidentally loaded an ELF header instead of raw assembly.
     let first_word = unsafe { *(guest_ram.host_addr() as *const u32) };
     if first_word == 0x464C457F {
         // \x7f E L F
-        println!("CRITICAL WARNING: Payload starts with an ELF header, not raw assembly!");
+        tracing::debug!("CRITICAL WARNING: Payload starts with an ELF header, not raw assembly!");
     } else {
-        println!("Payload starts with raw instruction: {:#010x}", first_word);
+        tracing::debug!("Payload starts with raw instruction: {:#010x}", first_word);
     }
 
     guest_ram
@@ -304,13 +304,16 @@ pub fn test_enclave_boot() -> Result<(), String> {
         let elr = vcpu.get_sys_reg(SysReg::ELR_EL1).unwrap_or(0);
         let far = vcpu.get_sys_reg(SysReg::FAR_EL1).unwrap_or(0);
 
-        println!(
+        tracing::trace!(
             "VM Halted at PC: {:#x} | Exit reason: {:?}",
-            pc, exit_info.reason
+            pc,
+            exit_info.reason
         );
-        println!(
+        tracing::trace!(
             "Telemetry -> ELR_EL1 (Faulting Instruction Address): {:#x} | ESR_EL1 (Error Code): {:#x} | FAR_EL1 (Memory Address): {:#x}",
-            elr, esr, far
+            elr,
+            esr,
+            far
         );
 
         if exit_info.reason == ExitReason::EXCEPTION {
