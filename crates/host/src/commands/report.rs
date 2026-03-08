@@ -112,7 +112,7 @@ pub async fn run_report(
             .clone()
             .unwrap_or_else(|| std::path::PathBuf::from(format!("audit-{}.elc", session)));
         println!(
-            "Building Ecto Ledger Audit Certificate for session {}...",
+            "Building EctoLedger Audit Certificate for session {}...",
             session
         );
         let cert = crate::certificate::build_certificate(
@@ -165,12 +165,12 @@ fn print_report(
         .iter()
         .any(|f| matches!(f.severity.as_str(), "high" | "critical"));
     if has_high_or_critical {
-        return Err("Ecto Ledger: High or Critical findings detected — failing pipeline.".into());
+        return Err("EctoLedger: High or Critical findings detected — failing pipeline.".into());
     }
     Ok(())
 }
 
-/// Verify an Ecto Ledger Audit Certificate (.elc) file.
+/// Verify an EctoLedger Audit Certificate (.elc) file.
 pub fn run_verify_certificate(
     file: &std::path::Path,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
@@ -181,7 +181,7 @@ pub fn run_verify_certificate(
 
     let cert =
         read_certificate_file(file).map_err(|e| format!("Could not read certificate: {}", e))?;
-    println!("Verifying Ecto Ledger Audit Certificate");
+    println!("Verifying EctoLedger Audit Certificate");
     println!("  Session: {}", cert.session_id);
     println!("  Events : {}", cert.event_count);
     println!();
@@ -297,7 +297,7 @@ pub fn run_verify_certificate(
     }
 }
 
-/// Decode and verify a W3C VC-JWT issued by Ecto Ledger.
+/// Decode and verify a W3C VC-JWT issued by EctoLedger.
 pub fn run_verify_vc(
     jwt: &str,
     issuer_hex: Option<&str>,

@@ -105,6 +105,15 @@ pub async fn run(
         (None, None)
     };
 
+    // One-time startup recovery: clean up zombies from prior server runs.
+    // Must run before session creation to avoid TOCTOU with recovered sessions.
+    if let Err(e) = crate::wakeup::recover_zombie_sessions(&pool).await {
+        tracing::warn!("audit startup: failed to recover zombie sessions: {e}");
+    }
+    if let Err(e) = crate::wakeup::recover_incomplete_actions(&pool).await {
+        tracing::warn!("audit startup: failed to recover incomplete actions: {e}");
+    }
+
     // ── Session creation ──────────────────────────────────────────────────────
     let (session, session_signing_key) = ledger::create_session(
         &pool,
@@ -299,14 +308,6 @@ pub async fn run(
     //
     // Both the cognitive loop and the server are supervised. Any failure in
     // either task triggers cooperative cancellation of the other.
-
-    // One-time startup recovery: clean up zombies from prior server runs.
-    if let Err(e) = crate::wakeup::recover_zombie_sessions(&pool).await {
-        tracing::warn!("audit startup: failed to recover zombie sessions: {e}");
-    }
-    if let Err(e) = crate::wakeup::recover_incomplete_actions(&pool).await {
-        tracing::warn!("audit startup: failed to recover incomplete actions: {e}");
-    }
 
     let agent_pool = crate::pool::DatabasePool::Postgres(pool.clone());
     let aborted = tokio::select! {

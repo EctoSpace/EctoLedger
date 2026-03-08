@@ -2,7 +2,7 @@
 //!
 //! When compiled **without** `--features zk`, prints an informative message and exits 1.
 //! When compiled **with** `--features zk`, generates a real SP1 RISC-V proof over the
-//! full ledger session, embeds it in an Ecto Ledger Audit Certificate, and writes the .elc file.
+//! full ledger session, embeds it in an EctoLedger Audit Certificate, and writes the .elc file.
 
 use uuid::Uuid;
 
@@ -23,7 +23,7 @@ pub async fn run(
              SP1 is not supported on Windows or 32-bit architectures.\n\n\
              Recompile with ZK support:\n\
                cargo run --features zk -- prove-audit <session>\n\n\
-             For verifiable audit provenance without ZK, use the Ecto Ledger Audit Certificate:\n\
+             For verifiable audit provenance without ZK, use the EctoLedger Audit Certificate:\n\
                cargo run -- report --format certificate --output audit.elc <session>"
             .into())
     }
@@ -151,7 +151,7 @@ async fn prove_audit_zk(
         proof.bytes().len()
     );
 
-    println!("prove-audit: building Ecto Ledger Audit Certificate...");
+    println!("prove-audit: building EctoLedger Audit Certificate...");
     let mut cert = build_certificate(pool, session, None, !no_ots, None)
         .await
         .map_err(|e| format!("certificate build failed: {}", e))?;

@@ -191,7 +191,7 @@ fn tripwire_error_kind(e: &TripwireError) -> &'static str {
 fn sanitize_template_value(s: &str) -> String {
     let sanitized: String = s
         .chars()
-        .filter(|c| c.is_alphanumeric() || matches!(c, '/' | '.' | '-' | '_' | ' '))
+        .filter(|c| c.is_alphanumeric() || matches!(c, '/' | '.' | '-' | '_'))
         .collect();
     // Remove directory traversal *components* (".." path segments) to prevent
     // path escape. Operate on segments so "/tmp/../etc/passwd" is caught.
