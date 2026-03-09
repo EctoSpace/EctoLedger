@@ -4,6 +4,12 @@ Lightweight TypeScript / JavaScript client for the [EctoLedger](https://github.c
 ledger.  Zero runtime dependencies — works in Node 18+, Deno, Bun, and modern
 browsers that support `fetch`.
 
+EctoLedger is a tamper-proof audit trail for AI agents. It helps you prove what your AI did, in what order, and whether actions stayed within policy.
+
+This is not a crypto trading product. Here, "ledger" means an auditable evidence log for AI behavior.
+
+This SDK lets you create sessions, append events, and export verifiable `.elc` audit certificates from TypeScript and JavaScript apps.
+
 ## Installation
 
 ```bash

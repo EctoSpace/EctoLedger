@@ -1,5 +1,7 @@
 
-> **EctoLedger is a cryptographic accountability layer for AI agents. No other framework lets you prove - to a regulator, a customer, or a court - exactly what your AI did, in what order, and that nobody tampered with the record.**
+> **Your AI agent made 47 decisions. Can you prove what it did? To a regulator? To a court?**
+>
+> **EctoLedger makes that proof automatic.**
 
 # EctoLedger
 
@@ -34,6 +36,33 @@
 </p>
 
 ---
+
+## What is EctoLedger?
+
+EctoLedger is a **black box recorder for AI agents**.
+
+It helps you prove exactly what an AI agent did, in what order, and whether every action stayed inside policy.
+
+### What it does
+
+- Records every agent decision and tool call in a tamper-evident audit trail
+- Blocks risky actions before execution with policy + guardrails
+- Exports verifiable audit certificates you can present to customers, auditors, regulators, or courts
+
+### Who is this for?
+
+- Teams deploying AI agents that run commands, call APIs, or access sensitive data
+- Security and platform teams that need to enforce and verify AI behavior
+- Compliance teams preparing for formal AI governance and external audits
+- Builders who need machine-verifiable evidence of AI actions, not just logs
+
+### Why now?
+
+The EU AI Act and related governance requirements are pushing organizations toward provable auditability for high-risk AI systems. If an autonomous workflow makes a harmful or disputed decision, "trust us" is not enough. EctoLedger gives you cryptographic evidence that can be independently verified.
+
+![EctoLedger demo](site/marketing_assets/videos/gui_demo.gif)
+
+### How it works (technical)
 
 EctoLedger gives every AI agent a cryptographically sealed audit trail. Each action is hash-chained, signature-verified, and policy-gated before execution. The result is an immutable ledger that regulators, auditors, and security teams can inspect, replay, and independently verify - with no trust in the issuer.
 

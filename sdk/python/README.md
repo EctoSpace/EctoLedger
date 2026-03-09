@@ -2,6 +2,12 @@
 
 A typed async REST client for [EctoLedger](https://github.com/EctoSpace/EctoLedger) with built-in LangChain and AutoGen support.
 
+EctoLedger is a tamper-proof audit trail for AI agents. It helps you prove what your AI did, in what order, and whether actions stayed within policy.
+
+This is not a crypto trading product. Here, "ledger" means an auditable evidence log for AI behavior.
+
+This SDK lets you create sessions, append events, and export verifiable `.elc` audit certificates from your Python applications.
+
 ## Installation
 
 ```bash
