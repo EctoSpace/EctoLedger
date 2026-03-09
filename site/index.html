@@ -110,6 +110,9 @@
       -webkit-mask:
         linear-gradient(#000 0 0) content-box,
         linear-gradient(#000 0 0);
+      mask:
+        linear-gradient(#000 0 0) content-box,
+        linear-gradient(#000 0 0);
       -webkit-mask-composite: xor;
       mask-composite: exclude;
       pointer-events: none;
@@ -126,12 +129,6 @@
       transform: translateY(0);
     }
 
-    .hero-bg {
-      background-image: url("images/ectoLedger.webp");
-      background-size: 100% 105%;
-      background-position: center top;
-      background-repeat: no-repeat;
-    }
     .hero-bg::before {
       content: "";
       position: absolute;

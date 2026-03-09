@@ -69,7 +69,7 @@ body {
 }
 
 .parallax-layer.layer-back {
-  background: url('images/ectoLedger-Logo.webp') center center no-repeat;
+  background: url('images/el-Logo.webp') center center no-repeat;
   background-size: cover;
   filter: blur(40px);
   -webkit-filter: blur(40px);
