@@ -23,7 +23,7 @@
 !**/.env.example
 
 # ========================================
-# Ecto Ledger runtime artifacts
+# EctoLedger runtime artifacts
 # ========================================
 .ectoledger/
 .ironclad/

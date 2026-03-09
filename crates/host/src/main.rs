@@ -167,13 +167,13 @@ enum Commands {
         chain: String,
     },
 
-    /// Verify an Ecto Ledger Audit Certificate (.elc) file.
+    /// Verify an EctoLedger Audit Certificate (.elc) file.
     VerifyCertificate {
         /// Path to the .elc certificate file.
         file: std::path::PathBuf,
     },
 
-    /// Decode and verify a W3C VC-JWT issued by Ecto Ledger.
+    /// Decode and verify a W3C VC-JWT issued by EctoLedger.
     ///
     /// Checks structure, expiry, and (when --issuer-hex is provided) the Ed25519 signature
     /// over the VC payload.  Prints the decoded credential subject to stdout.

@@ -252,7 +252,7 @@
       const bytes = await invoke<number[]>("export_certificate", { sessionId: selected });
       const path = await save({
         defaultPath: `audit-${selected.slice(0, 8)}.elc`,
-        filters: [{ name: "Ecto Ledger Certificate", extensions: ["elc"] }],
+        filters: [{ name: "EctoLedger Certificate", extensions: ["elc"] }],
       });
       if (path) {
         await writeFile(path, new Uint8Array(bytes));

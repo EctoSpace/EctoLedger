@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Run the Ecto Ledger integration test suite against an ephemeral PostgreSQL container.
+# Run the EctoLedger integration test suite against an ephemeral PostgreSQL container.
 #
 # Usage:
 #   ./scripts/test-integration.sh [extra cargo test args...]

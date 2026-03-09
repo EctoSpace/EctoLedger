@@ -1,10 +1,10 @@
-# Ecto Ledger Demo Mode
+# EctoLedger Demo Mode
 
-Evaluating enterprise security tools shouldn't require an afternoon of DevOps. Ecto Ledger's `--demo` flag is designed to get you from `git clone` to a cryptographically verified AI audit in under 3 minutes, with zero configuration.
+Evaluating enterprise security tools shouldn't require an afternoon of DevOps. EctoLedger's `--demo` flag is designed to get you from `git clone` to a cryptographically verified AI audit in under 3 minutes, with zero configuration.
 
 ## What Demo Mode Does
 
-When you append `--demo` to your platform's launcher script, Ecto Ledger autonomously creates an isolated, safe sandbox environment on your machine:
+When you append `--demo` to your platform's launcher script, EctoLedger autonomously creates an isolated, safe sandbox environment on your machine:
 
 1. **Zero-Pollution Storage:** Unsets `DATABASE_URL` so the backend automatically starts an isolated embedded PostgreSQL instance via pg-embed on **port 5433** with a separate data directory (`~/Library/Application Support/ectoledger/postgres-demo` on macOS, `~/.local/share/ectoledger/postgres-demo` on Linux, `%LOCALAPPDATA%\ectoledger\postgres-demo` on Windows). This is completely isolated from your normal-mode database. Run with `--reset-db --demo` to wipe it.
 2. **Autonomous LLM Provisioning:** If you do not have cloud API keys configured, the script checks for a local [Ollama](https://ollama.com) installation. If missing, it gives you a 5-second warning and safely auto-installs it.
@@ -85,7 +85,7 @@ Running `--demo` multiple times is safe:
 
 ## Docker Demo (No Rust or Node Required)
 
-If you prefer a fully containerized experience, you can run the Ecto Ledger demo using Docker Compose. This method requires only Docker and Docker Compose—no Rust toolchain, Node.js, or local dependencies are needed.
+If you prefer a fully containerized experience, you can run the EctoLedger demo using Docker Compose. This method requires only Docker and Docker Compose—no Rust toolchain, Node.js, or local dependencies are needed.
 
 ### Quick Start
 
@@ -99,7 +99,7 @@ If you prefer a fully containerized experience, you can run the Ecto Ledger demo
    docker compose -f docker-compose.demo.yml up
    ```
    This will launch:
-   - Ecto Ledger backend (with embedded Postgres)
+   - EctoLedger backend (with embedded Postgres)
    - Ollama LLM backend (for local inference)
    - PostgreSQL 17 (for persistent data)
 

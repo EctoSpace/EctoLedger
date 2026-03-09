@@ -253,7 +253,7 @@ async fn start_embedded(database_url: &str) -> Result<(PgEmbed, String), DbSetup
                 "Port {} is already in use. This is usually caused by:\n  \
                  • A locally installed PostgreSQL (brew services stop postgresql)\n  \
                  • A Docker container (docker ps | grep {})\n  \
-                 • A previous Ecto Ledger session that didn't shut down cleanly\n\n  \
+                 • A previous EctoLedger session that didn't shut down cleanly\n\n  \
                  Fix: stop the other process, or set DATABASE_URL to point at it.",
                 port, port
             );
@@ -262,7 +262,7 @@ async fn start_embedded(database_url: &str) -> Result<(PgEmbed, String), DbSetup
                 "Port {} is already in use. This is usually caused by:\n  \
                  • A locally installed PostgreSQL service (services.msc → postgresql-*)\n  \
                  • A Docker container (docker ps)\n  \
-                 • A previous Ecto Ledger session that didn't shut down cleanly\n\n  \
+                 • A previous EctoLedger session that didn't shut down cleanly\n\n  \
                  Fix: netstat -ano | findstr :{}\n       taskkill /F /PID <PID>",
                 port, port
             );

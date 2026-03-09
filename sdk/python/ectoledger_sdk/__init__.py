@@ -1,4 +1,4 @@
-"""Ecto Ledger — Python SDK."""
+"""EctoLedger — Python SDK."""
 
 __version__ = "0.6.2"
 

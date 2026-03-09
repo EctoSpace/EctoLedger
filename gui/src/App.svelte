@@ -28,7 +28,7 @@
   async function initializeServerUrl(): Promise<string> {
     if (!isTauri()) {
       throw new Error(
-        "Run this app via the Ecto Ledger desktop window, not in a browser."
+        "Run this app via the EctoLedger desktop window, not in a browser."
       );
     }
     try {
@@ -52,7 +52,7 @@
         }
       }
       throw new Error(
-        "Could not determine backend server URL. Ensure the Ecto Ledger backend is running."
+        "Could not determine backend server URL. Ensure the EctoLedger backend is running."
       );
     }
   }

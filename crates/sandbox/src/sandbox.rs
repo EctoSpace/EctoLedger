@@ -38,8 +38,14 @@ pub fn apply_guard_worker_seccomp() -> Result<(), SandboxError> {
     #[rustfmt::skip]
     let allowed: &[i64] = &[
         libc::SYS_read, libc::SYS_write, libc::SYS_readv, libc::SYS_writev,
-        libc::SYS_openat, libc::SYS_close, libc::SYS_fstat, libc::SYS_stat,
-        libc::SYS_lstat, libc::SYS_lseek, libc::SYS_mmap, libc::SYS_mprotect,
+        libc::SYS_openat, libc::SYS_close, libc::SYS_fstat,
+        #[cfg(target_arch = "x86_64")]
+        libc::SYS_stat,
+        #[cfg(target_arch = "x86_64")]
+        libc::SYS_lstat,
+        #[cfg(target_arch = "aarch64")]
+        libc::SYS_newfstatat,
+        libc::SYS_lseek, libc::SYS_mmap, libc::SYS_mprotect,
         libc::SYS_munmap, libc::SYS_brk, libc::SYS_rt_sigaction,
         libc::SYS_rt_sigprocmask, libc::SYS_rt_sigreturn, libc::SYS_ioctl,
         libc::SYS_pread64, libc::SYS_pwrite64, libc::SYS_getcwd,
@@ -52,7 +58,9 @@ pub fn apply_guard_worker_seccomp() -> Result<(), SandboxError> {
         libc::SYS_getsockname, libc::SYS_getpeername,
         libc::SYS_setsockopt, libc::SYS_getsockopt,
         libc::SYS_epoll_create1, libc::SYS_epoll_ctl, libc::SYS_epoll_pwait,
-        libc::SYS_poll, libc::SYS_ppoll,
+        #[cfg(target_arch = "x86_64")]
+        libc::SYS_poll,
+        libc::SYS_ppoll,
         libc::SYS_prctl, libc::SYS_prlimit64,
         libc::SYS_getuid, libc::SYS_getgid, libc::SYS_getpid, libc::SYS_gettid,
         libc::SYS_set_robust_list, libc::SYS_getrandom, libc::SYS_madvise,
@@ -218,10 +226,37 @@ pub fn apply_main_process_seccomp() -> Result<(), SandboxError> {
         // Basic I/O
         libc::SYS_read, libc::SYS_write, libc::SYS_readv, libc::SYS_writev,
         libc::SYS_pread64, libc::SYS_pwrite64,
-        libc::SYS_openat, libc::SYS_close, libc::SYS_fstat, libc::SYS_stat,
-        libc::SYS_lstat, libc::SYS_lseek, libc::SYS_getcwd, libc::SYS_getdents64,
-        libc::SYS_rename, libc::SYS_unlink, libc::SYS_mkdir, libc::SYS_rmdir,
-        libc::SYS_chmod, libc::SYS_chown, libc::SYS_truncate, libc::SYS_ftruncate,
+        libc::SYS_openat, libc::SYS_close, libc::SYS_fstat,
+        #[cfg(target_arch = "x86_64")]
+        libc::SYS_stat,
+        #[cfg(target_arch = "x86_64")]
+        libc::SYS_lstat,
+        #[cfg(target_arch = "aarch64")]
+        libc::SYS_newfstatat,
+        libc::SYS_lseek, libc::SYS_getcwd, libc::SYS_getdents64,
+        #[cfg(target_arch = "x86_64")]
+        libc::SYS_rename,
+        #[cfg(target_arch = "aarch64")]
+        libc::SYS_renameat,
+        #[cfg(target_arch = "x86_64")]
+        libc::SYS_unlink,
+        #[cfg(target_arch = "aarch64")]
+        libc::SYS_unlinkat,
+        #[cfg(target_arch = "x86_64")]
+        libc::SYS_mkdir,
+        #[cfg(target_arch = "aarch64")]
+        libc::SYS_mkdirat,
+        #[cfg(target_arch = "x86_64")]
+        libc::SYS_rmdir,
+        #[cfg(target_arch = "x86_64")]
+        libc::SYS_chmod,
+        #[cfg(target_arch = "aarch64")]
+        libc::SYS_fchmodat,
+        #[cfg(target_arch = "x86_64")]
+        libc::SYS_chown,
+        #[cfg(target_arch = "aarch64")]
+        libc::SYS_fchownat,
+        libc::SYS_truncate, libc::SYS_ftruncate,
         libc::SYS_statx, libc::SYS_faccessat, libc::SYS_flock,
         // Memory
         libc::SYS_mmap, libc::SYS_mprotect, libc::SYS_munmap, libc::SYS_brk,
@@ -248,7 +283,9 @@ pub fn apply_main_process_seccomp() -> Result<(), SandboxError> {
         libc::SYS_setsockopt, libc::SYS_getsockopt,
         // epoll / poll
         libc::SYS_epoll_create1, libc::SYS_epoll_ctl, libc::SYS_epoll_pwait,
-        libc::SYS_poll, libc::SYS_ppoll,
+        #[cfg(target_arch = "x86_64")]
+        libc::SYS_poll,
+        libc::SYS_ppoll,
         // Misc
         libc::SYS_prctl, libc::SYS_prlimit64, libc::SYS_getrandom,
         libc::SYS_getuid, libc::SYS_getgid, libc::SYS_getpid, libc::SYS_gettid,

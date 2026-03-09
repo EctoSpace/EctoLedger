@@ -1,4 +1,4 @@
-# Ecto Ledger Policy Packs (v0.6)
+# EctoLedger Policy Packs (v0.6)
 
 Pre-configured policy files for common security and compliance standards.
 Each pack is a valid `--policy` input for the host CLI.

@@ -1645,7 +1645,7 @@ async fn metrics_handler(
             r#"<!DOCTYPE html><html lang="en"><head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Ecto Ledger — Metrics</title>
+<title>EctoLedger — Metrics</title>
 <style>
   body{{margin:0;background:#0d1117;color:#c9d1d9;font-family:"SF Mono","Fira Code",Consolas,monospace;font-size:13px;padding:16px;}}
   h2{{color:#58a6ff;font-size:14px;margin-bottom:12px;}}
@@ -1653,7 +1653,7 @@ async fn metrics_handler(
   a{{color:#58a6ff;font-size:12px;}}
 </style>
 </head><body>
-<h2>Ecto Ledger — Prometheus Metrics</h2>
+<h2>EctoLedger — Prometheus Metrics</h2>
 <pre>{}</pre>
 <a href="/">&larr; Observer dashboard</a>
 </body></html>"#,

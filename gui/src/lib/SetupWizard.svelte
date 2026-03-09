@@ -229,7 +229,7 @@
 
     <!-- Step 1: Express vs Custom -->
     {:else if step === 1}
-      <Card title="Welcome to Ecto Ledger" subtitle="How would you like to set up?">
+      <Card title="Welcome to EctoLedger" subtitle="How would you like to set up?">
         {#snippet children()}
           {#if systemState}
             <p class="text-xs text-text-muted mb-4">Detected: {osLabel}</p>
@@ -277,7 +277,7 @@
 
     <!-- Step 2: Database (Custom) -->
     {:else if step === 2}
-      <Card title="Database Backend" subtitle="Where should Ecto Ledger store its ledger?">
+      <Card title="Database Backend" subtitle="Where should EctoLedger store its ledger?">
         {#snippet children()}
           <div class="space-y-3 mb-6">
             {#each [
@@ -313,7 +313,7 @@
 
     <!-- Step 3: LLM Provider (Custom) -->
     {:else if step === 3}
-      <Card title="LLM Provider" subtitle="How will Ecto Ledger access a language model?">
+      <Card title="LLM Provider" subtitle="How will EctoLedger access a language model?">
         {#snippet children()}
           <div class="space-y-3 mb-6">
             {#each [
@@ -355,7 +355,7 @@
 
     <!-- Step 4: Model Selection -->
     {:else if step === 4}
-      <Card title="Model Selection" subtitle="Choose the model Ecto Ledger will use.">
+      <Card title="Model Selection" subtitle="Choose the model EctoLedger will use.">
         {#snippet children()}
           {@const modelCards = models.length > 0 ? models.map(m => ({ id: m, label: m })) : [
             { id: "llama3.2:3b",                   label: "Llama 3.2 3B — lightweight, fast" },
@@ -389,7 +389,7 @@
 
     <!-- Step 5: Provisioning -->
     {:else if step === 5}
-      <Card title="Setting Up Ecto Ledger" subtitle={done ? "All done!" : provisioning ? "Working…" : provisionError ? "Error" : "Provisioning"}>
+      <Card title="Setting Up EctoLedger" subtitle={done ? "All done!" : provisioning ? "Working…" : provisionError ? "Error" : "Provisioning"}>
         {#snippet children()}
           <div class="bg-background rounded-xl border border-border-muted/30 p-5 font-mono text-xs text-text-secondary h-48 overflow-y-auto flex flex-col gap-1.5 mb-5">
             {#if provisionLog.length === 0 && provisioning}
@@ -408,9 +408,9 @@
               <Button variant="primary" onclick={runProvisioning}>{#snippet children()}Retry{/snippet}</Button>
             </div>
           {:else if done}
-            <div class="p-3 rounded-lg bg-success-muted border border-success/30 text-sm text-success mb-4">✓ Ecto Ledger is ready!</div>
+            <div class="p-3 rounded-lg bg-success-muted border border-success/30 text-sm text-success mb-4">✓ EctoLedger is ready!</div>
             <div class="flex justify-end">
-              <Button variant="success" onclick={onComplete}>{#snippet children()}Open Ecto Ledger →{/snippet}</Button>
+              <Button variant="success" onclick={onComplete}>{#snippet children()}Open EctoLedger →{/snippet}</Button>
             </div>
           {:else if provisioning}
             <div class="flex justify-center">

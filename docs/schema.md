@@ -1,4 +1,4 @@
-# Ecto Ledger — Schema
+# EctoLedger — Schema
 
 ## Design
 

@@ -1,4 +1,4 @@
-# Build override — compile Ecto Ledger from source instead of pulling from GHCR.
+# Build override — compile EctoLedger from source instead of pulling from GHCR.
 #
 # Usage:
 #   docker compose -f docker-compose.demo.yml -f docker-compose.build.yml up --build

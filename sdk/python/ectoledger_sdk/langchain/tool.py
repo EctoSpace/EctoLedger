@@ -1,4 +1,4 @@
-"""LangChain Tool that writes every agent observation to the Ecto Ledger."""
+"""LangChain Tool that writes every agent observation to the EctoLedger."""
 
 import asyncio
 import atexit
@@ -31,7 +31,7 @@ class _LedgerInput(BaseModel):
 
 
 class LedgerTool(BaseTool):
-    """A LangChain tool that appends each agent observation to the Ecto Ledger.
+    """A LangChain tool that appends each agent observation to the EctoLedger.
 
     Attach this to any LangChain agent to get a tamper-evident audit trail::
 
@@ -46,7 +46,7 @@ class LedgerTool(BaseTool):
 
     name: str = "ectoledger_ledger"
     description: str = (
-        "Records an observation to the Ecto Ledger tamper-evident audit ledger. "
+        "Records an observation to the EctoLedger tamper-evident audit ledger. "
         "Always call this tool to store important reasoning steps, tool outputs, "
         "or policy decisions for compliance purposes."
     )

@@ -1,9 +1,9 @@
-//! W3C Verifiable Credential (VC-JWT) issuance for completed Ecto Ledger sessions.
+//! W3C Verifiable Credential (VC-JWT) issuance for completed EctoLedger sessions.
 //!
 //! Issues a self-signed JWT Verifiable Credential (EdDSA / Ed25519) when an agent session
 //! completes.  The credential records the session identity, goal, policy hash, and completion
 //! timestamp in a tamper-evident, portable format that can be verified by any W3C VC-aware
-//! system without access to the Ecto Ledger instance.
+//! system without access to the EctoLedger instance.
 //!
 //! # Format
 //!
@@ -69,7 +69,7 @@ fn b64url(input: &[u8]) -> String {
 
 // ── VC builder ───────────────────────────────────────────────────────────────
 
-/// Build a W3C VC-JWT for a completed Ecto Ledger agent session.
+/// Build a W3C VC-JWT for a completed EctoLedger agent session.
 ///
 /// # Arguments
 ///

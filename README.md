@@ -1,4 +1,7 @@
-# Ecto Ledger
+
+> **EctoLedger is a cryptographic accountability layer for AI agents. No other framework lets you prove - to a regulator, a customer, or a court - exactly what your AI did, in what order, and that nobody tampered with the record.**
+
+# EctoLedger
 
 [![CI](https://github.com/EctoSpace/EctoLedger/actions/workflows/ci.yml/badge.svg)](https://github.com/EctoSpace/EctoLedger/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
@@ -9,7 +12,7 @@
 
 
 <p align="center">
-  <img src="assets/ectoLedger-Logo.webp" alt="Ecto Ledger Logo" width="450" />
+  <img src="assets/ectoLedger-Logo.webp" alt="EctoLedger Logo" width="250" />
 </p>
 
 <p align="center">
@@ -32,7 +35,7 @@
 
 ---
 
-Ecto Ledger gives every AI agent a cryptographically sealed audit trail. Each action is hash-chained, signature-verified, and policy-gated before execution. The result is an immutable ledger that regulators, auditors, and security teams can inspect, replay, and independently verify - with no trust in the issuer.
+EctoLedger gives every AI agent a cryptographically sealed audit trail. Each action is hash-chained, signature-verified, and policy-gated before execution. The result is an immutable ledger that regulators, auditors, and security teams can inspect, replay, and independently verify - with no trust in the issuer.
 
 **Highlights of version 0.6.2:**
 
@@ -217,7 +220,7 @@ flowchart LR
 
 ## Pluggable Ledger Backends
 
-The `LedgerBackend` trait (`crates/ledger-api`) decouples the agent runtime from any specific storage engine. Ecto Ledger ships two production-ready implementations:
+The `LedgerBackend` trait (`crates/ledger-api`) decouples the agent runtime from any specific storage engine. EctoLedger ships two production-ready implementations:
 
 | Backend | Connection string | Best for |
 |---|---|---|
@@ -264,7 +267,7 @@ pub trait LedgerBackend: Send + Sync {
 }
 ```
 
-Third parties can implement this trait to add custom backends (DynamoDB, FoundationDB, etc.) without modifying Ecto Ledger itself.
+Third parties can implement this trait to add custom backends (DynamoDB, FoundationDB, etc.) without modifying EctoLedger itself.
 
 ### Scaling Considerations
 
@@ -315,7 +318,7 @@ ECTO_FC_ROOTFS=/opt/ectoledger/rootfs.ext4 \
 
 When running as a non-root user, assets are installed to `~/.local/bin` and `~/.local/opt/ectoledger` without requiring `sudo`. The script validates architecture, checks for KVM availability, verifies binary checksums, and prints a ready-to-source export block on completion.
 
-Ecto Ledger is **self-deploying** - no manual database creation, migration tools, or configuration files required.
+EctoLedger is **self-deploying** - no manual database creation, migration tools, or configuration files required.
 
 **PostgreSQL mode** (default): if `DATABASE_URL` is unset, the binary defaults to `postgres://ectoledger:ectoledger@localhost:5432/ectoledger`. It checks for a Docker container named `ectoledger-postgres`, starts one if absent, polls until ready, then runs migrations and creates the genesis block automatically.
 
@@ -361,7 +364,7 @@ Press **Ctrl+C** to stop everything cleanly.
 
 ### 🚀 Try the Zero-Config Demo
 
-Want to see Ecto Ledger in action without configuring databases or API keys? Run the launcher with the `--demo` flag:
+Want to see EctoLedger in action without configuring databases or API keys? Run the launcher with the `--demo` flag:
 
 ```bash
 # macOS
@@ -402,7 +405,7 @@ Then open **http://localhost:3000** in your browser.
 |---|---|---|
 | PostgreSQL 17 | `postgres:17-alpine` | Isolated DB, data persisted in a named Docker volume |
 | Ollama | `ollama/ollama:latest` | Pulls `qwen2.5:0.5b` automatically on first start |
-| Ecto Ledger | `ghcr.io/ectospace/ectoledger:latest` | Pre-built release binary, pulls in seconds |
+| EctoLedger | `ghcr.io/ectospace/ectoledger:latest` | Pre-built release binary, pulls in seconds |
 
 To stop and remove all data:
 ```bash
@@ -786,11 +789,11 @@ The `verify-cert` binary is a static, dependency-free binary (< 5 MB) designed t
 
 ## Decentralized Identity and W3C Verifiable Credentials
 
-Sessions and `.elc` certificates carry an optional `session_did` field. When present, it contains a `did:key:` URI derived from the session Ed25519 keypair - providing a W3C-compatible, self-sovereign identity anchor for each audit session that can be verified by any standards-compliant DID resolver without calling back to the Ecto Ledger instance.
+Sessions and `.elc` certificates carry an optional `session_did` field. When present, it contains a `did:key:` URI derived from the session Ed25519 keypair - providing a W3C-compatible, self-sovereign identity anchor for each audit session that can be verified by any standards-compliant DID resolver without calling back to the EctoLedger instance.
 
 ### Verifiable Credential issuance
 
-When an agent session completes, Ecto Ledger automatically issues a W3C VC-JWT that encodes the session identity, goal, policy hash, and completion status in a tamper-evident, portable credential:
+When an agent session completes, EctoLedger automatically issues a W3C VC-JWT that encodes the session identity, goal, policy hash, and completion status in a tamper-evident, portable credential:
 
 ```json
 {
@@ -860,7 +863,7 @@ match verify_vc_jwt(&vc_jwt, Some(&vk)) {
 
 ## Webhooks and SIEM Integration
 
-Ecto Ledger emits structured events to any HTTP endpoint - configure once and receive real-time notifications for all security-relevant agent decisions.
+EctoLedger emits structured events to any HTTP endpoint - configure once and receive real-time notifications for all security-relevant agent decisions.
 
 **Event kinds:**
 
@@ -1124,9 +1127,9 @@ Each test calls `scan_observation()` or `Tripwire::validate()` directly as pure 
 
 ### macOS - Missing Network Isolation
 
-Apple's Seatbelt sandbox does **not** provide per-process network isolation.  Child processes spawned by the executor inherit full outbound network access.  This is an architectural limitation of macOS, not a bug in Ecto Ledger.
+Apple's Seatbelt sandbox does **not** provide per-process network isolation.  Child processes spawned by the executor inherit full outbound network access.  This is an architectural limitation of macOS, not a bug in EctoLedger.
 
-**For production macOS deployments**, apply edge network filtering to restrict outbound traffic from the Ecto Ledger process:
+**For production macOS deployments**, apply edge network filtering to restrict outbound traffic from the EctoLedger process:
 
 - Deploy a host-level firewall (pfctl, Little Snitch, Lulu) or corporate forward proxy.
 - Configure `AGENT_ALLOWED_DOMAINS` to restrict `http_get` destinations.

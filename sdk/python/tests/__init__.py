@@ -1,1 +1,1 @@
-# Ecto Ledger Python SDK test package
+# EctoLedger Python SDK test package

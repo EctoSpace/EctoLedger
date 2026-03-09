@@ -1,6 +1,6 @@
-# Ecto Ledger SDK — Python
+# EctoLedger SDK — Python
 
-A typed async REST client for [Ecto Ledger](https://github.com/EctoSpace/EctoLedger) with built-in LangChain and AutoGen support.
+A typed async REST client for [EctoLedger](https://github.com/EctoSpace/EctoLedger) with built-in LangChain and AutoGen support.
 
 ## Installation
 

@@ -1,4 +1,4 @@
-"""Shared Pydantic models matching the Ecto Ledger API response shapes."""
+"""Shared Pydantic models matching the EctoLedger API response shapes."""
 
 from datetime import datetime
 from typing import Any

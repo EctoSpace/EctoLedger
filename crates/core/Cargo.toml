@@ -3,7 +3,7 @@ name = "ectoledger_core"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true
-description = "Shared pure logic for the Ecto Ledger: hashing, Merkle trees, schemas, and policy evaluation"
+description = "Shared pure logic for the EctoLedger: hashing, Merkle trees, schemas, and policy evaluation"
 license.workspace = true
 
 [dependencies]

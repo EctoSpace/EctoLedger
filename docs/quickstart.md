@@ -1,4 +1,4 @@
-# Ecto Ledger — Quickstart
+# EctoLedger — Quickstart
 
 Get from zero to your first cryptographically sealed AI audit in under 3 minutes.
 

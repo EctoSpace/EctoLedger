@@ -1,6 +1,6 @@
 //! PostgreSQL implementation of `ledger_api::LedgerBackend`.
 //!
-//! This file contains the original Ecto Ledger logic, now exposed both as
+//! This file contains the original EctoLedger logic, now exposed both as
 //! free functions (keeping existing call-sites working) and as a concrete
 //! `PostgresLedger` struct that implements `LedgerBackend`.
 
@@ -476,7 +476,7 @@ pub async fn ensure_genesis(pool: &PgPool) -> Result<AppendedEvent, AppendError>
     }
 
     let payload = EventPayload::Genesis {
-        message: "Ecto Ledger initialized".to_string(),
+        message: "EctoLedger initialized".to_string(),
         nonce: Some(hex::encode(uuid::Uuid::new_v4().as_bytes())),
         session_public_key: None, // server-level genesis: no session signing key yet
     };

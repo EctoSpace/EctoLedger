@@ -47,7 +47,7 @@
   // ── SSE connection ─────────────────────────────────────────────────────────
   async function connect() {
     if (!isTauri()) {
-      error = "Live Dashboard is only available in the Ecto Ledger desktop app.";
+      error = "Live Dashboard is only available in the EctoLedger desktop app.";
       return;
     }
     if (!serverUrl) return;
@@ -137,7 +137,7 @@
       const observerUrl = `${serverUrl}/?token=${encodeURIComponent(token)}`;
       new WebviewWindow("observer", {
         url: observerUrl,
-        title: "Ecto Ledger Observer",
+        title: "EctoLedger Observer",
         width: 900,
         height: 640,
         resizable: true,

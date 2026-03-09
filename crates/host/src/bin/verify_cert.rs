@@ -1,4 +1,4 @@
-// Standalone Ecto Ledger Audit Certificate verifier.
+// Standalone EctoLedger Audit Certificate verifier.
 //
 // Usage: verify-cert <path-to-audit.elc>
 //
@@ -45,7 +45,7 @@ fn main() {
         }
     };
 
-    println!("\nVerifying Ecto Ledger Audit Certificate");
+    println!("\nVerifying EctoLedger Audit Certificate");
     println!("  Session : {}", cert.session_id);
     println!("  Events  : {}", cert.event_count);
     println!("  Started : {}", cert.started_at);

@@ -3,7 +3,7 @@ name          = "ledger-api"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true
-description   = "Minimal async trait surface for the Ecto Ledger cryptographic ledger backend"
+description   = "Minimal async trait surface for the EctoLedger cryptographic ledger backend"
 license.workspace = true
 
 [dependencies]

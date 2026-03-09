@@ -1,4 +1,4 @@
-// Ecto Ledger GUI — Tauri 2 Rust entry point.
+// EctoLedger GUI — Tauri 2 Rust entry point.
 //
 // Self-contained desktop application: an embedded Axum server backed by
 // SQLite starts automatically during the Tauri `setup` hook.  The Svelte
@@ -60,7 +60,7 @@ fn main() {
             }
 
             WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
-                .title("Ecto Ledger")
+                .title("EctoLedger")
                 .inner_size(1400.0, 900.0)
                 .min_inner_size(1024.0, 640.0)
                 // NOTE: `transparent` is NOT set — windows are opaque by default in Tauri 2.
@@ -152,7 +152,7 @@ fn main() {
         ])
         .run(tauri::generate_context!())
         .unwrap_or_else(|e| {
-            eprintln!("Fatal: Ecto Ledger GUI failed to start: {e}");
+            eprintln!("Fatal: EctoLedger GUI failed to start: {e}");
             std::process::exit(1);
         });
 }

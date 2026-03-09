@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "ectoledger-sdk"
 version = "0.6.2"
-description = "Python REST SDK for Ecto Ledger - The Cryptographic Veto Engine for AI Agents"
+description = "Python REST SDK for EctoLedger - The Cryptographic Veto Engine for AI Agents"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "Apache-2.0" }
@@ -40,8 +40,11 @@ dev = [
 ]
 
 [project.urls]
-GitHub       = "https://github.com/EctoSpace/EctoLedger"
-LinkedIn     = "https://linkedin.com/in/bkohlberger"
+Homepage      = "https://ectospace.com/EctoLedger"
+GitHub        = "https://github.com/EctoSpace/EctoLedger"
+LinkedIn      = "https://linkedin.com/in/bkohlberger"
+Issues        = "https://github.com/EctoSpace/EctoLedger/issues"
+Documentation = "https://github.com/EctoSpace/EctoLedger/tree/main/sdk/python"
 
 [tool.pytest.ini_options]
 pythonpath = ["tests"]

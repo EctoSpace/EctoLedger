@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # =============================================================================
-#  Ecto Ledger — Firecracker microVM Provisioning Script
+#  EctoLedger — Firecracker microVM Provisioning Script
 #
 #  Downloads the Firecracker binary, a minimal Linux kernel, and a busybox
-#  rootfs, then configures the environment so the Ecto Ledger `sandbox-firecracker`
+#  rootfs, then configures the environment so the EctoLedger `sandbox-firecracker`
 #  feature can isolate `run_command` intents inside ephemeral microVMs.
 #
 #  Prerequisites:
@@ -14,7 +14,7 @@
 #  Usage:
 #    sudo ./scripts/provision-firecracker.sh [--prefix /opt/ectoledger]
 #
-#  After running, rebuild Ecto Ledger with:
+#  After running, rebuild EctoLedger with:
 #    cargo build --release --features sandbox-firecracker
 #  Then set these environment variables before starting the server:
 #    export ECTO_FC_BINARY=/opt/ectoledger/firecracker
@@ -87,7 +87,7 @@ case "$ARCH" in
 esac
 
 echo ""
-echo -e "${BOLD}${CYAN}  Ecto Ledger — Firecracker microVM Provisioner${RESET}"
+echo -e "${BOLD}${CYAN}  EctoLedger — Firecracker microVM Provisioner${RESET}"
 echo -e "  Version: ${FC_VERSION}  Architecture: ${FC_ARCH}  Prefix: ${INSTALL_PREFIX}"
 echo ""
 
@@ -271,9 +271,9 @@ step "Environment configuration"
 
 ENV_SNIPPET="${INSTALL_PREFIX}/ectoledger-firecracker.env"
 cat > "$ENV_SNIPPET" <<ENVEOF
-# ─── Ecto Ledger Firecracker microVM configuration ───────────────────────────────
+# ─── EctoLedger Firecracker microVM configuration ───────────────────────────────
 # Source this file or add these variables to your shell / .env before starting
-# the Ecto Ledger server with --features sandbox-firecracker:
+# the EctoLedger server with --features sandbox-firecracker:
 #
 #   source ${ENV_SNIPPET}
 #   cargo run --release --features sandbox-firecracker -- serve
@@ -300,7 +300,7 @@ echo -e "  ${BOLD}Next steps:${RESET}"
 echo -e "  1. Source the environment file:"
 echo -e "     ${CYAN}source ${ENV_SNIPPET}${RESET}"
 echo ""
-echo -e "  2. Rebuild Ecto Ledger with the firecracker feature:"
+echo -e "  2. Rebuild EctoLedger with the firecracker feature:"
 echo -e "     ${CYAN}cargo build --release --features sandbox-firecracker${RESET}"
 echo ""
 echo -e "  3. Start the server:"

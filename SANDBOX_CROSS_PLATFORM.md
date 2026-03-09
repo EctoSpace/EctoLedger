@@ -2,7 +2,7 @@
 
 Platform-specific sandbox implementations and unified abstraction.
 
-Ecto Ledger provides three layers of execution isolation, with different
+EctoLedger provides three layers of execution isolation, with different
 guarantees on each platform.
 
 ## Security Tier 1: Hardware-Accelerated Virtualization (Linux only)
@@ -80,13 +80,13 @@ guarantees on each platform.
 > (e.g. a malicious `curl` or DNS exfiltration payload) can reach external hosts
 > even when the Seatbelt sandbox is active.
 >
-> **This is an architectural limitation of macOS, not a bug in Ecto Ledger.**
+> **This is an architectural limitation of macOS, not a bug in EctoLedger.**
 >
 > **Recommended mitigations for production macOS deployments:**
 >
 > 1. **Edge network filtering** — Deploy a network-level firewall (e.g. pfctl,
 >    Little Snitch, Lulu, or a corporate proxy) to restrict outbound traffic
->    from the Ecto Ledger process to only the required LLM API endpoints, the
+>    from the EctoLedger process to only the required LLM API endpoints, the
 >    database host, and webhook destinations.
 > 2. **Tripwire domain allowlist** — Configure `AGENT_ALLOWED_DOMAINS` to
 >    restrict `http_get` actions to specific approved domains. Note: this does

@@ -2,15 +2,15 @@
 pragma solidity ^0.8.24;
 
 /// @title  EctoLedgerAnchor
-/// @notice On-chain anchor registry for Ecto Ledger session hashes.
+/// @notice On-chain anchor registry for EctoLedger session hashes.
 ///
-/// Deploying this contract and setting EVM_CONTRACT_ADDRESS allows the Ecto Ledger runtime
+/// Deploying this contract and setting EVM_CONTRACT_ADDRESS allows the EctoLedger runtime
 /// to commit an immutable, block-timestamped record of any session's ledger tip hash to
 /// an Ethereum-compatible chain.  The emitted `Anchored` event can be verified by anyone
 /// with access to the chain, providing a cryptographic proof that the session existed at
 /// (or before) the block's timestamp — without leaking any session data on-chain.
 ///
-/// ## Usage (Ecto Ledger side)
+/// ## Usage (EctoLedger side)
 ///
 /// Set the following environment variables before starting `ectoledger`:
 ///
@@ -43,7 +43,7 @@ contract EctoLedgerAnchor {
     // ── Events ────────────────────────────────────────────────────────────────
 
     /// @notice Emitted each time a session hash is anchored on-chain.
-    /// @param sessionHash   SHA-256 ledger tip hash of the Ecto Ledger session (32 bytes).
+    /// @param sessionHash   SHA-256 ledger tip hash of the EctoLedger session (32 bytes).
     /// @param submitter     Address that called `anchor()`.
     /// @param timestamp     `block.timestamp` at the time of anchoring (Unix seconds).
     event Anchored(

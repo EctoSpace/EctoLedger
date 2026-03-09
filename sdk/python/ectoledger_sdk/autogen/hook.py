@@ -1,4 +1,4 @@
-"""AutoGen reply hook that appends each agent message to the Ecto Ledger."""
+"""AutoGen reply hook that appends each agent message to the EctoLedger."""
 
 import asyncio
 import atexit
@@ -28,7 +28,7 @@ _log = logging.getLogger(__name__)
 
 class LedgerHook:
     """Registers a post-reply hook on a ``ConversableAgent`` that records every
-    outbound message to the Ecto Ledger tamper-evident audit trail.
+    outbound message to the EctoLedger tamper-evident audit trail.
 
     Usage::
 

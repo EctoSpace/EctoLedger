@@ -1,5 +1,5 @@
 # =============================================================================
-#  Ecto Ledger - One-Click Launcher (Windows)
+#  EctoLedger - One-Click Launcher (Windows)
 #  Usage:  .\ectoledger-win.ps1 [FLAGS]
 #
 #  FLAGS:
@@ -45,7 +45,7 @@ if ($help) {
 }
 
 Write-Host ""
-Write-Host "  Ecto Ledger 2026" -ForegroundColor Cyan
+Write-Host "  EctoLedger 2026" -ForegroundColor Cyan
 Write-Host ""
 
 # -- 1. Check prerequisites --
@@ -234,7 +234,7 @@ $ENV_FILE = Join-Path $SCRIPT_DIR ".env"
 if (-not (Test-Path $ENV_FILE)) {
     Write-Info "Creating .env with dev defaults..."
     @"
-# Ecto Ledger - Dev Environment
+# EctoLedger - Dev Environment
 DATABASE_URL=postgres://ectoledger:ectoledger@localhost:5432/ectoledger
 LLM_BACKEND=ollama
 OLLAMA_BASE_URL=http://127.0.0.1:11434
@@ -466,7 +466,7 @@ if (-not $needBuild -and (Test-Path $BINARY)) {
     }
 }
 if ($needBuild) {
-    Write-Info "Building Ecto Ledger (release mode + remote enclave)..."
+    Write-Info "Building EctoLedger (release mode + remote enclave)..."
     Push-Location $SCRIPT_DIR
     try {
         cargo build --release --features enclave-remote -p ectoledger --manifest-path (Join-Path $SCRIPT_DIR "Cargo.toml")

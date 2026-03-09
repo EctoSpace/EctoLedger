@@ -1,4 +1,4 @@
-"""Microsoft AutoGen integration for Ecto Ledger."""
+"""Microsoft AutoGen integration for EctoLedger."""
 
 from ectoledger_sdk.autogen.hook import LedgerHook
 

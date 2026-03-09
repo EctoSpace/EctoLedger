@@ -1,4 +1,4 @@
-"""LangChain integration for Ecto Ledger."""
+"""LangChain integration for EctoLedger."""
 
 from ectoledger_sdk.langchain.tool import LedgerTool
 

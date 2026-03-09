@@ -1,4 +1,4 @@
-// Ecto Ledger Audit Certificate (.elc)
+// EctoLedger Audit Certificate (.elc)
 //
 // Produces a self-contained, cryptographically verifiable audit record from a completed session.
 // The certificate bundles:
@@ -64,7 +64,7 @@ pub struct CertFinding {
     pub merkle_proofs: Vec<MerkleProof>,
 }
 
-/// The complete Ecto Ledger Audit Certificate.
+/// The complete EctoLedger Audit Certificate.
 /// Serialized with keys sorted alphabetically for deterministic signatures.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct EctoLedgerCertificate {

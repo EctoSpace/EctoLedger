@@ -18,6 +18,12 @@ RUN cargo build --release -p ectoledger --no-default-features --features sandbox
 # ── Stage 2: Runtime ─────────────────────────────────────────────────
 FROM debian:bookworm-slim
 
+LABEL org.opencontainers.image.source="https://github.com/EctoSpace/EctoLedger"
+LABEL org.opencontainers.image.url="https://ectospace.com/EctoLedger"
+LABEL org.opencontainers.image.description="EctoLedger - Cryptographic accountability for AI agents"
+LABEL org.opencontainers.image.licenses="Apache-2.0"
+LABEL org.opencontainers.image.vendor="EctoSpace"
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
         ca-certificates libssl3 curl && \
     rm -rf /var/lib/apt/lists/*

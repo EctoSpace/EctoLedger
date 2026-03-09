@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────────────────────
-# Ecto Ledger — Firecracker microVM provisioning script
+# EctoLedger — Firecracker microVM provisioning script
 #
 # Downloads and installs the Firecracker binary, a compatible Linux kernel
-# image, and a minimal rootfs to the locations expected by the Ecto Ledger
+# image, and a minimal rootfs to the locations expected by the EctoLedger
 # runtime. After running this script, exporting the printed environment
 # variables is all that is needed to enable the sandbox.
 #
@@ -213,7 +213,7 @@ echo ""
 echo "═══════════════════════════════════════════════════════════════════════"
 echo " Firecracker v${FC_VERSION} installation complete."
 echo ""
-echo " To enable the Firecracker sandbox in Ecto Ledger, export the following"
+echo " To enable the Firecracker sandbox in EctoLedger, export the following"
 echo " environment variables before starting the agent:"
 echo ""
 echo "   export ECTO_FC_BINARY=\"${FC_BINARY_DIR}/firecracker\""

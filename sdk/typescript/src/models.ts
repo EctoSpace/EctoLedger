@@ -1,4 +1,4 @@
-/** Shared types mirroring the Ecto Ledger API response shapes. */
+/** Shared types mirroring the EctoLedger API response shapes. */
 
 // ── Sessions ────────────────────────────────────────────────────────────────
 

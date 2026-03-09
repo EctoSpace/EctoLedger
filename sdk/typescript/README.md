@@ -1,6 +1,6 @@
 # ectoledger-sdk
 
-Lightweight TypeScript / JavaScript client for the [Ecto Ledger](https://github.com/EctoSpace/EctoLedger) AI-governance
+Lightweight TypeScript / JavaScript client for the [EctoLedger](https://github.com/EctoSpace/EctoLedger) AI-governance
 ledger.  Zero runtime dependencies — works in Node 18+, Deno, Bun, and modern
 browsers that support `fetch`.
 

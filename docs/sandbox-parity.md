@@ -2,7 +2,7 @@
 
 ## Overview
 
-Ecto Ledger provides multiple sandboxing mechanisms to isolate untrusted code execution:
+EctoLedger provides multiple sandboxing mechanisms to isolate untrusted code execution:
 - **Linux**: Landlock (LSM) + seccomp-BPF + rlimits
 - **macOS**: Seatbelt (sandbox_init FFI) — deprecated API but functional; graceful fallback to tripwires
 - **Windows**: Job Objects with UI restrictions
@@ -68,7 +68,7 @@ This document outlines the implementation details, security properties, and pari
 
 #### Implementation:
 
-Ecto Ledger calls Apple's `sandbox_init()` C API via FFI to apply a Seatbelt
+EctoLedger calls Apple's `sandbox_init()` C API via FFI to apply a Seatbelt
 profile to each child process. While Apple has deprecated the public header,
 the underlying XNU sandbox enforcement mechanism is still active and used by
 first-party macOS system services.
@@ -134,7 +134,7 @@ pub fn apply_child_sandbox(workspace: &Path) -> Result<(), SandboxError> {
 
 #### Job Object Implementation
 - **Windows API**: `CreateJobObjectW()` + `AssignProcessToJobObject()`
-- **Scope**: Applies to all child processes spawned by Ecto Ledger
+- **Scope**: Applies to all child processes spawned by EctoLedger
 - **Reference**: `crates/host/src/sandbox.rs:apply_windows_job_object()`
 
 #### Configuration
@@ -216,7 +216,7 @@ export ECTO_DOCKER_RUNTIME=auto  # auto-detect docker or podman
 
 ## Confidential AI Enclave Architecture
 
-Ecto Ledger provides a three-tier enclave architecture that places AI inference inside a confidentiality boundary invisible to the host OS. Each tier offers increasing hardware isolation and produces attestation evidence embedded in `.elc` certificates.
+EctoLedger provides a three-tier enclave architecture that places AI inference inside a confidentiality boundary invisible to the host OS. Each tier offers increasing hardware isolation and produces attestation evidence embedded in `.elc` certificates.
 
 ### Enclave Level 1 — Software Hardened
 

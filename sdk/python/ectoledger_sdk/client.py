@@ -1,4 +1,4 @@
-"""LedgerClient — async-first REST client for Ecto Ledger."""
+"""LedgerClient — async-first REST client for EctoLedger."""
 
 import httpx
 from typing import Any, AsyncIterator
@@ -22,7 +22,7 @@ from ectoledger_sdk.models import (
 
 
 class LedgerSdkError(Exception):
-    """Raised when the Ecto Ledger API returns an unexpected or non-JSON response.
+    """Raised when the EctoLedger API returns an unexpected or non-JSON response.
 
     Attributes
     ----------
@@ -40,7 +40,7 @@ class LedgerSdkError(Exception):
 
 
 class LedgerClient:
-    """Async REST client for the Ecto Ledger API.
+    """Async REST client for the EctoLedger API.
 
     Usage::
 

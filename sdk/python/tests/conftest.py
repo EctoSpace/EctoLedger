@@ -1,4 +1,4 @@
-"""Shared pytest fixtures for the Ecto Ledger Python SDK test suite."""
+"""Shared pytest fixtures for the EctoLedger Python SDK test suite."""
 from __future__ import annotations
 
 import pytest

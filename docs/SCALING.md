@@ -33,8 +33,8 @@ SQLite is designed for single-process, single-machine deployments:
 **Use SQLite for**: local development, CI pipelines, single-machine audits,
 air-gapped environments, and the Tauri desktop GUI.
 
-**Use PostgreSQL for**: production servers, team environments, and any
 deployment with more than one EctoLedger process.
+**Use PostgreSQL for**: production servers, team environments, and any deployment with more than one EctoLedger process.
 
 ---
 

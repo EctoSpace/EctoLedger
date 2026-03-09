@@ -10,7 +10,7 @@
 
   async function load() {
     if (!isTauri()) {
-      error = "Run this app via the Ecto Ledger desktop window (./ectoledger-mac, ./ectoledger-linux, or .\\ectoledger-win.ps1), not in a browser.";
+      error = "Run this app via the EctoLedger desktop window (./ectoledger-mac, ./ectoledger-linux, or .\\ectoledger-win.ps1), not in a browser.";
       loading = false;
       return;
     }

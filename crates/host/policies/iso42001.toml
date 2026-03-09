@@ -1,7 +1,7 @@
 # ISO/IEC 42001:2023 Compliance Policy Pack
-# Ecto Ledger 2026
+# EctoLedger 2026
 #
-# This file maps each relevant ISO 42001 control to concrete Ecto Ledger features
+# This file maps each relevant ISO 42001 control to concrete EctoLedger features
 # and is loaded by the policy engine alongside the other compliance packs.
 #
 # Structure mirrors the existing SOC2 / PCI-DSS packs.

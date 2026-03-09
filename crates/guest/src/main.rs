@@ -1,4 +1,4 @@
-// Ecto Ledger — SP1 zkVM Guest Program
+// EctoLedger — SP1 zkVM Guest Program
 //
 // This program runs inside the Succinct SP1 RISC-V virtual machine and produces a
 // zero-knowledge proof that:

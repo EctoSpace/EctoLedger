@@ -1,4 +1,4 @@
-# Ecto Ledger — Docker Demo (pre-built image)
+# EctoLedger — Docker Demo (pre-built image)
 #
 # Usage:
 #   docker compose -f docker-compose.demo.yml up
@@ -46,7 +46,7 @@ services:
     entrypoint: >
       sh -c 'curl -sf http://ollama:11434/api/pull -d "{\"name\":\"qwen2.5:0.5b\"}" && echo "Model ready."'
 
-  # ── Ecto Ledger (pre-built from GHCR) ─────────────────────────────
+  # ── EctoLedger (pre-built from GHCR) ─────────────────────────────
   ectoledger:
     image: ghcr.io/ectospace/ectoledger:latest
     depends_on:

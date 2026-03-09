@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-#  Ecto Ledger — One-Click Launcher (macOS)
+#  EctoLedger — One-Click Launcher (macOS)
 #  Usage:  ./ectoledger-mac [FLAGS]
 #
 #  FLAGS:
@@ -87,13 +87,13 @@ R5="\033[1;34m"
 R6="\033[1;35m"
 
 echo ""
-echo -e "${R1}  ██╗██████╗  ██████╗ ███╗   ██╗ ██████╗██╗      █████╗ ██████╗ ${RESET}"
-echo -e "${R2}  ██║██╔══██╗██╔═══██╗████╗  ██║██╔════╝██║     ██╔══██╗██╔══██╗${RESET}"
-echo -e "${R3}  ██║██████╔╝██║   ██║██╔██╗ ██║██║     ██║     ███████║██║  ██║${RESET}"
-echo -e "${R4}  ██║██╔══██╗██║   ██║██║╚██╗██║██║     ██║     ██╔══██║██║  ██║${RESET}"
-echo -e "${R5}  ██║██║  ██║╚██████╔╝██║ ╚████║╚██████╗███████╗██║  ██║██████╔╝${RESET}"
-echo -e "${R6}  ╚═╝╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═══╝ ╚═════╝╚══════╝╚═╝  ╚═╝╚═════╝ ${RESET}"
-echo -e "${CYAN}  Agent Ledger 2026${RESET}"
+echo -e "${R1}  ███████╗ ██████╗████████╗ ██████╗ ██╗     ███████╗██████╗  ██████╗ ███████╗██████╗ ${RESET}"
+echo -e "${R2}  ██╔════╝██╔════╝╚══██╔══╝██╔═══██╗██║     ██╔════╝██╔══██╗██╔════╝ ██╔════╝██╔══██╗${RESET}"
+echo -e "${R3}  █████╗  ██║        ██║   ██║   ██║██║     █████╗  ██║  ██║██║  ███╗█████╗  ██████╔╝${RESET}"
+echo -e "${R4}  ██╔══╝  ██║        ██║   ██║   ██║██║     ██╔══╝  ██║  ██║██║   ██║██╔══╝  ██╔══██╗${RESET}"
+echo -e "${R5}  ███████╗╚██████╗   ██║   ╚██████╔╝███████╗███████╗██████╔╝╚██████╔╝███████╗██║  ██║${RESET}"
+echo -e "${R6}  ╚══════╝ ╚═════╝   ╚═╝    ╚═════╝ ╚══════╝╚══════╝╚═════╝  ╚═════╝ ╚══════╝╚═╝  ╚═╝${RESET}"
+echo -e "${CYAN}  Cryptographic Accountability for AI Agents${RESET}"
 echo ""
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
@@ -184,7 +184,7 @@ cleanup() {
   if [[ "${FLAG_DEMO:-false}" == "true" ]]; then
     lsof -ti:5433 2>/dev/null | xargs kill -9 2>/dev/null || true
   fi
-  echo -e "\n${PURPLE}  Ecto Ledger stopped.${RESET}\n"
+  echo -e "\n${PURPLE}  EctoLedger stopped.${RESET}\n"
 }
 trap cleanup EXIT INT TERM
 
@@ -415,7 +415,7 @@ if [[ ! -f "$ENV_FILE" ]]; then
   info "Creating .env with dev defaults…"
   cat > "$ENV_FILE" <<'EOF'
 # ─────────────────────────────────────────────────────────────────
-# Ecto Ledger — Dev Environment
+# EctoLedger — Dev Environment
 # Edit this file to customise your setup.
 # See README.md for all available options.
 # ─────────────────────────────────────────────────────────────────
@@ -694,7 +694,7 @@ else
     return $rc
   }
 
-  info "Building Ecto Ledger (release mode) — this takes ~2 minutes on first run…"
+  info "Building EctoLedger (release mode) — this takes ~2 minutes on first run…"
   if [[ "$FLAG_ENCLAVE" == "true" ]]; then
     if ! build_backend "sandbox-apple-enclave"; then
       warn "Apple enclave build failed. Building without enclave (standard mode)…"

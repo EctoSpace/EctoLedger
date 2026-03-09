@@ -1,6 +1,6 @@
 //! # ledger-api
 //!
-//! Minimal, backend-agnostic trait surface for the Ecto Ledger cryptographic ledger.
+//! Minimal, backend-agnostic trait surface for the EctoLedger cryptographic ledger.
 //!
 //! Consumers (agents, servers, tests) depend on *this* crate rather than directly on
 //! any concrete backend.  The host crate ships two implementations behind the
@@ -104,7 +104,7 @@ pub struct AppendResult {
 
 // ─── Core Trait ────────────────────────────────────────────────────────────────
 
-/// Minimal, cursor-style backend interface for the Ecto Ledger cryptographic ledger.
+/// Minimal, cursor-style backend interface for the EctoLedger cryptographic ledger.
 ///
 /// All methods are async and return `Result<_, LedgerError>`.  Implementations
 /// are expected to be `Send + Sync` so they can be wrapped in `Arc<dyn LedgerBackend>`.

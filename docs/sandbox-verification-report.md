@@ -2,7 +2,7 @@
 
 **Date**: February 22, 2026  
 **Auditor**: GitHub Copilot  
-**Scope**: Ecto Ledger sandbox implementations across Linux, macOS, and Windows
+**Scope**: EctoLedger sandbox implementations across Linux, macOS, and Windows
 
 ## Executive Summary
 
@@ -213,12 +213,12 @@ ulimit -a  # Check limits are applied
 ### Windows Sandbox
 ```powershell
 # Verify Job Object applies (no direct CLI):
-# 1. Start Ecto Ledger audit
+# 1. Start EctoLedger audit
 # 2. Try desktop switch from child process
 # 3. Should fail silently (blocked by UILIMIT_DESKTOP)
 
 # 4. Check for orphan processes:
-# Forcefully kill Ecto Ledger; all child processes should die immediately
+# Forcefully kill EctoLedger; all child processes should die immediately
 ```
 
 ### Docker Sandbox
@@ -254,7 +254,7 @@ ls -la /tmp | grep firecracker
 
 ## Conclusion
 
-✅ **Overall Assessment**: Ecto Ledger sandbox implementations are **SECURE after Windows fix**.
+✅ **Overall Assessment**: EctoLedger sandbox implementations are **SECURE after Windows fix**.
 
 | Component | Status | Risk |
 |-----------|--------|------|

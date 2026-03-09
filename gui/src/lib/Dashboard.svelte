@@ -37,7 +37,7 @@
 
   onMount(async () => {
     if (!isTauri()) {
-      metricsErr = "Run this app via the Ecto Ledger desktop window (./ectoledger-mac, ./ectoledger-linux, or .\\ectoledger-win.ps1), not in a browser.";
+      metricsErr = "Run this app via the EctoLedger desktop window (./ectoledger-mac, ./ectoledger-linux, or .\\ectoledger-win.ps1), not in a browser.";
       return;
     }
     tauriReady = true;

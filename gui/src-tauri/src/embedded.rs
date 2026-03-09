@@ -1,4 +1,4 @@
-// Embedded Axum backend — starts the Ecto Ledger host server in-process so the
+// Embedded Axum backend — starts the EctoLedger host server in-process so the
 // Tauri desktop app is fully self-contained (no separate CLI launch required).
 //
 // On startup we:

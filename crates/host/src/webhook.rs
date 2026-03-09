@@ -501,7 +501,7 @@ fn sanitize_cef_extension(s: &str) -> String {
 fn format_cef(event: &EgressEvent) -> String {
     let cef_severity = if event.severity == "abort" { "9" } else { "5" };
     format!(
-        "CEF:0|Ecto Ledger|EctoLedger|1.0|{kind}|{rule}|{sev}|session={sid} label={label} preview={prev}",
+        "CEF:0|EctoLedger|EctoLedger|1.0|{kind}|{rule}|{sev}|session={sid} label={label} preview={prev}",
         kind = event.kind.as_str(),
         rule = sanitize_cef_header(&event.rule_label),
         sev = cef_severity,
@@ -519,7 +519,7 @@ fn sanitize_leef(s: &str) -> String {
 /// IBM LEEF 2.0: tab-separated key-value attributes after a header.
 fn format_leef(event: &EgressEvent) -> String {
     format!(
-        "LEEF:2.0|Ecto Ledger|EctoLedger|1.0|{kind}|\tsrc=ectoledger\tsessionId={sid}\tseverity={sev}\truleLabel={label}\tobservation={prev}",
+        "LEEF:2.0|EctoLedger|EctoLedger|1.0|{kind}|\tsrc=ectoledger\tsessionId={sid}\tseverity={sev}\truleLabel={label}\tobservation={prev}",
         kind = event.kind.as_str(),
         sid = event.session_id,
         sev = sanitize_leef(&event.severity),

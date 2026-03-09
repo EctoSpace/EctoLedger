@@ -34,13 +34,13 @@ export class EctoLedgerApiError extends Error {
     method: string,
     url: string,
   ) {
-    super(`Ecto Ledger API ${method} ${url} → ${status}: ${body}`);
+    super(`EctoLedger API ${method} ${url} → ${status}: ${body}`);
     this.name = "EctoLedgerApiError";
   }
 }
 
 /**
- * REST client for Ecto Ledger.
+ * REST client for EctoLedger.
  *
  * @example
  * ```ts
