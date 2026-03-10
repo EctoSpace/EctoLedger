@@ -179,8 +179,8 @@
       }
       await invoke("save_config", { payload: config });
       provisionLog = [...provisionLog, "✓ Configuration saved."];
-    } catch (e) {
-      const msg = typeof e === "string" ? e : (e?.message ?? String(e));
+    } catch (e: unknown) {
+      const msg = typeof e === "string" ? e : (e instanceof Error ? e.message : String(e));
       provisionError = msg || "Configuration could not be saved.";
       provisioning = false;
       return;

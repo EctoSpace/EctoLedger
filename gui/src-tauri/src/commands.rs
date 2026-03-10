@@ -383,10 +383,7 @@ pub async fn save_config(payload: ConfigPayload) -> Result<serde_json::Value, St
                 status, hint
             )
         } else {
-            format!(
-                "Configuration could not be saved: {}. {}",
-                detail, hint
-            )
+            format!("Configuration could not be saved: {}. {}", detail, hint)
         };
         return Err(message);
     }

@@ -23,6 +23,9 @@
 
 <p align="center">
   <a href="docs/quickstart.md">Quickstart</a> •
+  <a href="#what-ectoledger-is-and-is-not">What It Is</a> •
+  <a href="#common-use-cases">Use Cases</a> •
+  <a href="#choose-your-starting-mode">Choose Mode</a> •
   <a href="#prerequisites">Prerequisites</a> •
   <a href="#quick-start">Quick Start</a> •
   <a href="#architecture">Architecture</a> •
@@ -45,6 +48,18 @@ Your AI agent just made 47 decisions.
 Can you prove exactly what it did — to a regulator, an auditor, or a court?  
 EctoLedger makes that proof automatic… while physically blocking dangerous actions before they happen.
 
+### What EctoLedger is (and is not)
+
+**What it is**
+- A **security proxy** in front of autonomous AI actions.
+- A **prevention layer** that can block unsafe commands before execution.
+- A **cryptographic evidence layer** that produces tamper-evident audit trails and verifiable certificates.
+
+**What it is not**
+- Not a crypto trading product.
+- Not a replacement for SIEM, ticketing, or full GRC suites.
+- Not a legal guarantee by itself; it provides verifiable evidence to support legal/compliance processes.
+
 ### Two core capabilities
 
 **1. Constant monitoring + prevention (the emergency brake)**  
@@ -55,11 +70,26 @@ Real-time desktop GUI dashboard shows every thought and action live.
 Every decision is signed, hash-chained, and stored in an immutable ledger.  
 Export self-contained `.elc` certificates that any regulator or court can verify offline — no trust in you required.
 
-### Who is this for?
+### Who this is for?
 - Teams running AI agents that call APIs, run commands, or touch sensitive data  
 - Security & platform engineers who need enforceable guardrails  
 - Compliance officers preparing for the EU AI Act (2026) and other AI governance rules  
 - Anyone who never wants to say “the AI did it” in front of a judge
+
+### Common use cases
+
+- **AI operations guardrail**: block risky LLM-proposed commands before they hit production systems.
+- **Compliance evidence generation**: produce tamper-evident records for SOC 2, PCI-DSS, OWASP, ISO 42001, and internal audits.
+- **Enterprise due diligence**: show customers and security teams independently verifiable proof of what the agent did.
+- **Incident investigation**: replay what happened during an AI-assisted workflow with signed, hash-chained evidence.
+
+### Choose your starting mode
+
+| Mode | Best for | What you can do |
+|---|---|---|
+| **Demo (`--demo`)** | Fast product evaluation | Guided local experience with embedded components and seeded data |
+| **SQLite (`DATABASE_URL=sqlite://...`)** | Local/dev/CI workflows | Serve dashboard, replay, report, certificate and VC verification |
+| **PostgreSQL** | Production and advanced workflows | Full `audit`, `orchestrate`, `diff-audit`, `red-team`, `prove-audit`, `anchor-session` |
 
 ### Why now?
 The EU AI Act becomes fully enforceable for high-risk AI systems in August 2026.  

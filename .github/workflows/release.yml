@@ -102,8 +102,20 @@ jobs:
       matrix:
         include:
           - platform: macos-latest
+            bundles: "dmg"
+            artifact-glob: |
+              target/release/bundle/**/*.dmg
+              target/release/bundle/**/*.app
           - platform: ubuntu-latest
+            bundles: "appimage,deb,rpm"
+            artifact-glob: |
+              target/release/bundle/**/*.AppImage
+              target/release/bundle/**/*.deb
+              target/release/bundle/**/*.rpm
           - platform: windows-latest
+            bundles: "msi"
+            artifact-glob: |
+              target/release/bundle/**/*.msi
     runs-on: ${{ matrix.platform }}
     permissions:
       contents: read
@@ -139,7 +151,7 @@ jobs:
 
       - name: Build Tauri app
         working-directory: gui
-        run: npm run tauri build
+        run: npm run tauri build -- --bundles ${{ matrix.bundles }}
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
@@ -148,15 +160,7 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: ectoledger-gui-${{ matrix.platform }}
-          path: |
-            # the tauri build puts installers in workspace-level target/release/bundle
-            target/release/bundle/**/*.dmg
-            target/release/bundle/**/*.AppImage
-            target/release/bundle/**/*.deb
-            target/release/bundle/**/*.rpm
-            target/release/bundle/**/*.msi
-            target/release/bundle/**/*.exe
-            target/release/bundle/**/*.nsis.zip
+          path: ${{ matrix.artifact-glob }}
           retention-days: 1
 
   release:

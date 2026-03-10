@@ -200,18 +200,12 @@ jobs:
   gui:
     name: GUI build & check
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: gui
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-
-      - name: Install system dependencies (Linux)
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends \
-            libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
 
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
@@ -333,21 +327,24 @@ jobs:
           - os: ubuntu-latest
             platform: linux
             shared-key: "ci-ubuntu"
+            bundles: "appimage,deb,rpm"
             artifact-glob: |
               target/release/bundle/**/*.AppImage
               target/release/bundle/**/*.deb
+              target/release/bundle/**/*.rpm
           - os: macos-latest
             platform: macos
             shared-key: "ci-macos"
+            bundles: "dmg"
             artifact-glob: |
               target/release/bundle/**/*.dmg
               target/release/bundle/**/*.app
           - os: windows-latest
             platform: windows
             shared-key: "ci-windows"
+            bundles: "msi"
             artifact-glob: |
               target/release/bundle/**/*.msi
-              target/release/bundle/**/*.exe
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -381,7 +378,7 @@ jobs:
 
       - name: Build Tauri desktop bundle
         working-directory: gui
-        run: npm run tauri build
+        run: npm run tauri build -- --bundles ${{ matrix.bundles }}
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
