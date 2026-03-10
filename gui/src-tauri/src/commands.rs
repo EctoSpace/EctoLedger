@@ -373,8 +373,22 @@ pub async fn save_config(payload: ConfigPayload) -> Result<serde_json::Value, St
         .map_err(|e| e.to_string())?;
     if !res.status().is_success() {
         let status = res.status();
-        let msg = res.text().await.unwrap_or_else(|_| status.to_string());
-        return Err(format!("Save failed: {}", sanitize_error_body(&msg)));
+        let body = res.text().await.unwrap_or_default();
+        let detail = sanitize_error_body(&body);
+        let detail = detail.trim();
+        let hint = "Try running the app as administrator, or ensure the config directory is writable (e.g. ECTO_DATA_DIR or the app data folder).";
+        let message = if detail.is_empty() {
+            format!(
+                "Configuration could not be saved (server returned {}). {}",
+                status, hint
+            )
+        } else {
+            format!(
+                "Configuration could not be saved: {}. {}",
+                detail, hint
+            )
+        };
+        return Err(message);
     }
     res.json::<serde_json::Value>()
         .await

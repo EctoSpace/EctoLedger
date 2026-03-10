@@ -1488,9 +1488,9 @@ struct ConfigUpdate {
 async fn put_config(
     axum::Extension(role): axum::Extension<Role>,
     axum::Json(body): axum::Json<ConfigUpdate>,
-) -> Result<axum::Json<ConfigResponse>, StatusCode> {
+) -> Result<axum::Json<ConfigResponse>, (StatusCode, String)> {
     if role != Role::Admin {
-        return Err(StatusCode::FORBIDDEN);
+        return Err((StatusCode::FORBIDDEN, "Admin role required".to_string()));
     }
     let current = config::load_settings_config().unwrap_or_default();
     let cfg = config::SettingsConfig {
@@ -1506,7 +1506,7 @@ async fn put_config(
     };
     config::save_settings_config(&cfg).map_err(|e| {
         tracing::error!("save_settings_config: {}", e);
-        StatusCode::INTERNAL_SERVER_ERROR
+        (StatusCode::INTERNAL_SERVER_ERROR, e)
     })?;
     Ok(axum::Json(merged_config()))
 }

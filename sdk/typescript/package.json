@@ -1,6 +1,6 @@
 {
   "name": "ectoledger-sdk",
-  "version": "0.6.2",
+  "version": "0.6.3",
   "homepage": "https://ectospace.com/EctoLedger",
   "description": "TypeScript SDK for EctoLedger - The Cryptographic Veto Engine for AI Agents",
   "license": "Apache-2.0",

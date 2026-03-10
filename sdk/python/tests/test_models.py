@@ -179,9 +179,9 @@ class TestStatusResponse:
         assert sr.version == ""
 
     def test_populated(self) -> None:
-        sr = StatusResponse.model_validate({"demo_mode": True, "version": "0.6.2"})
+        sr = StatusResponse.model_validate({"demo_mode": True, "version": "0.6.3"})
         assert sr.demo_mode is True
-        assert sr.version == "0.6.2"
+        assert sr.version == "0.6.3"
 
 
 # ---------------------------------------------------------------------------

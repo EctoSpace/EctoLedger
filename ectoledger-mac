@@ -401,7 +401,7 @@ if [[ "$FLAG_SETUP" == "true" ]]; then
 else
   # Normal / --start path: ensure wizard is always bypassed.
   if [[ ! -f "$SETUP_MARKER" ]]; then
-    printf '{"completed_at":"%s","version":"0.6.2","auto_detected":true}\n' \
+    printf '{"completed_at":"%s","version":"0.6.3","auto_detected":true}\n' \
       "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$SETUP_MARKER"
     success "Setup wizard bypassed — starting app directly"
   fi

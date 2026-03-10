@@ -180,7 +180,8 @@
       await invoke("save_config", { payload: config });
       provisionLog = [...provisionLog, "✓ Configuration saved."];
     } catch (e) {
-      provisionError = `Config save failed: ${e}`;
+      const msg = typeof e === "string" ? e : (e?.message ?? String(e));
+      provisionError = msg || "Configuration could not be saved.";
       provisioning = false;
       return;
     }
@@ -402,7 +403,11 @@
             {/if}
           </div>
           {#if provisionError}
-            <div class="p-3 rounded-lg bg-danger-muted border border-danger/30 text-sm text-danger mb-4">{provisionError}</div>
+            <div class="p-3 rounded-lg bg-danger-muted border border-danger/30 text-sm text-danger mb-4">
+              <p class="font-medium mb-1">Something went wrong</p>
+              <p class="text-text-secondary">{provisionError}</p>
+              <p class="mt-2 text-text-muted text-xs">You can retry below or open Settings after setup to try again.</p>
+            </div>
             <div class="flex justify-between">
               <Button variant="ghost" onclick={() => { step = path === "express" ? 1 : 4; }}>{#snippet children()}Back{/snippet}</Button>
               <Button variant="primary" onclick={runProvisioning}>{#snippet children()}Retry{/snippet}</Button>

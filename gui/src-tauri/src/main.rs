@@ -13,10 +13,17 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
+use tauri_plugin_dialog::{DialogExt, MessageDialogKind};
 
 mod commands;
 mod embedded;
 mod setup;
+
+/// True if the error indicates the SQLite DB is invalid due to a migration mismatch.
+fn is_migration_mismatch(err: &(dyn std::error::Error + 'static)) -> bool {
+    let msg = err.to_string();
+    msg.contains("migration") && (msg.contains("modified") || msg.contains("previously applied"))
+}
 
 fn main() {
     // Initialise tracing (logs go to stderr in debug, nowhere in release).
@@ -37,8 +44,26 @@ fn main() {
             // Start the embedded Axum server asynchronously.
             // Tauri 2 runs setup on the async runtime, so we can block on
             // the future directly via `tauri::async_runtime::block_on`.
-            let server = tauri::async_runtime::block_on(embedded::start(&handle))
-                .map_err(|e| format!("Failed to start embedded server: {e}"))?;
+            let server = match tauri::async_runtime::block_on(embedded::start(&handle)) {
+                Ok(s) => s,
+                Err(e) => {
+                    if is_migration_mismatch(e.as_ref()) {
+                        let path = embedded::db_path(&handle);
+                        let message = format!(
+                            "The local database could not be started because a migration was changed after it was applied.\n\n\
+                            Delete the database file and restart EctoLedger:\n\n{}",
+                            path.display()
+                        );
+                        app.dialog()
+                            .message(message)
+                            .title("EctoLedger — Invalid database")
+                            .kind(MessageDialogKind::Error)
+                            .blocking_show();
+                        std::process::exit(1);
+                    }
+                    return Err(format!("Failed to start embedded server: {e}").into());
+                }
+            };
 
             tracing::info!(
                 port = server.port,

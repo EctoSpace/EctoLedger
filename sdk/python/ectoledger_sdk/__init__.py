@@ -1,6 +1,6 @@
 """EctoLedger — Python SDK."""
 
-__version__ = "0.6.2"
+__version__ = "0.6.3"
 
 from ectoledger_sdk.client import LedgerClient, LedgerSdkError
 from ectoledger_sdk.models import (

@@ -46,7 +46,7 @@ pub fn instance() -> Option<&'static EmbeddedServer> {
 ///
 /// Falls back to `$HOME/.ectoledger/ectoledger.db` when the Tauri path resolver
 /// is not available (e.g. during tests).
-fn db_path(app: &tauri::AppHandle) -> PathBuf {
+pub(crate) fn db_path(app: &tauri::AppHandle) -> PathBuf {
     let base = app.path().app_data_dir().unwrap_or_else(|_| {
         dirs::home_dir()
             .unwrap_or_else(|| PathBuf::from("."))

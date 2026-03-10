@@ -402,12 +402,12 @@ async def test_client_timeout_raises() -> None:
 
 @respx.mock
 async def test_get_status(base_url: str) -> None:
-    respx.get(f"{base_url}/api/status").mock(return_value=httpx.Response(200, json={"demo_mode": True, "version": "0.6.2"}))
+    respx.get(f"{base_url}/api/status").mock(return_value=httpx.Response(200, json={"demo_mode": True, "version": "0.6.3"}))
     async with LedgerClient(base_url) as client:
         status = await client.get_status()
     assert isinstance(status, StatusResponse)
     assert status.demo_mode is True
-    assert status.version == "0.6.2"
+    assert status.version == "0.6.3"
 
 
 # ---------------------------------------------------------------------------

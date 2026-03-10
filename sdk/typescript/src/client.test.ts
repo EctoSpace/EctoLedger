@@ -456,10 +456,10 @@ describe("postApprovalDecision", () => {
 
 describe("getStatus", () => {
   it("GET /api/status", async () => {
-    fetchSpy.mockResolvedValueOnce(jsonResponse({ demo_mode: false, version: "0.6.2" }));
+    fetchSpy.mockResolvedValueOnce(jsonResponse({ demo_mode: false, version: "0.6.3" }));
     const status = await client.getStatus();
     expect(fetchSpy.mock.calls[0][0]).toBe(`${BASE_URL}/api/status`);
-    expect(status.version).toBe("0.6.2");
+    expect(status.version).toBe("0.6.3");
     expect(status.demo_mode).toBe(false);
   });
 });

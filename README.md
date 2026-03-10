@@ -7,7 +7,7 @@
 
 [![CI](https://github.com/EctoSpace/EctoLedger/actions/workflows/ci.yml/badge.svg)](https://github.com/EctoSpace/EctoLedger/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.6.2-orange.svg)](Cargo.toml)
+[![Version](https://img.shields.io/badge/version-0.6.3-orange.svg)](Cargo.toml)
 [![Rust](https://img.shields.io/badge/rust-1.94%2B%20%7C%20edition%202024-orange.svg)](https://www.rust-lang.org)
 [![GitHub issues](https://img.shields.io/github/issues/EctoSpace/EctoLedger.svg)](https://github.com/EctoSpace/EctoLedger/issues)
 [![Last commit](https://img.shields.io/github/last-commit/EctoSpace/EctoLedger.svg)](https://github.com/EctoSpace/EctoLedger/commits/main)
@@ -73,7 +73,7 @@ You built it before the market even knew it was required.
 
 EctoLedger gives every AI agent a cryptographically sealed audit trail. Each action is hash-chained, signature-verified, and policy-gated before execution. The result is an immutable ledger that regulators, auditors, and security teams can inspect, replay, and independently verify - with no trust in the issuer.
 
-**Highlights of version 0.6.2:**
+**Highlights of version 0.6.3:**
 
 | Capability | What it provides |
 |---|---|
