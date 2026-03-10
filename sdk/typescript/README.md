@@ -163,6 +163,26 @@ Network failures and timeouts (30 s default) propagate as standard
 
 ---
 
+## Troubleshooting
+
+### Cannot connect to server
+
+- Confirm `baseUrl` points to a reachable EctoLedger instance.
+- In containerized deployments, use the service DNS name (not browser localhost assumptions).
+- Validate server availability with `/api/status`.
+
+### 401 / 403 responses
+
+- Ensure `bearerToken` is present and not revoked.
+- Confirm the token role has permission for the endpoint you are calling.
+
+### Method works locally but fails in another environment
+
+- Check backend mode and feature availability (some operations require PostgreSQL).
+- Inspect thrown `EctoLedgerApiError.status` and `.body` to diagnose exact server-side cause.
+
+---
+
 ## Streaming events
 
 `streamEvents` returns an `AsyncGenerator<StreamEvent>` that yields parsed SSE

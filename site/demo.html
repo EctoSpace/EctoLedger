@@ -141,11 +141,9 @@
       </a>
       <nav class="hidden items-center gap-7 text-sm text-zinc-300 md:flex">
         <a href="index.html" class="transition-colors hover:text-white">Home</a>
+        <a href="demo.html" aria-current="page" class="text-white transition-colors hover:text-white">Demo</a>
         <a href="changelog.html" class="transition-colors hover:text-white">Changelog</a>
-        <a href="#prerequisites" class="transition-colors hover:text-white">Prerequisites</a>
-        <a href="#demo-ways" class="transition-colors hover:text-white">Demo mode</a>
-        <a href="#showcase" class="transition-colors hover:text-white">Showcase</a>
-        <a href="#screens" class="transition-colors hover:text-white">Screens</a>
+        <a href="https://github.com/EctoSpace/EctoLedger#quick-start" class="transition-colors hover:text-white">Quick Start</a>
       </nav>
       <div class="flex items-center gap-2">
         <a
@@ -167,11 +165,9 @@
     <nav id="mobile-nav" class="glass mt-2 hidden rounded-2xl px-5 py-4 md:hidden">
       <div class="flex flex-col gap-1 text-sm text-zinc-300">
         <a href="index.html" class="rounded-lg px-3 py-2 transition-colors hover:bg-white/[0.06] hover:text-white">Home</a>
+        <a href="demo.html" aria-current="page" class="rounded-lg bg-white/[0.06] px-3 py-2 text-white transition-colors hover:bg-white/[0.08]">Demo</a>
         <a href="changelog.html" class="rounded-lg px-3 py-2 transition-colors hover:bg-white/[0.06] hover:text-white">Changelog</a>
-        <a href="#prerequisites" class="rounded-lg px-3 py-2 transition-colors hover:bg-white/[0.06] hover:text-white">Prerequisites</a>
-        <a href="#demo-ways" class="rounded-lg px-3 py-2 transition-colors hover:bg-white/[0.06] hover:text-white">Demo mode</a>
-        <a href="#showcase" class="rounded-lg px-3 py-2 transition-colors hover:bg-white/[0.06] hover:text-white">Showcase</a>
-        <a href="#screens" class="rounded-lg px-3 py-2 transition-colors hover:bg-white/[0.06] hover:text-white">Screens</a>
+        <a href="https://github.com/EctoSpace/EctoLedger#quick-start" class="rounded-lg px-3 py-2 transition-colors hover:bg-white/[0.06] hover:text-white">Quick Start</a>
       </div>
     </nav>
   </header>
@@ -189,6 +185,13 @@
             EctoLedger records every AI decision, blocks unsafe actions before execution, and produces tamper-proof certificates you can verify offline.
           </p>
         </div>
+
+        <nav class="reveal mt-8 flex flex-wrap justify-center gap-2 text-sm text-zinc-300">
+          <a href="#prerequisites" class="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 transition hover:bg-white/[0.08] hover:text-white">Prerequisites</a>
+          <a href="#demo-ways" class="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 transition hover:bg-white/[0.08] hover:text-white">Run Demo</a>
+          <a href="#showcase" class="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 transition hover:bg-white/[0.08] hover:text-white">Showcase</a>
+          <a href="#screens" class="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 transition hover:bg-white/[0.08] hover:text-white">UI Screens</a>
+        </nav>
 
         <section id="prerequisites" class="reveal mt-12 sm:mt-16">
           <div class="glass rounded-3xl p-6 sm:p-8">
@@ -212,6 +215,9 @@
             <h2 class="mt-3 font-display text-2xl tracking-tight sm:text-3xl">Different ways to run the demo</h2>
             <p class="mt-4 text-sm text-zinc-300">
               You can try EctoLedger with zero config (embedded Postgres, auto LLM detection) or use Docker for a fully containerized stack.
+            </p>
+            <p class="mt-2 text-xs text-zinc-400">
+              Demo defaults prioritize fast evaluation. Before production rollout, explicitly configure guard, policy, backend mode, and webhook settings.
             </p>
 
             <div class="mt-6 space-y-6">
@@ -259,6 +265,39 @@
             <p class="mt-6 text-sm text-zinc-400">
               Full details: <a href="https://github.com/EctoSpace/EctoLedger/" class="text-aqua-300 hover:text-aqua-200 underline">Zero-Config Demo</a> and <a href="https://github.com/EctoSpace/EctoLedger/blob/main/docs/demo-README.md" class="text-aqua-300 hover:text-aqua-200 underline">Demo Readme</a> on GitHub.
             </p>
+          </div>
+        </section>
+
+        <section id="troubleshooting" class="reveal mt-8">
+          <div class="glass rounded-3xl p-6 sm:p-8">
+            <p class="font-mono text-xs uppercase tracking-[0.22em] text-brand-300">Troubleshooting</p>
+            <h2 class="mt-3 font-display text-2xl tracking-tight sm:text-3xl">Common issues and fast fixes</h2>
+            <div class="mt-6 grid gap-4 md:grid-cols-3">
+              <article class="rounded-2xl border border-white/10 bg-white/[0.02] p-4">
+                <h3 class="font-display text-base text-white">Audit command fails</h3>
+                <ul class="mt-2 space-y-1.5 text-sm text-zinc-300">
+                  <li>Confirm backend mode supports your command.</li>
+                  <li>Check primary LLM connectivity and API keys.</li>
+                  <li>Verify guard settings when running production mode.</li>
+                </ul>
+              </article>
+              <article class="rounded-2xl border border-white/10 bg-white/[0.02] p-4">
+                <h3 class="font-display text-base text-white">Demo differs from production</h3>
+                <ul class="mt-2 space-y-1.5 text-sm text-zinc-300">
+                  <li>Demo uses isolated defaults for quick setup.</li>
+                  <li>Set explicit production env vars before deployment.</li>
+                  <li>Validate policy, tripwire, and webhook config in production.</li>
+                </ul>
+              </article>
+              <article class="rounded-2xl border border-white/10 bg-white/[0.02] p-4">
+                <h3 class="font-display text-base text-white">Verification confusion</h3>
+                <ul class="mt-2 space-y-1.5 text-sm text-zinc-300">
+                  <li>Chain verification checks event integrity.</li>
+                  <li><code class="font-mono text-xs">verify-cert</code> validates certificate evidence offline.</li>
+                  <li>VC endpoint checks differ from full signature verification.</li>
+                </ul>
+              </article>
+            </div>
           </div>
         </section>
 
@@ -351,6 +390,23 @@
         </div>
       </div>
     </section>
+
+    <section class="pb-16">
+      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div class="reveal glass rounded-3xl p-6 sm:p-8">
+          <p class="font-mono text-xs uppercase tracking-[0.22em] text-aqua-300">Next step</p>
+          <h2 class="mt-3 font-display text-2xl tracking-tight sm:text-3xl">Ready to run your first audit?</h2>
+          <p class="mt-4 max-w-3xl text-sm text-zinc-300 sm:text-base">
+            Start with Quick Start for setup, or review the latest release notes before integrating EctoLedger.
+          </p>
+          <div class="mt-6 flex flex-wrap gap-3">
+            <a href="https://github.com/EctoSpace/EctoLedger#quick-start" class="rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-ink-950 transition hover:bg-zinc-200">Start Quickstart</a>
+            <a href="changelog.html" class="rounded-full border border-white/20 px-5 py-2.5 text-sm font-semibold text-white transition hover:border-aqua-300/60 hover:bg-aqua-400/10">Read Changelog</a>
+            <a href="https://github.com/EctoSpace/EctoLedger" class="rounded-full border border-white/20 px-5 py-2.5 text-sm font-semibold text-white transition hover:border-brand-300/60 hover:bg-brand-500/15">View GitHub</a>
+          </div>
+        </div>
+      </div>
+    </section>
   </main>
 
   <footer class="pb-10">
@@ -361,9 +417,13 @@
           <span class="text-zinc-500">·</span>
           <span>EctoLedger</span>
         </div>
-        <div class="flex items-center gap-5">
+        <div class="flex flex-wrap items-center justify-center gap-5">
           <a href="index.html" class="transition-colors hover:text-white">Home</a>
+          <a href="demo.html" class="transition-colors hover:text-white">Demo</a>
+          <a href="changelog.html" class="transition-colors hover:text-white">Changelog</a>
+          <a href="https://github.com/EctoSpace/EctoLedger#quick-start" class="transition-colors hover:text-white">Quick Start</a>
           <a href="https://github.com/EctoSpace/EctoLedger" class="transition-colors hover:text-white">GitHub</a>
+          <a href="https://github.com/EctoSpace/EctoLedger/releases" class="transition-colors hover:text-white">Releases</a>
         </div>
         <p>&copy; 2026 EctoSpace</p>
       </div>

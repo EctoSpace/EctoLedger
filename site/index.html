@@ -146,12 +146,10 @@
           <img src="images/ectoSpace-Logo-noBg.webp" alt="EctoSpace" class="h-9 w-auto max-w-[140px] object-contain" />
         </a>
         <nav class="hidden items-center gap-7 text-sm text-zinc-300 md:flex">
-          <a href="#features" class="transition-colors hover:text-white">Features</a>
-          <a href="#philosophy" class="transition-colors hover:text-white">Philosophy</a>
-          <a href="#workflow" class="transition-colors hover:text-white">How it works</a>
-          <a href="changelog.html" class="transition-colors hover:text-white">Changelog</a>
-          <a href="#developer" class="transition-colors hover:text-white">Developers</a>
+          <a href="index.html" aria-current="page" class="text-white transition-colors hover:text-white">Home</a>
           <a href="demo.html" class="transition-colors hover:text-white">Demo</a>
+          <a href="changelog.html" class="transition-colors hover:text-white">Changelog</a>
+          <a href="https://github.com/EctoSpace/EctoLedger#quick-start" class="transition-colors hover:text-white">Quick Start</a>
         </nav>
         <div class="flex items-center gap-2">
           <a
@@ -172,12 +170,10 @@
       </div>
       <nav id="mobile-nav" class="glass mt-2 hidden rounded-2xl px-5 py-4 md:hidden">
         <div class="flex flex-col gap-1 text-sm text-zinc-300">
-          <a href="#features" class="rounded-lg px-3 py-2 transition-colors hover:bg-white/[0.06] hover:text-white">Features</a>
-          <a href="#philosophy" class="rounded-lg px-3 py-2 transition-colors hover:bg-white/[0.06] hover:text-white">Philosophy</a>
-          <a href="#workflow" class="rounded-lg px-3 py-2 transition-colors hover:bg-white/[0.06] hover:text-white">How it works</a>
-          <a href="changelog.html" class="rounded-lg px-3 py-2 transition-colors hover:bg-white/[0.06] hover:text-white">Changelog</a>
-          <a href="#developer" class="rounded-lg px-3 py-2 transition-colors hover:bg-white/[0.06] hover:text-white">Developers</a>
+          <a href="index.html" aria-current="page" class="rounded-lg bg-white/[0.06] px-3 py-2 text-white transition-colors hover:bg-white/[0.08]">Home</a>
           <a href="demo.html" class="rounded-lg px-3 py-2 transition-colors hover:bg-white/[0.06] hover:text-white">Demo</a>
+          <a href="changelog.html" class="rounded-lg px-3 py-2 transition-colors hover:bg-white/[0.06] hover:text-white">Changelog</a>
+          <a href="https://github.com/EctoSpace/EctoLedger#quick-start" class="rounded-lg px-3 py-2 transition-colors hover:bg-white/[0.06] hover:text-white">Quick Start</a>
         </div>
       </nav>
     </header>
@@ -251,6 +247,44 @@
         </div>
       </section>
 
+      <section class="pb-12">
+        <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div class="reveal glass rounded-3xl p-6 sm:p-8">
+            <p class="font-mono text-xs uppercase tracking-[0.22em] text-brand-300">Clarity first</p>
+            <h2 class="mt-3 font-display text-2xl tracking-tight sm:text-3xl">What EctoLedger is, and what it is not</h2>
+            <p class="mt-4 text-sm text-zinc-300 sm:text-base">
+              EctoLedger is not a crypto trading product. Here, "ledger" means a tamper-evident audit log for AI agent behavior.
+            </p>
+            <div class="mt-6 grid gap-4 md:grid-cols-3">
+              <article class="rounded-2xl border border-white/10 bg-white/[0.02] p-4">
+                <h3 class="font-display text-lg text-white">What it does</h3>
+                <ul class="mt-3 space-y-2 text-sm text-zinc-300">
+                  <li>Records each AI action in an append-only audit trail.</li>
+                  <li>Validates actions through policy and guardrails before execution.</li>
+                  <li>Exports verifiable evidence for customers, auditors, and regulators.</li>
+                </ul>
+              </article>
+              <article class="rounded-2xl border border-white/10 bg-white/[0.02] p-4">
+                <h3 class="font-display text-lg text-white">What it does not do</h3>
+                <ul class="mt-3 space-y-2 text-sm text-zinc-300">
+                  <li>It does not trade, hold, or manage cryptocurrencies.</li>
+                  <li>It is not a replacement for your SIEM or ticketing platform.</li>
+                  <li>It does not guarantee legal outcomes by itself.</li>
+                </ul>
+              </article>
+              <article class="rounded-2xl border border-white/10 bg-white/[0.02] p-4">
+                <h3 class="font-display text-lg text-white">When to use it</h3>
+                <ul class="mt-3 space-y-2 text-sm text-zinc-300">
+                  <li>Your AI agents run commands, call APIs, or touch sensitive data.</li>
+                  <li>You need provable evidence of what happened during an AI run.</li>
+                  <li>You are preparing for compliance reviews or customer due diligence.</li>
+                </ul>
+              </article>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section class="pb-12 sm:pb-16">
         <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div class="reveal glass rounded-3xl p-6 sm:p-8">
@@ -300,6 +334,17 @@
         </div>
       </section>
 
+      <section class="pb-8">
+        <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <nav class="reveal flex flex-wrap gap-2 text-sm text-zinc-300">
+            <a href="#features" class="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 transition hover:bg-white/[0.08] hover:text-white">Product Features</a>
+            <a href="#philosophy" class="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 transition hover:bg-white/[0.08] hover:text-white">Philosophy</a>
+            <a href="#workflow" class="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 transition hover:bg-white/[0.08] hover:text-white">How It Works</a>
+            <a href="#developer" class="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 transition hover:bg-white/[0.08] hover:text-white">Developer Docs</a>
+          </nav>
+        </div>
+      </section>
+
       <section id="features" class="py-16 sm:py-24">
         <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div class="reveal mb-12 text-center">
@@ -331,6 +376,9 @@
               <h3 class="mt-3 font-display text-xl">Audit certificates that hold up in court</h3>
               <p class="mt-3 text-sm leading-relaxed text-zinc-300">
                 Export a self-contained certificate with cryptographic proofs and verify it offline using the standalone <code class="font-mono text-xs rounded bg-white/10 px-1">verify-cert</code> binary.
+              </p>
+              <p class="mt-2 text-xs text-zinc-400">
+                Legal admissibility depends on jurisdiction and process; EctoLedger provides cryptographic evidence to support review and testimony.
               </p>
               <img src="marketing_assets/screenshots/3_audit_certificate.png" alt="Audit certificate screen" class="mt-5 rounded-xl border border-white/10" loading="lazy" />
             </article>
@@ -436,6 +484,45 @@
               <img src="marketing_assets/screenshots/gui_2_audit_history.png" alt="Audit history panel" class="mt-6 rounded-xl border border-white/10" loading="lazy" />
             </div>
           </div>
+        </div>
+      </section>
+
+      <section id="howto" class="py-16 sm:py-24">
+        <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div class="reveal mb-10 text-center">
+            <p class="font-mono text-xs uppercase tracking-[0.22em] text-aqua-300">How-To</p>
+            <h2 class="mt-4 font-display text-3xl tracking-tight sm:text-5xl">Start with the right setup for your goal</h2>
+          </div>
+          <div class="grid gap-4 lg:grid-cols-3">
+            <article class="reveal glass rounded-3xl p-6">
+              <h3 class="font-display text-xl text-white">Run your first production-grade audit</h3>
+              <ol class="mt-3 list-decimal space-y-2 pl-5 text-sm text-zinc-300">
+                <li>Use PostgreSQL backend for full command support.</li>
+                <li>Set guard configuration and keep <code class="font-mono text-xs">GUARD_REQUIRED=true</code>.</li>
+                <li>Run <code class="font-mono text-xs">audit \"&lt;goal&gt;\"</code>, then export and verify <code class="font-mono text-xs">.elc</code>.</li>
+              </ol>
+            </article>
+            <article class="reveal glass rounded-3xl p-6">
+              <h3 class="font-display text-xl text-white">Choose demo vs SQLite vs PostgreSQL</h3>
+              <ul class="mt-3 space-y-2 text-sm text-zinc-300">
+                <li><strong class="text-white">Demo:</strong> fast product tour with isolated data.</li>
+                <li><strong class="text-white">SQLite:</strong> local/CI viewing and reporting workflows.</li>
+                <li><strong class="text-white">PostgreSQL:</strong> full audits, orchestration, anchoring, and red-team tests.</li>
+              </ul>
+            </article>
+            <article class="reveal glass rounded-3xl p-6">
+              <h3 class="font-display text-xl text-white">Prepare evidence for auditors</h3>
+              <ul class="mt-3 space-y-2 text-sm text-zinc-300">
+                <li>Run with policy packs (SOC 2, PCI-DSS, OWASP, ISO 42001).</li>
+                <li>Export report + <code class="font-mono text-xs">.elc</code> certificate.</li>
+                <li>Verify evidence offline with <code class="font-mono text-xs">verify-cert</code>.</li>
+              </ul>
+            </article>
+          </div>
+          <p class="reveal mt-6 text-sm text-zinc-400">
+            Need help with setup or verification errors? See the
+            <a href="demo.html#troubleshooting" class="text-aqua-300 hover:text-aqua-200 underline">Troubleshooting guide</a>.
+          </p>
         </div>
       </section>
 
@@ -575,10 +662,12 @@ const cert = await client.exportCertificate(session.id);</code></pre>
             <span>EctoLedger</span>
           </div>
           <div class="flex flex-wrap items-center justify-center gap-5">
-            <a href="https://github.com/EctoSpace/EctoLedger" class="transition-colors hover:text-white">GitHub</a>
-            <a href="https://github.com/EctoSpace/EctoLedger#quick-start" class="transition-colors hover:text-white">Quick Start</a>
-            <a href="changelog.html" class="transition-colors hover:text-white">Changelog</a>
+            <a href="index.html" class="transition-colors hover:text-white">Home</a>
             <a href="demo.html" class="transition-colors hover:text-white">Demo</a>
+            <a href="changelog.html" class="transition-colors hover:text-white">Changelog</a>
+            <a href="https://github.com/EctoSpace/EctoLedger#quick-start" class="transition-colors hover:text-white">Quick Start</a>
+            <a href="https://github.com/EctoSpace/EctoLedger" class="transition-colors hover:text-white">GitHub</a>
+            <a href="https://github.com/EctoSpace/EctoLedger/releases" class="transition-colors hover:text-white">Releases</a>
           </div>
           <p>&copy; 2026 EctoSpace</p>
         </div>

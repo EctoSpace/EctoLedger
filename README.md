@@ -39,26 +39,33 @@
 
 ## What is EctoLedger?
 
-EctoLedger is a **black box recorder for AI agents**.
+**EctoLedger is the dashcam + emergency brake for autonomous AI agents.**
 
-It helps you prove exactly what an AI agent did, in what order, and whether every action stayed inside policy.
+Your AI agent just made 47 decisions.  
+Can you prove exactly what it did — to a regulator, an auditor, or a court?  
+EctoLedger makes that proof automatic… while physically blocking dangerous actions before they happen.
 
-### What it does
+### Two core capabilities
 
-- Records every agent decision and tool call in a tamper-evident audit trail
-- Blocks risky actions before execution with policy + guardrails
-- Exports verifiable audit certificates you can present to customers, auditors, regulators, or courts
+**1. Constant monitoring + prevention (the emergency brake)**  
+Real-time desktop GUI dashboard shows every thought and action live.  
+4-layer guardrails (policy engine → dual-LLM checker → schema validation → tripwire) stop risky API calls, data leaks, or unauthorized transactions *before* they execute.
+
+**2. State-of-the-art cryptographic audit (the tamper-proof flight recorder)**  
+Every decision is signed, hash-chained, and stored in an immutable ledger.  
+Export self-contained `.elc` certificates that any regulator or court can verify offline — no trust in you required.
 
 ### Who is this for?
-
-- Teams deploying AI agents that run commands, call APIs, or access sensitive data
-- Security and platform teams that need to enforce and verify AI behavior
-- Compliance teams preparing for formal AI governance and external audits
-- Builders who need machine-verifiable evidence of AI actions, not just logs
+- Teams running AI agents that call APIs, run commands, or touch sensitive data  
+- Security & platform engineers who need enforceable guardrails  
+- Compliance officers preparing for the EU AI Act (2026) and other AI governance rules  
+- Anyone who never wants to say “the AI did it” in front of a judge
 
 ### Why now?
-
-The EU AI Act and related governance requirements are pushing organizations toward provable auditability for high-risk AI systems. If an autonomous workflow makes a harmful or disputed decision, "trust us" is not enough. EctoLedger gives you cryptographic evidence that can be independently verified.
+The EU AI Act becomes fully enforceable for high-risk AI systems in August 2026.  
+Article 12 explicitly requires tamper-evident, automatically recorded logs that normal logging cannot provide.  
+Every company deploying autonomous agents will need exactly this infrastructure.  
+You built it before the market even knew it was required.
 
 ![EctoLedger demo](site/marketing_assets/videos/gui_demo.gif)
 
@@ -447,6 +454,54 @@ docker compose -f docker-compose.demo.yml -f docker-compose.build.yml up --build
 ```
 
 > The Docker demo exposes only the REST API and Observer dashboard — there is no Tauri desktop GUI. Use the `--demo` flag with the native launcher (above) for the full desktop experience.
+
+---
+
+## How-To: First Production Audit
+
+Use this path when you need strong guardrails and verifiable evidence (not just a demo run):
+
+1. Use PostgreSQL backend (`DATABASE_URL=postgres://...`) for full command support.
+2. Configure guard settings and keep `GUARD_REQUIRED=true`.
+3. Run:
+
+```bash
+cargo run -- audit "Audit production deployment configuration" \
+  --policy crates/host/policies/iso42001.toml
+```
+
+4. Export and verify evidence:
+
+```bash
+cargo run -- report <session_id> --format certificate --output audit.elc
+./target/release/verify-cert audit.elc
+```
+
+5. Optional: anchor the session hash for timestamp non-repudiation.
+
+```bash
+cargo run -- anchor-session <session_id>
+```
+
+## Troubleshooting
+
+### `audit` command fails immediately
+
+- Confirm backend mode: SQLite does not support `audit`, `orchestrate`, `red-team`, `diff-audit`, `prove-audit`, or `anchor-session`.
+- Verify LLM connectivity and API keys (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, or Ollama availability).
+- If running production settings, check guard variables (`GUARD_REQUIRED`, `GUARD_LLM_BACKEND`, `GUARD_LLM_MODEL`).
+
+### Demo works but production behaves differently
+
+- Demo mode is tuned for fast evaluation and isolated data; production requires explicit guard/policy/backend configuration.
+- Re-check `.env` and backend selection before comparing results.
+- Validate policy and tripwire settings from the GUI or config files.
+
+### Verification confusion (`verify-session` vs `verify-certificate` vs VC verify)
+
+- `verify-session` validates signed event chain integrity for a session.
+- `verify-certificate` / `verify-cert` validates exported `.elc` artifacts offline.
+- VC verify endpoints perform structural/expiry checks; for full signature assurances use the documented cryptographic verification API path.
 
 **Shorthand via `make`** (macOS/Linux):
 

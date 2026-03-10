@@ -89,6 +89,24 @@ pip install ".[dev]"
 pytest tests/ -v
 ```
 
+## Troubleshooting
+
+### Connection errors or timeouts
+
+- Ensure `base_url` points to the running EctoLedger server (`http://localhost:3000` in local default setups).
+- In Docker/Kubernetes, use the correct service hostname instead of localhost.
+- Check that your network path allows access to `/api/status`.
+
+### Authentication failures (401/403)
+
+- Verify `bearer_token` is valid and has sufficient RBAC scope.
+- Confirm token creation/revocation status in the server UI/API.
+
+### Unexpected API errors
+
+- Catch `LedgerSdkError` and inspect `status_code` + `body` for exact server response.
+- Check backend mode constraints (some commands/features require PostgreSQL backend).
+
 ## API Reference
 
 ### Status
