@@ -570,7 +570,7 @@ cd gui && npm install && npm run tauri dev
 
 # Production bundle
 cd gui && npm run tauri build
-# Installer at: gui/src-tauri/target/release/bundle/
+# Installer at: target/release/bundle/  (the workspace root, not inside gui)
 ```
 </details>
 
@@ -586,7 +586,7 @@ npm install
 npm run tauri build
 ```
 
-**Output locations** (`gui/src-tauri/target/release/bundle/`):
+**Output locations** (`target/release/bundle/`):
 
 | Platform | Installer format | Path |
 |----------|-----------------|------|

@@ -149,13 +149,14 @@ jobs:
         with:
           name: ectoledger-gui-${{ matrix.platform }}
           path: |
-            gui/src-tauri/target/release/bundle/**/*.dmg
-            gui/src-tauri/target/release/bundle/**/*.AppImage
-            gui/src-tauri/target/release/bundle/**/*.deb
-            gui/src-tauri/target/release/bundle/**/*.rpm
-            gui/src-tauri/target/release/bundle/**/*.msi
-            gui/src-tauri/target/release/bundle/**/*.exe
-            gui/src-tauri/target/release/bundle/**/*.nsis.zip
+            # the tauri build puts installers in workspace-level target/release/bundle
+            target/release/bundle/**/*.dmg
+            target/release/bundle/**/*.AppImage
+            target/release/bundle/**/*.deb
+            target/release/bundle/**/*.rpm
+            target/release/bundle/**/*.msi
+            target/release/bundle/**/*.exe
+            target/release/bundle/**/*.nsis.zip
           retention-days: 1
 
   release:
