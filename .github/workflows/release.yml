@@ -206,7 +206,7 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: read
-      id-token: write          # OIDC trusted publishing
+      id-token: write          
     environment: pypi
 
     steps:
@@ -236,7 +236,7 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: read
-      id-token: write # CRITICAL: Enables Trusted Publishing
+      id-token: write 
 
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
@@ -256,4 +256,6 @@ jobs:
 
       - name: Publish to npm
         working-directory: sdk/typescript
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: npm publish --access public --provenance
