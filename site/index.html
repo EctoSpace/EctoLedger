@@ -289,9 +289,21 @@
               <article class="rounded-2xl border border-white/10 bg-white/[0.02] p-4">
                 <h3 class="font-display text-lg text-white">What it does</h3>
                 <ul class="mt-3 space-y-2 text-sm text-zinc-300">
-                  <li>Records each AI action in an append-only audit trail.</li>
-                  <li>Validates actions through policy and guardrails before execution.</li>
-                  <li>Exports verifiable evidence for customers, auditors, and regulators.</li>
+                  <li>Records each AI action in an append-only, hash-chained audit trail.</li>
+                  <li>Prevents damage by blocking denied actions before execution (policy + guard + strict schema + Tripwire).</li>
+                  <li>Detects prompt-injection and goal-hijack patterns in model output before commit/execution.</li>
+                  <li>Exports verifiable evidence (`.elc` certificates) for customers, auditors, and regulators.</li>
+                  <li>Adds optional sandbox isolation tiers for execution paths, including Firecracker on Linux and Apple Hypervisor guard isolation on supported Apple Silicon builds.</li>
+                </ul>
+              </article>
+              <article class="rounded-2xl border border-white/10 bg-white/[0.02] p-4">
+                <h3 class="font-display text-lg text-white">When to use it</h3>
+                <ul class="mt-3 space-y-2 text-sm text-zinc-300">
+                  <li>Your AI agents run commands, call APIs, or touch sensitive files/infrastructure.</li>
+                  <li>You need a hard-stop control plane, not just post-incident logs.</li>
+                  <li>You must prove what happened during an AI run to security, compliance, or customers.</li>
+                  <li>You are preparing for enterprise procurement, compliance reviews, or third-party due diligence.</li>
+                  <li>You want replayable, cryptographically verifiable evidence instead of screenshot-based reporting.</li>
                 </ul>
               </article>
               <article class="rounded-2xl border border-white/10 bg-white/[0.02] p-4">
@@ -299,17 +311,72 @@
                 <ul class="mt-3 space-y-2 text-sm text-zinc-300">
                   <li>It does not trade, hold, or manage cryptocurrencies.</li>
                   <li>It is not a replacement for your SIEM or ticketing platform.</li>
+                  <li>It is not a universal host EDR outside EctoLedger-managed agent actions.</li>
                   <li>It does not guarantee legal outcomes by itself.</li>
                 </ul>
               </article>
-              <article class="rounded-2xl border border-white/10 bg-white/[0.02] p-4">
-                <h3 class="font-display text-lg text-white">When to use it</h3>
-                <ul class="mt-3 space-y-2 text-sm text-zinc-300">
-                  <li>Your AI agents run commands, call APIs, or touch sensitive data.</li>
-                  <li>You need provable evidence of what happened during an AI run.</li>
-                  <li>You are preparing for compliance reviews or customer due diligence.</li>
-                </ul>
-              </article>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="control-flow" class="pb-12 sm:pb-16">
+        <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div class="reveal glass rounded-3xl p-6 sm:p-8">
+            <p class="font-mono text-xs uppercase tracking-[0.22em] text-aqua-300">Flowchart</p>
+            <h2 class="mt-3 font-display text-3xl tracking-tight sm:text-4xl">How EctoLedger controls AI actions</h2>
+            <p class="mt-4 max-w-3xl text-sm text-zinc-300 sm:text-base">
+              Every proposed action is checked before execution. Denied actions are blocked and recorded. Allowed actions execute and are sealed into cryptographic evidence.
+            </p>
+
+            <div class="mt-6 overflow-x-auto rounded-2xl border border-white/10 bg-ink-900/70 p-4">
+              <svg viewBox="0 0 1180 360" class="min-w-[980px] w-full h-auto" role="img" aria-label="EctoLedger action control flowchart">
+                <defs>
+                  <marker id="arrowhead" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+                    <polygon points="0,0 8,4 0,8" fill="#6b7280"></polygon>
+                  </marker>
+                </defs>
+
+                <!-- Nodes -->
+                <rect x="20" y="30" width="180" height="64" rx="12" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.16)"></rect>
+                <text x="110" y="68" text-anchor="middle" fill="#e5e7eb" font-size="16">AI proposes action</text>
+
+                <rect x="240" y="30" width="160" height="64" rx="12" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.16)"></rect>
+                <text x="320" y="68" text-anchor="middle" fill="#e5e7eb" font-size="16">Policy check</text>
+
+                <rect x="440" y="30" width="250" height="64" rx="12" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.16)"></rect>
+                <text x="565" y="60" text-anchor="middle" fill="#e5e7eb" font-size="16">Guard + schema +</text>
+                <text x="565" y="78" text-anchor="middle" fill="#e5e7eb" font-size="16">Tripwire checks</text>
+
+                <polygon points="760,62 820,20 880,62 820,104" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.16)"></polygon>
+                <text x="820" y="58" text-anchor="middle" fill="#e5e7eb" font-size="14">All checks</text>
+                <text x="820" y="75" text-anchor="middle" fill="#e5e7eb" font-size="14">pass?</text>
+
+                <rect x="940" y="30" width="170" height="64" rx="12" fill="rgba(52,229,189,0.12)" stroke="rgba(52,229,189,0.35)"></rect>
+                <text x="1025" y="68" text-anchor="middle" fill="#bbf7d0" font-size="16">Execute action</text>
+
+                <rect x="940" y="150" width="200" height="64" rx="12" fill="rgba(53,214,255,0.12)" stroke="rgba(53,214,255,0.35)"></rect>
+                <text x="1040" y="176" text-anchor="middle" fill="#cffafe" font-size="15">Append to ledger +</text>
+                <text x="1040" y="194" text-anchor="middle" fill="#cffafe" font-size="15">certificate evidence</text>
+
+                <rect x="700" y="260" width="300" height="64" rx="12" fill="rgba(251,113,133,0.12)" stroke="rgba(251,113,133,0.35)"></rect>
+                <text x="850" y="286" text-anchor="middle" fill="#fecdd3" font-size="15">Block execution</text>
+                <text x="850" y="304" text-anchor="middle" fill="#fecdd3" font-size="15">+ record denial reason</text>
+
+                <!-- Main arrows -->
+                <line x1="200" y1="62" x2="240" y2="62" stroke="#6b7280" stroke-width="2.5" marker-end="url(#arrowhead)"></line>
+                <line x1="400" y1="62" x2="440" y2="62" stroke="#6b7280" stroke-width="2.5" marker-end="url(#arrowhead)"></line>
+                <line x1="690" y1="62" x2="760" y2="62" stroke="#6b7280" stroke-width="2.5" marker-end="url(#arrowhead)"></line>
+                <line x1="880" y1="62" x2="940" y2="62" stroke="#6b7280" stroke-width="2.5" marker-end="url(#arrowhead)"></line>
+                <line x1="1025" y1="94" x2="1025" y2="150" stroke="#6b7280" stroke-width="2.5" marker-end="url(#arrowhead)"></line>
+
+                <!-- Deny branch -->
+                <line x1="820" y1="104" x2="820" y2="260" stroke="#6b7280" stroke-width="2.5" marker-end="url(#arrowhead)"></line>
+
+                <!-- Labels -->
+                <text x="903" y="48" fill="#9ca3af" font-size="13">allow</text>
+                <text x="832" y="182" fill="#9ca3af" font-size="13">deny</text>
+              </svg>
             </div>
           </div>
         </div>

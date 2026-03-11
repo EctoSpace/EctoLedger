@@ -54,6 +54,7 @@ EctoLedger makes that proof automatic… while physically blocking dangerous act
 - A **security proxy** in front of autonomous AI actions.
 - A **prevention layer** that can block unsafe commands before execution.
 - A **cryptographic evidence layer** that produces tamper-evident audit trails and verifiable certificates.
+- An **optional isolation layer** with sandbox tiers (including Firecracker on Linux and Apple Hypervisor guard isolation on supported Apple Silicon builds).
 
 **What it is not**
 - Not a crypto trading product.
