@@ -1,10 +1,10 @@
-# ectoledger-sdk
+# EctoLedger TypeScript SDK
 
-Lightweight TypeScript / JavaScript client for the [EctoLedger](https://github.com/EctoSpace/EctoLedger) AI-governance
-ledger.  Zero runtime dependencies — works in Node 18+, Deno, Bun, and modern
-browsers that support `fetch`.
+**Blocks unsafe AI actions before they happen + creates court-ready cryptographic proof.**
 
-EctoLedger is a tamper-proof audit trail for AI agents. It helps you prove what your AI did, in what order, and whether actions stayed within policy.
+Lightweight TypeScript / JavaScript client for the EctoLedger AI firewall and audit system. Zero runtime dependencies — works in Node 18+, Deno, Bun, and modern browsers that support `fetch`.
+
+EctoLedger is an AI Firewall and tamper-proof audit trail for AI agents. It helps you prove what your AI did, in what order, and whether actions stayed within policy.
 
 This is not a crypto trading product. Here, "ledger" means an auditable evidence log for AI behavior.
 

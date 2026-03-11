@@ -1,8 +1,10 @@
-# EctoLedger SDK — Python
+# EctoLedger Python SDK
 
-A typed async REST client for [EctoLedger](https://github.com/EctoSpace/EctoLedger) with built-in LangChain and AutoGen support.
+**Blocks unsafe AI actions before they happen + creates court-ready cryptographic proof.**
 
-EctoLedger is a tamper-proof audit trail for AI agents. It helps you prove what your AI did, in what order, and whether actions stayed within policy.
+A typed async REST client for the EctoLedger AI firewall and audit system.
+
+EctoLedger is an AI Firewall and tamper-proof audit trail for AI agents. It helps you prove what your AI did, in what order, and whether actions stayed within policy.
 
 This is not a crypto trading product. Here, "ledger" means an auditable evidence log for AI behavior.
 

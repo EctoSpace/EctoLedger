@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "ectoledger-sdk"
 version = "0.6.3"
-description = "Python REST SDK for EctoLedger - The Cryptographic Veto Engine for AI Agents"
+description = "AI Firewall and tamper-proof audit trail for AI agents. Python SDK for EctoLedger."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "Apache-2.0" }

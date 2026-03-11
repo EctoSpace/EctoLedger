@@ -2,7 +2,7 @@
   "name": "ectoledger-sdk",
   "version": "0.6.3",
   "homepage": "https://ectospace.com/EctoLedger",
-  "description": "TypeScript SDK for EctoLedger - The Cryptographic Veto Engine for AI Agents",
+  "description": "AI Firewall and tamper-proof audit trail for AI agents. TypeScript SDK for EctoLedger.",
   "license": "Apache-2.0",
   "author": "Björn Roman Kohlberger <ectoledger@pm.me>",
   "type": "module",

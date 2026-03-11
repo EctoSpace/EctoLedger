@@ -61,6 +61,16 @@ EctoLedger makes that proof automatic… while physically blocking dangerous act
 - Not a replacement for SIEM, ticketing, or full GRC suites.
 - Not a legal guarantee by itself; it provides verifiable evidence to support legal/compliance processes.
 
+### Features by platform
+
+| Feature                                    | Linux                      | macOS         | Windows       |
+|-------------------------------------------|----------------------------|---------------|---------------|
+| Firecracker microVM isolation (optional)   | Yes (when configured)      | Not available | Not available |
+| OS-level sandbox (Landlock/Seatbelt/Jobs)  | Yes                        | Yes           | Yes           |
+| Real-time GUI dashboard                   | Yes                        | Yes           | Yes           |
+| .elc certificate export                  | Yes                        | Yes           | Yes           |
+| 4-layer guardrails + tripwire             | Yes                        | Yes           | Yes           |
+
 ### Two core capabilities
 
 **1. Constant monitoring + prevention (the emergency brake)**  
