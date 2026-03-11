@@ -1,6 +1,6 @@
 {
   "name": "ectoledger-sdk",
-  "version": "0.6.3",
+  "version": "0.6.4",
   "homepage": "https://ectospace.com/EctoLedger",
   "description": "AI Firewall and tamper-proof audit trail for AI agents. TypeScript SDK for EctoLedger.",
   "license": "Apache-2.0",

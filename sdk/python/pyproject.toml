@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "ectoledger-sdk"
-version = "0.6.3"
+version = "0.6.4"
 description = "AI Firewall and tamper-proof audit trail for AI agents. Python SDK for EctoLedger."
 readme = "README.md"
 requires-python = ">=3.10"

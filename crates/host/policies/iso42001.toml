@@ -11,7 +11,7 @@
 standard        = "ISO/IEC 42001:2023"
 edition         = "2023"
 description     = "AI Management System standard — requirements for responsible AI development and use"
-ectoledger_version = "0.6.3"
+ectoledger_version = "0.6.4"
 last_reviewed   = "2026-02-21"
 
 # ─── Clause 4 — Context of the organisation ────────────────────────────────────
