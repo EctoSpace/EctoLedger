@@ -136,21 +136,33 @@
       background: linear-gradient(to bottom, rgba(5, 6, 10, 0.75) 0%, rgba(5, 6, 10, 0.92) 100%);
       pointer-events: none;
     }
+    #header-subnav {
+      padding-top: 0;
+      padding-bottom: 0;
+      border-top-color: transparent;
+    }
+    #site-header.subnav-merged #header-subnav {
+      max-height: 4rem;
+      opacity: 1;
+      padding-top: 0.5rem;
+      padding-bottom: 0.5rem;
+      border-top-color: rgba(255, 255, 255, 0.1);
+    }
   </style>
 </head>
-<body class="font-sans antialiased selection:bg-brand-500/35 selection:text-white">
+<body id="top" class="font-sans antialiased selection:bg-brand-500/35 selection:text-white">
   <div class="relative z-10">
-    <header class="fixed left-1/2 top-4 z-50 w-[min(1140px,94vw)] -translate-x-1/2">
-      <div class="glass flex h-16 items-center justify-between rounded-2xl px-4 sm:px-6">
-        <a href="index.html" class="flex items-center gap-2">
+    <header id="site-header" class="fixed left-1/2 top-4 z-50 w-[min(1140px,94vw)] -translate-x-1/2 transition-[width] duration-200">
+      <div id="header-inner" class="glass flex flex-col rounded-2xl px-4 sm:px-6 transition-all duration-200">
+        <div class="flex h-16 items-center justify-between">
+        <a href="#top" class="flex items-center gap-2">
           <img src="images/ectoSpace-Logo-noBg.webp" alt="EctoSpace" class="h-9 w-auto max-w-[140px] object-contain" />
         </a>
         <nav class="hidden items-center gap-7 text-sm text-zinc-300 md:flex">
-          <a href="#what-it-is" class="transition-colors hover:text-white">What It Is</a>
-          <a href="#who-its-for" class="transition-colors hover:text-white">Who It's For</a>
-          <a href="#use-cases" class="transition-colors hover:text-white">Use Cases</a>
+          <a href="#top" aria-current="page" class="text-white transition-colors hover:text-white">Home</a>
+          <a href="features.html" class="transition-colors hover:text-white">Features</a>
+          <a href="changelog.html" class="transition-colors hover:text-white">Changelog</a>
           <a href="demo.html" class="transition-colors hover:text-white">Demo</a>
-          <a href="https://github.com/EctoSpace/EctoLedger#quick-start" class="transition-colors hover:text-white">Quick Start</a>
         </nav>
         <div class="flex items-center gap-2">
           <a
@@ -168,14 +180,25 @@
             </svg>
           </button>
         </div>
+        </div>
+        <nav id="header-subnav" class="flex flex-wrap justify-center gap-2 border-t border-white/10 py-2 text-sm text-zinc-300 overflow-hidden transition-all duration-200 max-h-0 opacity-0 md:flex" aria-label="On this page">
+          <a href="#use-cases" class="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 transition hover:bg-white/[0.08] hover:text-white text-xs">Use Cases</a>
+          <a href="#what-it-is" class="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 transition hover:bg-white/[0.08] hover:text-white text-xs">What It Is</a>
+          <a href="#control-flow" class="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 transition hover:bg-white/[0.08] hover:text-white text-xs">Control Flow</a>
+          <a href="#who-its-for" class="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 transition hover:bg-white/[0.08] hover:text-white text-xs">Who It's For</a>
+          <a href="#features" class="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 transition hover:bg-white/[0.08] hover:text-white text-xs">Features</a>
+          <a href="#philosophy" class="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 transition hover:bg-white/[0.08] hover:text-white text-xs">Philosophy</a>
+          <a href="#workflow" class="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 transition hover:bg-white/[0.08] hover:text-white text-xs">How It Works</a>
+          <a href="#howto" class="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 transition hover:bg-white/[0.08] hover:text-white text-xs">How-To</a>
+          <a href="#developer" class="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 transition hover:bg-white/[0.08] hover:text-white text-xs">Developer</a>
+        </nav>
       </div>
       <nav id="mobile-nav" class="glass mt-2 hidden rounded-2xl px-5 py-4 md:hidden">
         <div class="flex flex-col gap-1 text-sm text-zinc-300">
-          <a href="#what-it-is" class="rounded-lg px-3 py-2 transition-colors hover:bg-white/[0.06] hover:text-white">What It Is</a>
-          <a href="#who-its-for" class="rounded-lg px-3 py-2 transition-colors hover:bg-white/[0.06] hover:text-white">Who It's For</a>
-          <a href="#use-cases" class="rounded-lg px-3 py-2 transition-colors hover:bg-white/[0.06] hover:text-white">Use Cases</a>
+          <a href="#top" aria-current="page" class="rounded-lg bg-white/[0.06] px-3 py-2 text-white transition-colors hover:bg-white/[0.08]">Home</a>
+          <a href="features.html" class="rounded-lg px-3 py-2 transition-colors hover:bg-white/[0.06] hover:text-white">Features</a>
+          <a href="changelog.html" class="rounded-lg px-3 py-2 transition-colors hover:bg-white/[0.06] hover:text-white">Changelog</a>
           <a href="demo.html" class="rounded-lg px-3 py-2 transition-colors hover:bg-white/[0.06] hover:text-white">Demo</a>
-          <a href="https://github.com/EctoSpace/EctoLedger#quick-start" class="rounded-lg px-3 py-2 transition-colors hover:bg-white/[0.06] hover:text-white">Quick Start</a>
         </div>
       </nav>
     </header>
@@ -220,11 +243,26 @@
           </div>
         </div>
 
+        <div id="subnav-sentinel" aria-hidden="true" class="h-px w-full"></div>
+        <nav id="page-subnav" class="mx-auto mt-8 max-w-7xl px-4 sm:px-6 lg:px-8" aria-label="On this page">
+          <div class="reveal flex flex-wrap justify-center gap-2 text-sm text-zinc-300">
+            <a href="#use-cases" class="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 transition hover:bg-white/[0.08] hover:text-white">Use Cases</a>
+            <a href="#what-it-is" class="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 transition hover:bg-white/[0.08] hover:text-white">What It Is</a>
+            <a href="#control-flow" class="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 transition hover:bg-white/[0.08] hover:text-white">Control Flow</a>
+            <a href="#who-its-for" class="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 transition hover:bg-white/[0.08] hover:text-white">Who It's For</a>
+            <a href="#features" class="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 transition hover:bg-white/[0.08] hover:text-white">Features</a>
+            <a href="#philosophy" class="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 transition hover:bg-white/[0.08] hover:text-white">Philosophy</a>
+            <a href="#workflow" class="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 transition hover:bg-white/[0.08] hover:text-white">How It Works</a>
+            <a href="#howto" class="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 transition hover:bg-white/[0.08] hover:text-white">How-To</a>
+            <a href="#developer" class="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 transition hover:bg-white/[0.08] hover:text-white">Developer</a>
+          </div>
+        </nav>
+
         <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <section id="use-cases" class="reveal mt-10 sm:mt-12">
+          <section id="use-cases" class="reveal scroll-mt-28 mt-10 sm:mt-12">
             <div class="glass rounded-3xl p-6 sm:p-8">
               <p class="font-mono text-xs uppercase tracking-[0.22em] text-mint-300">Use Cases</p>
-              <h2 class="mt-3 font-display text-2xl tracking-tight sm:text-3xl">Where teams use EctoLedger today</h2>
+              <h2 class="mt-3 font-display text-2xl tracking-tight sm:text-3xl">What teams can use EctoLedger for</h2>
               <div class="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <article class="rounded-2xl border border-white/10 bg-white/[0.02] p-4">
                   <h3 class="font-display text-lg text-white">Security Operations</h3>
@@ -277,7 +315,7 @@
         </div>
       </section>
 
-      <section id="what-it-is" class="pb-12">
+      <section id="what-it-is" class="scroll-mt-28 pb-12">
         <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div class="reveal glass rounded-3xl p-6 sm:p-8">
             <p class="font-mono text-xs uppercase tracking-[0.22em] text-brand-300">Clarity first</p>
@@ -320,7 +358,7 @@
         </div>
       </section>
 
-      <section id="control-flow" class="pb-12 sm:pb-16">
+      <section id="control-flow" class="scroll-mt-28 pb-12 sm:pb-16">
         <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div class="reveal glass rounded-3xl p-6 sm:p-8">
             <p class="font-mono text-xs uppercase tracking-[0.22em] text-aqua-300">Flowchart</p>
@@ -403,7 +441,7 @@
         </div>
       </section>
 
-      <section id="who-its-for" class="pb-8 sm:pb-12">
+      <section id="who-its-for" class="scroll-mt-28 pb-8 sm:pb-12">
         <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div class="reveal mb-8 text-center">
             <p class="font-mono text-xs uppercase tracking-[0.22em] text-mint-300">Who is this for?</p>
@@ -758,15 +796,6 @@ const cert = await client.exportCertificate(session.id);</code></pre>
             <span class="text-zinc-500">·</span>
             <span>EctoLedger</span>
           </div>
-          <div class="flex flex-wrap items-center justify-center gap-5">
-            <a href="#what-it-is" class="transition-colors hover:text-white">What It Is</a>
-            <a href="#who-its-for" class="transition-colors hover:text-white">Who It's For</a>
-            <a href="#use-cases" class="transition-colors hover:text-white">Use Cases</a>
-            <a href="demo.html" class="transition-colors hover:text-white">Demo</a>
-            <a href="https://github.com/EctoSpace/EctoLedger#quick-start" class="transition-colors hover:text-white">Quick Start</a>
-            <a href="https://github.com/EctoSpace/EctoLedger" class="transition-colors hover:text-white">GitHub</a>
-            <a href="https://github.com/EctoSpace/EctoLedger/releases" class="transition-colors hover:text-white">Releases</a>
-          </div>
           <p>&copy; 2026 EctoSpace</p>
         </div>
       </div>
@@ -783,6 +812,30 @@ const cert = await client.exportCertificate(session.id);</code></pre>
       },
       { rootMargin: "0px 0px -70px 0px", threshold: 0 }
     );
+
+    var subnavSentinel = document.getElementById("subnav-sentinel");
+    var siteHeader = document.getElementById("site-header");
+    if (subnavSentinel && siteHeader) {
+      var syncMergedHeaderState = function (sentinelTop) {
+        var headerBottom = siteHeader.getBoundingClientRect().bottom;
+        var shouldMerge = sentinelTop <= headerBottom;
+        siteHeader.classList.toggle("subnav-merged", shouldMerge);
+      };
+
+      var subnavObserver = new IntersectionObserver(
+        function (entries) {
+          entries.forEach(function (entry) {
+            syncMergedHeaderState(entry.boundingClientRect.top);
+          });
+        },
+        { threshold: [0, 1] }
+      );
+      subnavObserver.observe(subnavSentinel);
+      syncMergedHeaderState(subnavSentinel.getBoundingClientRect().top);
+      window.addEventListener("resize", function () {
+        syncMergedHeaderState(subnavSentinel.getBoundingClientRect().top);
+      });
+    }
 
     document.querySelectorAll(".reveal").forEach((node, index) => {
       node.style.transitionDelay = `${Math.min(index * 45, 380)}ms`;

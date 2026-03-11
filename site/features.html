@@ -54,21 +54,33 @@
     }
     .reveal { opacity: 0; transform: translateY(22px); transition: opacity 0.72s cubic-bezier(0.22, 1, 0.36, 1), transform 0.72s cubic-bezier(0.22, 1, 0.36, 1); }
     .reveal.show { opacity: 1; transform: translateY(0); }
+    #header-subnav {
+      padding-top: 0;
+      padding-bottom: 0;
+      border-top-color: transparent;
+    }
+    #site-header.subnav-merged #header-subnav {
+      max-height: 4rem;
+      opacity: 1;
+      padding-top: 0.5rem;
+      padding-bottom: 0.5rem;
+      border-top-color: rgba(255, 255, 255, 0.1);
+    }
   </style>
 </head>
 <body class="font-sans antialiased selection:bg-brand-500/35 selection:text-white">
   <div class="relative z-10">
-    <header class="fixed left-1/2 top-4 z-50 w-[min(1140px,94vw)] -translate-x-1/2">
-      <div class="glass flex h-16 items-center justify-between rounded-2xl px-4 sm:px-6">
-        <a href="index.html" class="flex items-center gap-2">
+    <header id="site-header" class="fixed left-1/2 top-4 z-50 w-[min(1140px,94vw)] -translate-x-1/2 transition-[width] duration-200">
+      <div id="header-inner" class="glass flex flex-col rounded-2xl px-4 sm:px-6 transition-all duration-200">
+        <div class="flex h-16 items-center justify-between">
+        <a href="index.html#top" class="flex items-center gap-2">
           <img src="images/ectoSpace-Logo-noBg.webp" alt="EctoSpace" class="h-9 w-auto max-w-[140px] object-contain" />
         </a>
         <nav class="hidden items-center gap-7 text-sm text-zinc-300 md:flex">
-          <a href="index.html#what-it-is" class="transition-colors hover:text-white">What It Is</a>
-          <a href="index.html#who-its-for" class="transition-colors hover:text-white">Who It's For</a>
-          <a href="index.html#use-cases" class="transition-colors hover:text-white">Use Cases</a>
+          <a href="index.html#top" class="transition-colors hover:text-white">Home</a>
+          <a href="features.html" aria-current="page" class="text-white transition-colors hover:text-white">Features</a>
+          <a href="changelog.html" class="transition-colors hover:text-white">Changelog</a>
           <a href="demo.html" class="transition-colors hover:text-white">Demo</a>
-          <a href="https://github.com/EctoSpace/EctoLedger#quick-start" class="transition-colors hover:text-white">Quick Start</a>
         </nav>
         <div class="flex items-center gap-2">
           <a
@@ -86,14 +98,24 @@
             </svg>
           </button>
         </div>
+        </div>
+        <nav id="header-subnav" class="flex flex-wrap justify-center gap-2 border-t border-white/10 py-2 text-sm text-zinc-300 overflow-hidden transition-all duration-200 max-h-0 opacity-0 md:flex" aria-label="On this page">
+          <a href="#fit" class="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 transition hover:bg-white/[0.08] hover:text-white text-xs">Who It Is For</a>
+          <a href="#not-for" class="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 transition hover:bg-white/[0.08] hover:text-white text-xs">What It Is Not</a>
+          <a href="#team-use-cases" class="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 transition hover:bg-white/[0.08] hover:text-white text-xs">Use Cases</a>
+          <a href="#core-security" class="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 transition hover:bg-white/[0.08] hover:text-white text-xs">Core Security</a>
+          <a href="#compliance" class="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 transition hover:bg-white/[0.08] hover:text-white text-xs">Compliance</a>
+          <a href="#sdk" class="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 transition hover:bg-white/[0.08] hover:text-white text-xs">SDKs</a>
+          <a href="#operations" class="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 transition hover:bg-white/[0.08] hover:text-white text-xs">Operations</a>
+          <a href="#architecture" class="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 transition hover:bg-white/[0.08] hover:text-white text-xs">Architecture</a>
+        </nav>
       </div>
       <nav id="mobile-nav" class="glass mt-2 hidden rounded-2xl px-5 py-4 md:hidden">
         <div class="flex flex-col gap-1 text-sm text-zinc-300">
-          <a href="index.html#what-it-is" class="rounded-lg px-3 py-2 transition-colors hover:bg-white/[0.06] hover:text-white">What It Is</a>
-          <a href="index.html#who-its-for" class="rounded-lg px-3 py-2 transition-colors hover:bg-white/[0.06] hover:text-white">Who It's For</a>
-          <a href="index.html#use-cases" class="rounded-lg px-3 py-2 transition-colors hover:bg-white/[0.06] hover:text-white">Use Cases</a>
+          <a href="index.html#top" class="rounded-lg px-3 py-2 transition-colors hover:bg-white/[0.06] hover:text-white">Home</a>
+          <a href="features.html" aria-current="page" class="rounded-lg bg-white/[0.06] px-3 py-2 text-white transition-colors hover:bg-white/[0.08]">Features</a>
+          <a href="changelog.html" class="rounded-lg px-3 py-2 transition-colors hover:bg-white/[0.06] hover:text-white">Changelog</a>
           <a href="demo.html" class="rounded-lg px-3 py-2 transition-colors hover:bg-white/[0.06] hover:text-white">Demo</a>
-          <a href="https://github.com/EctoSpace/EctoLedger#quick-start" class="rounded-lg px-3 py-2 transition-colors hover:bg-white/[0.06] hover:text-white">Quick Start</a>
         </div>
       </nav>
     </header>
@@ -107,8 +129,9 @@
             A comprehensive list of what EctoLedger offers across security enforcement, audit evidence, governance, SDKs, deployment, and architecture.
           </p>
         </div>
+        <div id="subnav-sentinel" aria-hidden="true" class="h-px w-full"></div>
         <div class="mx-auto mt-8 max-w-5xl px-4 sm:px-6 lg:px-8">
-          <nav class="reveal flex flex-wrap justify-center gap-2 text-sm text-zinc-300">
+          <nav id="page-subnav" class="reveal flex flex-wrap justify-center gap-2 text-sm text-zinc-300" aria-label="On this page">
             <a href="#fit" class="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 transition hover:bg-white/[0.08] hover:text-white">Who It Is For</a>
             <a href="#not-for" class="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 transition hover:bg-white/[0.08] hover:text-white">What It Is Not</a>
             <a href="#team-use-cases" class="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 transition hover:bg-white/[0.08] hover:text-white">Use Cases</a>
@@ -121,7 +144,7 @@
         </div>
       </section>
 
-      <section id="fit" class="pb-12 sm:pb-16">
+      <section id="fit" class="scroll-mt-28 pb-12 sm:pb-16">
         <div class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
           <div class="reveal glass rounded-3xl p-6 sm:p-8 border-l-4 border-mint-400/60">
             <p class="font-mono text-xs uppercase tracking-[0.22em] text-mint-300">Who this is for</p>
@@ -136,7 +159,7 @@
         </div>
       </section>
 
-      <section id="not-for" class="pb-12 sm:pb-16">
+      <section id="not-for" class="scroll-mt-28 pb-12 sm:pb-16">
         <div class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
           <div class="reveal glass rounded-3xl p-6 sm:p-8 border-l-4 border-brand-400/60">
             <p class="font-mono text-xs uppercase tracking-[0.22em] text-brand-300">What EctoLedger is not</p>
@@ -150,7 +173,7 @@
         </div>
       </section>
 
-      <section id="team-use-cases" class="pb-12 sm:pb-16">
+      <section id="team-use-cases" class="scroll-mt-28 pb-12 sm:pb-16">
         <div class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
           <div class="reveal glass rounded-3xl p-6 sm:p-8 border-l-4 border-aqua-400/60">
             <p class="font-mono text-xs uppercase tracking-[0.22em] text-aqua-300">Use Cases by Team</p>
@@ -177,7 +200,106 @@
         </div>
       </section>
 
-      <section id="core-security" class="pb-12 sm:pb-16">
+      <section id="platform-matrix" class="scroll-mt-28 pb-12 sm:pb-16">
+        <div class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+          <div class="reveal glass rounded-3xl p-6 sm:p-8 border-l-4 border-mint-400/60">
+            <p class="font-mono text-xs uppercase tracking-[0.22em] text-mint-300">Platform Matrix</p>
+            <h2 class="mt-3 font-display text-2xl sm:text-3xl tracking-tight text-white">Operating system capabilities</h2>
+            <p class="mt-4 text-sm text-zinc-300">
+              Core control and evidence features are cross-platform. Isolation and system integrations vary by OS.
+            </p>
+
+            <div class="mt-6 overflow-x-auto rounded-2xl border border-white/10 bg-ink-900/70">
+              <table class="min-w-[900px] w-full text-sm text-zinc-300">
+                <thead>
+                  <tr class="border-b border-white/10 text-left">
+                    <th class="px-4 py-3 font-display text-white">Capability</th>
+                    <th class="px-4 py-3 font-display text-white"><span class="inline-flex items-center gap-2"><svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" aria-hidden="true"><path fill="#a1a1a6" d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/></svg> macOS (Apple Silicon)</span></th>
+                    <th class="px-4 py-3 font-display text-white"><span class="inline-flex items-center gap-2"><span class="text-base leading-none" aria-hidden="true">🐧</span> Linux</span></th>
+                    <th class="px-4 py-3 font-display text-white"><span class="inline-flex items-center gap-2"><svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" aria-hidden="true"><path fill="#0078D4" d="M3 3h8v8H3V3zm10 0h8v8h-8V3zM3 13h8v8H3v-8zm10 0h8v8h-8v-8z"/></svg> Windows</span></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr class="border-b border-white/10">
+                    <td class="px-4 py-3">CLI + desktop GUI</td>
+                    <td class="px-4 py-3">Yes</td>
+                    <td class="px-4 py-3">Yes</td>
+                    <td class="px-4 py-3">Yes</td>
+                  </tr>
+                  <tr class="border-b border-white/10">
+                    <td class="px-4 py-3">4-layer pre-execution checks</td>
+                    <td class="px-4 py-3">Yes</td>
+                    <td class="px-4 py-3">Yes</td>
+                    <td class="px-4 py-3">Yes</td>
+                  </tr>
+                  <tr class="border-b border-white/10">
+                    <td class="px-4 py-3">Hash-chained + signed audit ledger</td>
+                    <td class="px-4 py-3">Yes</td>
+                    <td class="px-4 py-3">Yes</td>
+                    <td class="px-4 py-3">Yes</td>
+                  </tr>
+                  <tr class="border-b border-white/10">
+                    <td class="px-4 py-3">`.elc` certificate export + offline verification</td>
+                    <td class="px-4 py-3">Yes</td>
+                    <td class="px-4 py-3">Yes</td>
+                    <td class="px-4 py-3">Yes</td>
+                  </tr>
+                  <tr class="border-b border-white/10">
+                    <td class="px-4 py-3">OS sandbox integration</td>
+                    <td class="px-4 py-3">Seatbelt</td>
+                    <td class="px-4 py-3">Landlock + seccomp</td>
+                    <td class="px-4 py-3">Job Objects</td>
+                  </tr>
+                  <tr class="border-b border-white/10">
+                    <td class="px-4 py-3">Hardware isolation path</td>
+                    <td class="px-4 py-3">Apple Hypervisor guard (feature-gated)</td>
+                    <td class="px-4 py-3">Firecracker microVM (feature-gated)</td>
+                    <td class="px-4 py-3">Not available</td>
+                  </tr>
+                  <tr>
+                    <td class="px-4 py-3">Platform key storage integration</td>
+                    <td class="px-4 py-3">macOS Keychain (optional feature)</td>
+                    <td class="px-4 py-3">Secret Service (optional feature)</td>
+                    <td class="px-4 py-3">Credential Manager (optional feature)</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="mt-6 grid gap-4 md:grid-cols-3">
+              <article class="rounded-2xl border border-white/10 bg-white/[0.02] p-4">
+                <h3 class="font-display text-lg text-white inline-flex items-center gap-2"><svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" aria-hidden="true"><path fill="#a1a1a6" d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/></svg> macOS (Apple Silicon)</h3>
+                <ul class="mt-2 space-y-1.5 text-sm text-zinc-300">
+                  <li>Native desktop app with full control/evidence pipeline.</li>
+                  <li>Seatbelt sandbox integration for process constraints.</li>
+                  <li>Apple Hypervisor guard unikernel path via `sandbox-apple-enclave` feature.</li>
+                  <li>Optional key storage integration with macOS Keychain.</li>
+                </ul>
+              </article>
+              <article class="rounded-2xl border border-white/10 bg-white/[0.02] p-4">
+                <h3 class="font-display text-lg text-white inline-flex items-center gap-2"><span class="text-base leading-none" aria-hidden="true">🐧</span> Linux</h3>
+                <ul class="mt-2 space-y-1.5 text-sm text-zinc-300">
+                  <li>Native CLI + GUI with full verification and evidence flow.</li>
+                  <li>Landlock + seccomp sandbox controls in supported environments.</li>
+                  <li>Firecracker microVM execution isolation path via `sandbox-firecracker`.</li>
+                  <li>Optional Secret Service key storage integration.</li>
+                </ul>
+              </article>
+              <article class="rounded-2xl border border-white/10 bg-white/[0.02] p-4">
+                <h3 class="font-display text-lg text-white inline-flex items-center gap-2"><svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" aria-hidden="true"><path fill="#0078D4" d="M3 3h8v8H3V3zm10 0h8v8h-8V3zM3 13h8v8H3v-8zm10 0h8v8h-8v-8z"/></svg> Windows</h3>
+                <ul class="mt-2 space-y-1.5 text-sm text-zinc-300">
+                  <li>Native CLI + GUI with full pre-execution checks and evidence export.</li>
+                  <li>Job Object sandbox integration for process isolation controls.</li>
+                  <li>No current hardware microVM execution isolation path.</li>
+                  <li>Optional key storage integration with Credential Manager.</li>
+                </ul>
+              </article>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="core-security" class="scroll-mt-28 pb-12 sm:pb-16">
         <div class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
           <div class="reveal glass rounded-3xl p-6 sm:p-8 border-l-4 border-brand-400/60">
             <p class="font-mono text-xs uppercase tracking-[0.22em] text-brand-300">Core Security and Enforcement</p>
@@ -193,7 +315,7 @@
         </div>
       </section>
 
-      <section id="compliance" class="pb-12 sm:pb-16">
+      <section id="compliance" class="scroll-mt-28 pb-12 sm:pb-16">
         <div class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
           <div class="reveal glass rounded-3xl p-6 sm:p-8 border-l-4 border-aqua-400/60">
             <p class="font-mono text-xs uppercase tracking-[0.22em] text-aqua-300">Enterprise Compliance and Auditing</p>
@@ -209,7 +331,7 @@
         </div>
       </section>
 
-      <section id="sdk" class="pb-12 sm:pb-16">
+      <section id="sdk" class="scroll-mt-28 pb-12 sm:pb-16">
         <div class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
           <div class="reveal glass rounded-3xl p-6 sm:p-8 border-l-4 border-mint-400/60">
             <p class="font-mono text-xs uppercase tracking-[0.22em] text-mint-300">Developer SDKs and Integrations</p>
@@ -225,7 +347,7 @@
         </div>
       </section>
 
-      <section id="operations" class="pb-12 sm:pb-16">
+      <section id="operations" class="scroll-mt-28 pb-12 sm:pb-16">
         <div class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
           <div class="reveal glass rounded-3xl p-6 sm:p-8 border-l-4 border-brand-400/60">
             <p class="font-mono text-xs uppercase tracking-[0.22em] text-brand-300">Operations and Runtime Controls</p>
@@ -241,7 +363,7 @@
         </div>
       </section>
 
-      <section id="architecture" class="pb-20 sm:pb-24">
+      <section id="architecture" class="scroll-mt-28 pb-20 sm:pb-24">
         <div class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
           <div class="reveal glass rounded-3xl p-6 sm:p-8 border-l-4 border-aqua-400/60">
             <p class="font-mono text-xs uppercase tracking-[0.22em] text-aqua-300">Under-the-Hood Architecture</p>
@@ -281,16 +403,7 @@
           <div class="flex items-center gap-2">
             <img src="images/el-logo.webp" alt="EctoSpace" class="h-7 w-auto max-w-[100px] object-contain" />
             <span class="text-zinc-500">·</span>
-            <span>EctoLedger Features</span>
-          </div>
-          <div class="flex flex-wrap items-center justify-center gap-5">
-            <a href="index.html#what-it-is" class="transition-colors hover:text-white">What It Is</a>
-            <a href="index.html#who-its-for" class="transition-colors hover:text-white">Who It's For</a>
-            <a href="index.html#use-cases" class="transition-colors hover:text-white">Use Cases</a>
-            <a href="demo.html" class="transition-colors hover:text-white">Demo</a>
-            <a href="https://github.com/EctoSpace/EctoLedger#quick-start" class="transition-colors hover:text-white">Quick Start</a>
-            <a href="https://github.com/EctoSpace/EctoLedger" class="transition-colors hover:text-white">GitHub</a>
-            <a href="https://github.com/EctoSpace/EctoLedger/releases" class="transition-colors hover:text-white">Releases</a>
+            <span>EctoLedger</span>
           </div>
           <p>&copy; 2026 EctoSpace</p>
         </div>
@@ -299,6 +412,32 @@
   </div>
 
   <script>
+    (function () {
+      var subnavSentinel = document.getElementById("subnav-sentinel");
+      var siteHeader = document.getElementById("site-header");
+      if (subnavSentinel && siteHeader) {
+        var syncMergedHeaderState = function (sentinelTop) {
+          var headerBottom = siteHeader.getBoundingClientRect().bottom;
+          var shouldMerge = sentinelTop <= headerBottom;
+          siteHeader.classList.toggle("subnav-merged", shouldMerge);
+        };
+
+        var subnavObserver = new IntersectionObserver(
+          function (entries) {
+            entries.forEach(function (entry) {
+              syncMergedHeaderState(entry.boundingClientRect.top);
+            });
+          },
+          { threshold: [0, 1] }
+        );
+        subnavObserver.observe(subnavSentinel);
+        syncMergedHeaderState(subnavSentinel.getBoundingClientRect().top);
+        window.addEventListener("resize", function () {
+          syncMergedHeaderState(subnavSentinel.getBoundingClientRect().top);
+        });
+      }
+    })();
+
     // Mobile nav toggle
     document.getElementById('nav-toggle').addEventListener('click', function () {
       var nav = document.getElementById('mobile-nav');

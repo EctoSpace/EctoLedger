@@ -54,46 +54,63 @@
     }
     .reveal { opacity: 0; transform: translateY(22px); transition: opacity 0.72s cubic-bezier(0.22, 1, 0.36, 1), transform 0.72s cubic-bezier(0.22, 1, 0.36, 1); }
     .reveal.show { opacity: 1; transform: translateY(0); }
+    #header-subnav {
+      padding-top: 0;
+      padding-bottom: 0;
+      border-top-color: transparent;
+    }
+    #site-header.subnav-merged #header-subnav {
+      max-height: 4rem;
+      opacity: 1;
+      padding-top: 0.5rem;
+      padding-bottom: 0.5rem;
+      border-top-color: rgba(255, 255, 255, 0.1);
+    }
   </style>
 </head>
 <body class="font-sans antialiased selection:bg-brand-500/35 selection:text-white">
   <div class="relative z-10">
-    <header class="fixed left-1/2 top-4 z-50 w-[min(1140px,94vw)] -translate-x-1/2">
-      <div class="glass flex h-16 items-center justify-between rounded-2xl px-4 sm:px-6">
-        <a href="index.html" class="flex items-center gap-2">
-          <img src="images/ectoSpace-Logo-noBg.webp" alt="EctoSpace" class="h-9 w-auto max-w-[140px] object-contain" />
+    <header id="site-header" class="fixed left-1/2 top-4 z-50 w-[min(1140px,94vw)] -translate-x-1/2 transition-[width] duration-200">
+      <div id="header-inner" class="glass flex flex-col rounded-2xl px-4 sm:px-6 transition-all duration-200">
+        <div class="flex h-16 items-center justify-between">
+        <a href="index.html#top" class="flex items-center gap-2">
+        <img src="images/ectoSpace-Logo-noBg.webp" alt="EctoSpace" class="h-9 w-auto max-w-[140px] object-contain" />
+      </a>
+      <nav class="hidden items-center gap-7 text-sm text-zinc-300 md:flex">
+        <a href="index.html#top" class="transition-colors hover:text-white">Home</a>
+        <a href="features.html" class="transition-colors hover:text-white">Features</a>
+        <a href="changelog.html" aria-current="page" class="text-white transition-colors hover:text-white">Changelog</a>
+        <a href="demo.html" class="transition-colors hover:text-white">Demo</a>
+      </nav>
+      <div class="flex items-center gap-2">
+        <a
+          href="https://github.com/EctoSpace/EctoLedger"
+          class="rounded-full border border-white/20 px-4 py-2 text-xs font-semibold uppercase tracking-[0.15em] text-white transition hover:border-brand-300/60 hover:bg-brand-500/15"
+        >
+          View GitHub
         </a>
-        <nav class="hidden items-center gap-7 text-sm text-zinc-300 md:flex">
-          <a href="index.html#what-it-is" class="transition-colors hover:text-white">What It Is</a>
-          <a href="index.html#who-its-for" class="transition-colors hover:text-white">Who It's For</a>
-          <a href="index.html#use-cases" class="transition-colors hover:text-white">Use Cases</a>
-          <a href="demo.html" class="transition-colors hover:text-white">Demo</a>
-          <a href="https://github.com/EctoSpace/EctoLedger#quick-start" class="transition-colors hover:text-white">Quick Start</a>
-        </nav>
-        <div class="flex items-center gap-2">
-          <a
-            href="https://github.com/EctoSpace/EctoLedger"
-            class="rounded-full border border-white/20 px-4 py-2 text-xs font-semibold uppercase tracking-[0.15em] text-white transition hover:border-brand-300/60 hover:bg-brand-500/15"
-          >
-            View GitHub
-          </a>
-          <button id="nav-toggle" class="md:hidden flex h-9 w-9 items-center justify-center rounded-xl border border-white/15 text-zinc-300 hover:text-white transition" aria-label="Open navigation">
-            <svg id="icon-open" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-            <svg id="icon-close" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
+        <button id="nav-toggle" class="md:hidden flex h-9 w-9 items-center justify-center rounded-xl border border-white/15 text-zinc-300 hover:text-white transition" aria-label="Open navigation">
+          <svg id="icon-open" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+          <svg id="icon-close" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
       </div>
-      <nav id="mobile-nav" class="glass mt-2 hidden rounded-2xl px-5 py-4 md:hidden">
+      </div>
+      <nav id="header-subnav" class="flex flex-wrap justify-center gap-2 border-t border-white/10 py-2 text-sm text-zinc-300 overflow-hidden transition-all duration-200 max-h-0 opacity-0 md:flex" aria-label="On this page">
+        <a href="#v01" class="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 transition hover:bg-white/[0.08] hover:text-white text-xs">v0.1</a>
+        <a href="#v05" class="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 transition hover:bg-white/[0.08] hover:text-white text-xs">v0.5</a>
+        <a href="#v06" class="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 transition hover:bg-white/[0.08] hover:text-white text-xs">v0.6</a>
+      </nav>
+    </div>
+    <nav id="mobile-nav" class="glass mt-2 hidden rounded-2xl px-5 py-4 md:hidden">
         <div class="flex flex-col gap-1 text-sm text-zinc-300">
-          <a href="index.html#what-it-is" class="rounded-lg px-3 py-2 transition-colors hover:bg-white/[0.06] hover:text-white">What It Is</a>
-          <a href="index.html#who-its-for" class="rounded-lg px-3 py-2 transition-colors hover:bg-white/[0.06] hover:text-white">Who It's For</a>
-          <a href="index.html#use-cases" class="rounded-lg px-3 py-2 transition-colors hover:bg-white/[0.06] hover:text-white">Use Cases</a>
+          <a href="index.html#top" class="rounded-lg px-3 py-2 transition-colors hover:bg-white/[0.06] hover:text-white">Home</a>
+          <a href="features.html" class="rounded-lg px-3 py-2 transition-colors hover:bg-white/[0.06] hover:text-white">Features</a>
+          <a href="changelog.html" aria-current="page" class="rounded-lg bg-white/[0.06] px-3 py-2 text-white transition-colors hover:bg-white/[0.08]">Changelog</a>
           <a href="demo.html" class="rounded-lg px-3 py-2 transition-colors hover:bg-white/[0.06] hover:text-white">Demo</a>
-          <a href="https://github.com/EctoSpace/EctoLedger#quick-start" class="rounded-lg px-3 py-2 transition-colors hover:bg-white/[0.06] hover:text-white">Quick Start</a>
         </div>
       </nav>
     </header>
@@ -107,8 +124,9 @@
             Major milestones: foundation in v0.1, full platform in v0.5, and enterprise-ready features in v0.6.
           </p>
         </div>
+        <div id="subnav-sentinel" aria-hidden="true" class="h-px w-full"></div>
         <div class="mx-auto mt-8 max-w-4xl px-4 sm:px-6 lg:px-8">
-          <nav class="reveal flex flex-wrap justify-center gap-2 text-sm text-zinc-300">
+          <nav id="page-subnav" class="reveal flex flex-wrap justify-center gap-2 text-sm text-zinc-300" aria-label="On this page">
             <a href="#v01" class="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 transition hover:bg-white/[0.08] hover:text-white">v0.1</a>
             <a href="#v05" class="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 transition hover:bg-white/[0.08] hover:text-white">v0.5</a>
             <a href="#v06" class="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 transition hover:bg-white/[0.08] hover:text-white">v0.6</a>
@@ -245,16 +263,7 @@
           <div class="flex items-center gap-2">
             <img src="images/el-logo.webp" alt="EctoSpace" class="h-7 w-auto max-w-[100px] object-contain" />
             <span class="text-zinc-500">·</span>
-            <span>EctoLedger Changelog</span>
-          </div>
-          <div class="flex flex-wrap items-center justify-center gap-5">
-            <a href="index.html#what-it-is" class="transition-colors hover:text-white">What It Is</a>
-            <a href="index.html#who-its-for" class="transition-colors hover:text-white">Who It's For</a>
-            <a href="index.html#use-cases" class="transition-colors hover:text-white">Use Cases</a>
-            <a href="demo.html" class="transition-colors hover:text-white">Demo</a>
-            <a href="https://github.com/EctoSpace/EctoLedger#quick-start" class="transition-colors hover:text-white">Quick Start</a>
-            <a href="https://github.com/EctoSpace/EctoLedger" class="transition-colors hover:text-white">GitHub</a>
-            <a href="https://github.com/EctoSpace/EctoLedger/releases" class="transition-colors hover:text-white">Releases</a>
+            <span>EctoLedger</span>
           </div>
           <p>&copy; 2026 EctoSpace</p>
         </div>
@@ -263,6 +272,32 @@
   </div>
 
   <script>
+    (function () {
+      var subnavSentinel = document.getElementById("subnav-sentinel");
+      var siteHeader = document.getElementById("site-header");
+      if (subnavSentinel && siteHeader) {
+        var syncMergedHeaderState = function (sentinelTop) {
+          var headerBottom = siteHeader.getBoundingClientRect().bottom;
+          var shouldMerge = sentinelTop <= headerBottom;
+          siteHeader.classList.toggle("subnav-merged", shouldMerge);
+        };
+
+        var subnavObserver = new IntersectionObserver(
+          function (entries) {
+            entries.forEach(function (entry) {
+              syncMergedHeaderState(entry.boundingClientRect.top);
+            });
+          },
+          { threshold: [0, 1] }
+        );
+        subnavObserver.observe(subnavSentinel);
+        syncMergedHeaderState(subnavSentinel.getBoundingClientRect().top);
+        window.addEventListener("resize", function () {
+          syncMergedHeaderState(subnavSentinel.getBoundingClientRect().top);
+        });
+      }
+    })();
+
     // Mobile nav toggle
     document.getElementById('nav-toggle').addEventListener('click', function () {
       var nav = document.getElementById('mobile-nav');
