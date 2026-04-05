@@ -4,7 +4,7 @@
   "homepage": "https://ectospace.com/EctoLedger",
   "description": "AI Firewall and tamper-proof audit trail for AI agents. TypeScript SDK for EctoLedger.",
   "license": "Apache-2.0",
-  "author": "Björn Roman Kohlberger <ectoledger@pm.me>",
+  "author": "Björn Roman Kohlberger <ectoledger@ectospace.com>",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",

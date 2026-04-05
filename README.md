@@ -1403,6 +1403,16 @@ EctoLedger/
 
 ## Licensing
 
-Apache 2.0 — use it freely for personal, internal, commercial, research, and open-source purposes. See [LICENSE](LICENSE) for the full text.
+Business Source License 1.1
 
-For enterprise consulting, custom integrations, or support SLAs, contact [ectoledger@pm.me](mailto:ectoledger@pm.me).
+EctoLedger is licensed under the Business Source License 1.1.
+
+What this means for you:
+
+Free for Non Production Use: You are entirely free to download the source code, inspect it, modify it, and run it locally for testing, development, and research purposes.
+
+Commercial License Required for Production: If you intend to deploy EctoLedger in a production environment (to manage live data, support internal business operations, or provide commercial services), you must obtain a Commercial License.
+
+Open Source Conversion: To guarantee the code is not locked away forever, the license for this version automatically converts to the open source Apache 2.0 license on April 1, 2030.
+
+For enterprise consulting, commercial licensing, or support SLAs, contact [ectoledger@ectospace.com](mailto:ectoledger@ectospace.com).
