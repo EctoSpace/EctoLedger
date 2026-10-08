@@ -8,6 +8,11 @@
     name="description"
     content="EctoLedger is a tamper-proof audit trail for AI agents. Prove to regulators, courts, and customers exactly what your AI did. Open source, built in Rust."
   />
+  <meta property="og:image" content="https://ectospace.com/EctoLedger/marketing_assets/screenshots/1_dashboard.png" />
+  <meta property="og:image:alt" content="EctoLedger dashboard showing a tamper-proof audit trail of AI agent sessions and events" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:image" content="https://ectospace.com/EctoLedger/marketing_assets/screenshots/1_dashboard.png" />
+  <meta name="twitter:image:alt" content="EctoLedger dashboard showing a tamper-proof audit trail of AI agent sessions and events" />
   <link rel="icon" href="images/ectoSpace-Logo.webp" type="image/webp" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -549,7 +554,7 @@
             <div class="reveal glass rounded-3xl p-6 sm:p-8">
               <h3 class="font-display text-xl text-white">State lives in the ledger</h3>
               <p class="mt-3 text-sm leading-relaxed text-zinc-300">
-                The Rust process is a transient worker. All durable state — event log and snapshots — lives in the configured backend (PostgreSQL or SQLite). The binary has no long-term memory; it restores state from the ledger on each run.
+                The Rust process is a transient worker. All durable state (event log and snapshots) lives in the configured backend (PostgreSQL or SQLite). The binary has no long-term memory; it restores state from the ledger on each run.
               </p>
             </div>
             <div class="reveal glass rounded-3xl p-6 sm:p-8">
@@ -670,18 +675,18 @@
               Highlights from <a href="https://github.com/EctoSpace/EctoLedger" class="text-aqua-300 hover:text-aqua-200 underline">v0.6</a>. Full README and CLI reference live on GitHub.
             </p>
             <div class="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              <div class="rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3 text-sm text-zinc-200"><strong class="text-white">Pluggable ledger backends</strong> — PostgreSQL or SQLite via <code class="font-mono text-xs">DATABASE_URL</code>; <code class="font-mono text-xs">LedgerBackend</code> trait for custom stores.</div>
-              <div class="rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3 text-sm text-zinc-200"><strong class="text-white">Tauri 2 management GUI</strong> — Glassmorphic desktop app: dashboard, metrics, sessions, policy editor, Tripwire, certificate export.</div>
-              <div class="rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3 text-sm text-zinc-200"><strong class="text-white">Python &amp; TypeScript SDKs</strong> — Typed REST clients; LangChain LedgerTool and AutoGen LedgerHook.</div>
-              <div class="rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3 text-sm text-zinc-200"><strong class="text-white">Extended webhooks</strong> — HMAC-signed SIEM egress (JSON, CEF, LEEF) for GuardDenial and TripwireRejection.</div>
-              <div class="rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3 text-sm text-zinc-200"><strong class="text-white">W3C Verifiable Credentials</strong> — VC-JWT on session completion; Ed25519-signed, <code class="font-mono text-xs">did:key:</code> anchored.</div>
-              <div class="rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3 text-sm text-zinc-200"><strong class="text-white">ISO 42001:2023</strong> — Machine-readable policy pack (14 controls) and compliance whitepaper.</div>
-              <div class="rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3 text-sm text-zinc-200"><strong class="text-white">4-layer semantic guard</strong> — Policy → dual-LLM guard → strict schema → Tripwire before every commit.</div>
-              <div class="rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3 text-sm text-zinc-200"><strong class="text-white">Firecracker microVM sandbox</strong> — Hardware execution isolation for <code class="font-mono text-xs">run_command</code> (Linux).</div>
-              <div class="rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3 text-sm text-zinc-200"><strong class="text-white">EVM chain anchoring</strong> — Publish ledger tip hash to any EVM chain via <code class="font-mono text-xs">anchor-session --chain ethereum</code>.</div>
-              <div class="rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3 text-sm text-zinc-200"><strong class="text-white">SP1 ZK proofs</strong> — Provable policy compliance without exposing raw event payloads.</div>
-              <div class="rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3 text-sm text-zinc-200"><strong class="text-white">.elc certificates</strong> — Five-pillar verification; standalone <code class="font-mono text-xs">verify-cert</code> binary.</div>
-              <div class="rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3 text-sm text-zinc-200"><strong class="text-white">Key rotation &amp; config</strong> — Automatic Ed25519 rotation, orchestrator policy injection, configurable bind port, DB pool scaling.</div>
+              <div class="rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3 text-sm text-zinc-200"><strong class="text-white">Pluggable ledger backends</strong>: PostgreSQL or SQLite via <code class="font-mono text-xs">DATABASE_URL</code>; <code class="font-mono text-xs">LedgerBackend</code> trait for custom stores.</div>
+              <div class="rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3 text-sm text-zinc-200"><strong class="text-white">Tauri 2 management GUI</strong>: Glassmorphic desktop app: dashboard, metrics, sessions, policy editor, Tripwire, certificate export.</div>
+              <div class="rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3 text-sm text-zinc-200"><strong class="text-white">Python &amp; TypeScript SDKs</strong>: Typed REST clients; LangChain LedgerTool and AutoGen LedgerHook.</div>
+              <div class="rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3 text-sm text-zinc-200"><strong class="text-white">Extended webhooks</strong>: HMAC-signed SIEM egress (JSON, CEF, LEEF) for GuardDenial and TripwireRejection.</div>
+              <div class="rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3 text-sm text-zinc-200"><strong class="text-white">W3C Verifiable Credentials</strong>: VC-JWT on session completion; Ed25519-signed, <code class="font-mono text-xs">did:key:</code> anchored.</div>
+              <div class="rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3 text-sm text-zinc-200"><strong class="text-white">ISO 42001:2023</strong>: Machine-readable policy pack (14 controls) and compliance whitepaper.</div>
+              <div class="rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3 text-sm text-zinc-200"><strong class="text-white">4-layer semantic guard</strong>: Policy → dual-LLM guard → strict schema → Tripwire before every commit.</div>
+              <div class="rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3 text-sm text-zinc-200"><strong class="text-white">Firecracker microVM sandbox</strong>: Hardware execution isolation for <code class="font-mono text-xs">run_command</code> (Linux).</div>
+              <div class="rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3 text-sm text-zinc-200"><strong class="text-white">EVM chain anchoring</strong>: Publish ledger tip hash to any EVM chain via <code class="font-mono text-xs">anchor-session --chain ethereum</code>.</div>
+              <div class="rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3 text-sm text-zinc-200"><strong class="text-white">SP1 ZK proofs</strong>: Provable policy compliance without exposing raw event payloads.</div>
+              <div class="rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3 text-sm text-zinc-200"><strong class="text-white">.elc certificates</strong>: Five-pillar verification; standalone <code class="font-mono text-xs">verify-cert</code> binary.</div>
+              <div class="rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3 text-sm text-zinc-200"><strong class="text-white">Key rotation &amp; config</strong>: Automatic Ed25519 rotation, orchestrator policy injection, configurable bind port, DB pool scaling.</div>
             </div>
           </div>
         </div>
@@ -700,7 +705,7 @@
           <div class="grid gap-8 lg:grid-cols-2">
             <div class="reveal glass rounded-3xl p-6 sm:p-8">
               <h3 class="font-display text-xl text-white">Quick start (v0.6)</h3>
-              <p class="mt-2 text-sm text-zinc-300">Clone, run launcher — backend + Tauri GUI. Or <code class="font-mono text-xs rounded bg-white/10 px-1">./ectoledger-mac --demo</code> for zero-config demo with embedded Postgres.</p>
+              <p class="mt-2 text-sm text-zinc-300">Clone, run launcher: backend + Tauri GUI. Or <code class="font-mono text-xs rounded bg-white/10 px-1">./ectoledger-mac --demo</code> for zero-config demo with embedded Postgres.</p>
               <ul class="mt-4 space-y-2 text-sm text-zinc-300">
                 <li><strong class="text-white">macOS:</strong> <code class="font-mono text-xs">./ectoledger-mac</code></li>
                 <li><strong class="text-white">Linux:</strong> <code class="font-mono text-xs">./ectoledger-linux</code></li>
@@ -714,14 +719,14 @@
               <h3 class="font-display text-xl text-white">CLI at a glance</h3>
               <p class="mt-2 text-sm text-zinc-300">Serve dashboard, run audits, export reports and certificates.</p>
               <ul class="mt-4 space-y-1.5 font-mono text-xs text-zinc-300">
-                <li><code>serve</code> — Observer dashboard (default http://localhost:3000)</li>
-                <li><code>audit "&lt;goal&gt;"</code> — Run cognitive loop with policy/guard</li>
+                <li><code>serve</code>: Observer dashboard (default http://localhost:3000)</li>
+                <li><code>audit "&lt;goal&gt;"</code>: Run cognitive loop with policy/guard</li>
                 <li><code>report &lt;session_id&gt; --format certificate --output audit.elc</code></li>
-                <li><code>verify-certificate audit.elc</code> — Offline .elc verification</li>
-                <li><code>orchestrate "&lt;goal&gt;"</code> — Recon → Analysis → Verify</li>
-                <li><code>anchor-session &lt;id&gt;</code> — Bitcoin OTS or EVM anchoring</li>
-                <li><code>red-team --target-session &lt;id&gt;</code> — Adversarial testing</li>
-                <li><code>prove-audit &lt;id&gt;</code> — SP1 ZK proof (build with <code>--features zk</code>)</li>
+                <li><code>verify-certificate audit.elc</code>: Offline .elc verification</li>
+                <li><code>orchestrate "&lt;goal&gt;"</code>: Recon → Analysis → Verify</li>
+                <li><code>anchor-session &lt;id&gt;</code>: Bitcoin OTS or EVM anchoring</li>
+                <li><code>red-team --target-session &lt;id&gt;</code>: Adversarial testing</li>
+                <li><code>prove-audit &lt;id&gt;</code>: SP1 ZK proof (build with <code>--features zk</code>)</li>
               </ul>
               <a href="https://github.com/EctoSpace/EctoLedger/blob/v0.6/README.md#cli-reference" class="mt-4 inline-block text-sm font-medium text-aqua-300 hover:text-aqua-200">CLI reference →</a>
             </div>

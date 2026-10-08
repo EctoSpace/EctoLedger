@@ -1,4 +1,4 @@
-/* Ectospace  — Ectospace Design */
+/* Ectospace: Ectospace Design */
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
@@ -20,7 +20,7 @@
   --glass-card-border: rgba(255, 255, 255, 0.2);
   --cta-green: #34d399;
   --cta-muted: rgba(75, 85, 99, 0.9);
-  /* Glossy glass — inset highlight and overlay */
+  /* Glossy glass: inset highlight and overlay */
   --glass-gloss-top: inset 0 1px 0 0 rgba(255, 255, 255, 0.22);
   --glass-gloss-edge: inset 1px 1px 0 0 rgba(255, 255, 255, 0.08);
   --glass-gloss-overlay: linear-gradient(180deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.02) 50%, transparent 100%);
@@ -88,7 +88,7 @@ body {
   bottom: auto;
 }
 
-/* ectone glass — single glassmorphism card */
+/* ectone glass: single glassmorphism card */
 .ectone-glass {
   min-height: 100vh;
   display: flex;

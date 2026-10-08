@@ -5,6 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>EctoLedger Demo | See What It Does</title>
   <meta name="description" content="Watch EctoLedger record AI decisions, enforce guardrails, and export tamper-proof audit certificates in real time." />
+  <meta property="og:image" content="https://ectospace.com/EctoLedger/marketing_assets/screenshots/1_dashboard.png" />
+  <meta property="og:image:alt" content="EctoLedger dashboard showing a tamper-proof audit trail of AI agent sessions and events" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:image" content="https://ectospace.com/EctoLedger/marketing_assets/screenshots/1_dashboard.png" />
+  <meta name="twitter:image:alt" content="EctoLedger dashboard showing a tamper-proof audit trail of AI agent sessions and events" />
   <link rel="icon" href="images/ectoSpace-Logo.webp" type="image/webp" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -246,10 +251,10 @@
               What you need depends on how you run the demo. At minimum, choose one path below.
             </p>
             <ul class="mt-4 space-y-2 text-sm text-zinc-300">
-              <li><strong class="text-white">Rust 1.94+</strong> — All native launcher and CLI demos (rustup recommended).</li>
-              <li><strong class="text-white">Docker</strong> — Only for the Docker demo (<code class="font-mono text-xs rounded bg-white/10 px-1">docker-compose.demo.yml</code>). Not required for <code class="font-mono text-xs rounded bg-white/10 px-1">--demo</code> launcher mode or SQLite.</li>
-              <li><strong class="text-white">LLM backend</strong> — At least one: Ollama (local), OpenAI, or Anthropic. For <code class="font-mono text-xs rounded bg-white/10 px-1">audit</code> and <code class="font-mono text-xs rounded bg-white/10 px-1">orchestrate</code> the primary LLM must be reachable; the Guard uses <code class="font-mono text-xs rounded bg-white/10 px-1">GUARD_LLM_BACKEND</code> / <code class="font-mono text-xs rounded bg-white/10 px-1">GUARD_LLM_MODEL</code> when <code class="font-mono text-xs rounded bg-white/10 px-1">GUARD_REQUIRED=true</code>.</li>
-              <li><strong class="text-white">Node.js 20+ and npm</strong> — Only if you build or run the Tauri 2 desktop GUI (<code class="font-mono text-xs rounded bg-white/10 px-1">gui/</code>). The Docker demo exposes the REST API and Observer only; no GUI.</li>
+              <li><strong class="text-white">Rust 1.94+</strong>: All native launcher and CLI demos (rustup recommended).</li>
+              <li><strong class="text-white">Docker</strong>: Only for the Docker demo (<code class="font-mono text-xs rounded bg-white/10 px-1">docker-compose.demo.yml</code>). Not required for <code class="font-mono text-xs rounded bg-white/10 px-1">--demo</code> launcher mode or SQLite.</li>
+              <li><strong class="text-white">LLM backend</strong>: At least one: Ollama (local), OpenAI, or Anthropic. For <code class="font-mono text-xs rounded bg-white/10 px-1">audit</code> and <code class="font-mono text-xs rounded bg-white/10 px-1">orchestrate</code> the primary LLM must be reachable; the Guard uses <code class="font-mono text-xs rounded bg-white/10 px-1">GUARD_LLM_BACKEND</code> / <code class="font-mono text-xs rounded bg-white/10 px-1">GUARD_LLM_MODEL</code> when <code class="font-mono text-xs rounded bg-white/10 px-1">GUARD_REQUIRED=true</code>.</li>
+              <li><strong class="text-white">Node.js 20+ and npm</strong>: Only if you build or run the Tauri 2 desktop GUI (<code class="font-mono text-xs rounded bg-white/10 px-1">gui/</code>). The Docker demo exposes the REST API and Observer only; no GUI.</li>
             </ul>
           </div>
         </section>
@@ -293,7 +298,7 @@
               <div class="rounded-2xl border border-white/10 bg-white/[0.02] p-5">
                 <h3 class="font-display text-lg text-white">3. Docker demo (no Rust or Node)</h3>
                 <p class="mt-2 text-sm text-zinc-300">
-                  One command pulls the pre-built image and starts PostgreSQL 17, Ollama, and EctoLedger. Open <strong>http://localhost:3000</strong> for the Observer dashboard. No Tauri GUI in Docker — use the launcher with <code class="font-mono text-xs rounded bg-white/10 px-1">--demo</code> for the full desktop experience.
+                  One command pulls the pre-built image and starts PostgreSQL 17, Ollama, and EctoLedger. Open <strong>http://localhost:3000</strong> for the Observer dashboard. No Tauri GUI in Docker. Use the launcher with <code class="font-mono text-xs rounded bg-white/10 px-1">--demo</code> for the full desktop experience.
                 </p>
                 <pre class="mt-4 p-4 rounded-xl bg-ink-950/80 font-mono text-xs text-zinc-200 overflow-x-auto"><code>docker compose -f docker-compose.demo.yml up</code></pre>
                 <p class="mt-3 text-xs text-zinc-400">To reset: <code class="font-mono">docker compose -f docker-compose.demo.yml down -v</code></p>
